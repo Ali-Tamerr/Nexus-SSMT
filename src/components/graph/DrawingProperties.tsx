@@ -42,7 +42,7 @@ export function DrawingProperties({
     }
 
     return (
-        <div className="absolute left-4 top-4 z-20 flex flex-col gap-3 rounded-xl bg-zinc-900/90 p-3 backdrop-blur-sm border border-zinc-800 min-w-[180px]">
+        <div className="absolute left-4 top-4 z-30 flex flex-col gap-3 rounded-xl bg-zinc-900/90 p-3 backdrop-blur-sm border border-zinc-800 min-w-[180px]">
             <div className="text-xs font-medium text-zinc-400 uppercase tracking-wide">Properties</div>
 
             <div className="space-y-2">
@@ -53,8 +53,8 @@ export function DrawingProperties({
                             key={color}
                             onClick={() => onStrokeColorChange(color)}
                             className={`w-6 h-6 rounded-md border-2 transition-all ${strokeColor === color
-                                    ? 'border-white scale-110'
-                                    : 'border-zinc-700 hover:border-zinc-500'
+                                ? 'border-white scale-110'
+                                : 'border-zinc-700 hover:border-zinc-500'
                                 }`}
                             style={{ backgroundColor: color }}
                             title={color}
@@ -71,8 +71,8 @@ export function DrawingProperties({
                             key={w}
                             onClick={() => onStrokeWidthChange(w)}
                             className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-all ${strokeWidth === w
-                                    ? 'bg-[#3B82F6] text-white'
-                                    : 'bg-zinc-800 text-zinc-400 hover:text-white'
+                                ? 'bg-[#3B82F6] text-white'
+                                : 'bg-zinc-800 text-zinc-400 hover:text-white'
                                 }`}
                         >
                             {w}px
@@ -87,8 +87,8 @@ export function DrawingProperties({
                     <button
                         onClick={() => onStrokeStyleChange('solid')}
                         className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-all ${strokeStyle === 'solid'
-                                ? 'bg-[#3B82F6] text-white'
-                                : 'bg-zinc-800 text-zinc-400 hover:text-white'
+                            ? 'bg-[#3B82F6] text-white'
+                            : 'bg-zinc-800 text-zinc-400 hover:text-white'
                             }`}
                     >
                         ━━━
@@ -96,8 +96,8 @@ export function DrawingProperties({
                     <button
                         onClick={() => onStrokeStyleChange('dashed')}
                         className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-all ${strokeStyle === 'dashed'
-                                ? 'bg-[#3B82F6] text-white'
-                                : 'bg-zinc-800 text-zinc-400 hover:text-white'
+                            ? 'bg-[#3B82F6] text-white'
+                            : 'bg-zinc-800 text-zinc-400 hover:text-white'
                             }`}
                     >
                         ┅┅┅
@@ -105,8 +105,8 @@ export function DrawingProperties({
                     <button
                         onClick={() => onStrokeStyleChange('dotted')}
                         className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-all ${strokeStyle === 'dotted'
-                                ? 'bg-[#3B82F6] text-white'
-                                : 'bg-zinc-800 text-zinc-400 hover:text-white'
+                            ? 'bg-[#3B82F6] text-white'
+                            : 'bg-zinc-800 text-zinc-400 hover:text-white'
                             }`}
                     >
                         ┈┈┈

@@ -5,8 +5,8 @@ import { useRef, useCallback, useMemo, useEffect, useState } from 'react';
 import { useGraphStore, filterNodes } from '@/store/useGraphStore';
 import { GROUP_COLORS, RELATIONSHIP_COLORS } from '@/types/knowledge';
 import type { RelationshipType } from '@/types/knowledge';
-import { DrawingCanvas } from './DrawingCanvas';
 import { DrawingProperties } from './DrawingProperties';
+import { DrawnShape, drawShapeOnContext } from './drawingUtils';
 
 const ForceGraph2D = dynamic(() => import('react-force-graph-2d'), {
   ssr: false,
@@ -181,9 +181,25 @@ export function GraphCanvas() {
   );
 
   const graphRef = useRef<any>(null);
+  const previewCanvasRef = useRef<HTMLCanvasElement>(null);
   const isPreviewMode = graphSettings.isPreviewMode;
   const prevPreviewModeRef = useRef(isPreviewMode);
   const [graphTransform, setGraphTransform] = useState({ x: 0, y: 0, k: 1 });
+
+  const [shapes, setShapes] = useState<DrawnShape[]>(() => {
+    if (typeof window === 'undefined') return [];
+    try {
+      const saved = localStorage.getItem('nexus-drawings');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [isDrawing, setIsDrawing] = useState(false);
+  const [startPoint, setStartPoint] = useState<{ x: number; y: number } | null>(null);
+  const [currentPoints, setCurrentPoints] = useState<{ x: number; y: number }[]>([]);
+
+  const isDrawingTool = ['pen', 'rectangle', 'diamond', 'circle', 'arrow', 'line'].includes(graphSettings.activeTool);
 
   useEffect(() => {
     if (isPreviewMode && !prevPreviewModeRef.current && graphRef.current) {
@@ -192,9 +208,196 @@ export function GraphCanvas() {
     prevPreviewModeRef.current = isPreviewMode;
   }, [isPreviewMode]);
 
+  useEffect(() => {
+    localStorage.setItem('nexus-drawings', JSON.stringify(shapes));
+  }, [shapes]);
+
+  useEffect(() => {
+    if (graphSettings.activeTool === 'eraser') {
+      setShapes([]);
+    }
+  }, [graphSettings.activeTool]);
+
+
+
   const handleZoom = useCallback((transform: { x: number; y: number; k: number }) => {
-    setGraphTransform(transform);
+    setTimeout(() => setGraphTransform(transform), 0);
   }, []);
+
+  const screenToWorld = useCallback((screenX: number, screenY: number) => {
+    if (!graphRef.current?.screen2GraphCoords) {
+      const k = graphTransform.k || 1;
+      return {
+        x: (screenX - graphTransform.x) / k,
+        y: (screenY - graphTransform.y) / k
+      };
+    }
+    const coords = graphRef.current.screen2GraphCoords(screenX, screenY);
+    return { x: coords.x, y: coords.y };
+  }, [graphTransform]);
+
+  const handleCanvasMouseDown = useCallback((e: React.MouseEvent) => {
+    if (!isDrawingTool) return;
+
+    const rect = e.currentTarget.getBoundingClientRect();
+    const screenX = e.clientX - rect.left;
+    const screenY = e.clientY - rect.top;
+    const worldPoint = screenToWorld(screenX, screenY);
+
+    setIsDrawing(true);
+    setStartPoint(worldPoint);
+    setCurrentPoints([worldPoint]);
+  }, [isDrawingTool, screenToWorld]);
+
+  const drawPreview = useCallback((points: { x: number; y: number }[]) => {
+    const canvas = previewCanvasRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    if (points.length === 0) return;
+
+    const screenPoints = points.map(p => ({
+      x: p.x * graphTransform.k + graphTransform.x,
+      y: p.y * graphTransform.k + graphTransform.y,
+    }));
+
+    ctx.strokeStyle = graphSettings.strokeColor;
+    ctx.lineWidth = graphSettings.strokeWidth;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.setLineDash([5, 5]);
+
+    if (screenPoints.length < 2 && graphSettings.activeTool !== 'pen') return;
+
+    ctx.beginPath();
+
+    switch (graphSettings.activeTool) {
+      case 'pen':
+        if (screenPoints.length === 0) break;
+        ctx.moveTo(screenPoints[0].x, screenPoints[0].y);
+        for (let i = 1; i < screenPoints.length; i++) {
+          ctx.lineTo(screenPoints[i].x, screenPoints[i].y);
+        }
+        ctx.stroke();
+        break;
+      case 'line':
+        ctx.moveTo(screenPoints[0].x, screenPoints[0].y);
+        ctx.lineTo(screenPoints[1].x, screenPoints[1].y);
+        ctx.stroke();
+        break;
+      case 'arrow':
+        const [start, end] = [screenPoints[0], screenPoints[1]];
+        const angle = Math.atan2(end.y - start.y, end.x - start.x);
+        const headLen = 15;
+        ctx.moveTo(start.x, start.y);
+        ctx.lineTo(end.x, end.y);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(end.x, end.y);
+        ctx.lineTo(end.x - headLen * Math.cos(angle - Math.PI / 6), end.y - headLen * Math.sin(angle - Math.PI / 6));
+        ctx.moveTo(end.x, end.y);
+        ctx.lineTo(end.x - headLen * Math.cos(angle + Math.PI / 6), end.y - headLen * Math.sin(angle + Math.PI / 6));
+        ctx.stroke();
+        break;
+      case 'rectangle':
+        ctx.strokeRect(screenPoints[0].x, screenPoints[0].y, screenPoints[1].x - screenPoints[0].x, screenPoints[1].y - screenPoints[0].y);
+        break;
+      case 'circle':
+        const radiusX = Math.abs(screenPoints[1].x - screenPoints[0].x) / 2;
+        const radiusY = Math.abs(screenPoints[1].y - screenPoints[0].y) / 2;
+        const centerX = screenPoints[0].x + (screenPoints[1].x - screenPoints[0].x) / 2;
+        const centerY = screenPoints[0].y + (screenPoints[1].y - screenPoints[0].y) / 2;
+        ctx.ellipse(centerX, centerY, Math.max(0.1, radiusX), Math.max(0.1, radiusY), 0, 0, 2 * Math.PI);
+        ctx.stroke();
+        break;
+      case 'diamond':
+        const midX = (screenPoints[0].x + screenPoints[1].x) / 2;
+        const midY = (screenPoints[0].y + screenPoints[1].y) / 2;
+        ctx.moveTo(midX, screenPoints[0].y);
+        ctx.lineTo(screenPoints[1].x, midY);
+        ctx.lineTo(midX, screenPoints[1].y);
+        ctx.lineTo(screenPoints[0].x, midY);
+        ctx.closePath();
+        ctx.stroke();
+        break;
+    }
+  }, [graphTransform, graphSettings.activeTool, graphSettings.strokeColor, graphSettings.strokeWidth]);
+
+  const handleCanvasMouseMove = useCallback((e: React.MouseEvent) => {
+    if (!isDrawing || !startPoint) return;
+
+    const rect = e.currentTarget.getBoundingClientRect();
+    const screenX = e.clientX - rect.left;
+    const screenY = e.clientY - rect.top;
+    const worldPoint = screenToWorld(screenX, screenY);
+
+    let newPoints: { x: number; y: number }[];
+    if (graphSettings.activeTool === 'pen') {
+      newPoints = [...currentPoints, worldPoint];
+    } else {
+      newPoints = [startPoint, worldPoint];
+    }
+
+    setCurrentPoints(newPoints);
+
+    if (graphRef.current) {
+      const z = graphRef.current.zoom();
+      graphRef.current.zoom(z * 1.00001, 0);
+      graphRef.current.zoom(z, 0);
+    }
+  }, [isDrawing, startPoint, screenToWorld, graphSettings.activeTool, currentPoints]);
+
+  const handleCanvasMouseUp = useCallback(() => {
+    if (!isDrawing || currentPoints.length === 0) {
+      setIsDrawing(false);
+      return;
+    }
+
+    const newShape: DrawnShape = {
+      id: crypto.randomUUID(),
+      type: graphSettings.activeTool,
+      points: [...currentPoints],
+      color: graphSettings.strokeColor,
+      width: graphSettings.strokeWidth,
+      style: graphSettings.strokeStyle,
+    };
+
+    setShapes(prev => [...prev, newShape]);
+    setIsDrawing(false);
+    setStartPoint(null);
+    setCurrentPoints([]);
+    drawPreview([]);
+
+    setTimeout(() => {
+      if (graphRef.current) {
+        const currentZoom = graphRef.current.zoom();
+        graphRef.current.zoom(currentZoom * 1.0001, 0);
+        setTimeout(() => graphRef.current.zoom(currentZoom, 0), 20);
+      }
+    }, 10);
+  }, [isDrawing, currentPoints, graphSettings.activeTool, graphSettings.strokeColor, graphSettings.strokeWidth, graphSettings.strokeStyle, drawPreview]);
+
+  const onRenderFramePost = useCallback((ctx: CanvasRenderingContext2D, globalScale: number) => {
+    shapes.forEach(shape => {
+      drawShapeOnContext(ctx, shape, globalScale);
+    });
+
+    if (isDrawing && currentPoints.length > 0) {
+      const previewShape: DrawnShape = {
+        id: 'preview',
+        type: graphSettings.activeTool,
+        points: currentPoints,
+        color: graphSettings.strokeColor,
+        width: graphSettings.strokeWidth,
+        style: graphSettings.strokeStyle,
+      };
+      drawShapeOnContext(ctx, previewShape, globalScale, true);
+    }
+  }, [shapes, isDrawing, currentPoints, graphSettings.activeTool, graphSettings.strokeColor, graphSettings.strokeWidth, graphSettings.strokeStyle]);
 
   return (
     <div ref={containerRef} className="relative h-full w-full bg-zinc-950" suppressHydrationWarning>
@@ -222,7 +425,8 @@ export function GraphCanvas() {
             onNodeHover={handleNodeHover}
             onBackgroundClick={() => setActiveNode(null)}
             onZoom={handleZoom}
-            enableNodeDrag={!graphSettings.lockAllMovement && !['pen', 'rectangle', 'diamond', 'circle', 'arrow', 'line'].includes(graphSettings.activeTool)}
+            onRenderFramePost={onRenderFramePost}
+            enableNodeDrag={!graphSettings.lockAllMovement && !isDrawingTool}
             enableZoomInteraction={true}
             enablePanInteraction={graphSettings.activeTool === 'pan' || graphSettings.activeTool === 'select'}
             cooldownTicks={isPreviewMode ? 100 : 0}
@@ -230,15 +434,22 @@ export function GraphCanvas() {
             d3VelocityDecay={isPreviewMode ? 0.3 : 0.9}
             backgroundColor="transparent"
           />
-          <DrawingCanvas
-            activeTool={graphSettings.activeTool}
+          <canvas
+            ref={previewCanvasRef}
             width={dimensions.width}
             height={dimensions.height}
-            strokeWidth={graphSettings.strokeWidth}
-            strokeColor={graphSettings.strokeColor}
-            strokeStyle={graphSettings.strokeStyle}
-            transform={graphTransform}
+            className="absolute inset-0 pointer-events-none"
+            style={{ zIndex: 15 }}
           />
+          {isDrawingTool && (
+            <div
+              className="absolute inset-0 z-20 cursor-crosshair"
+              onMouseDown={handleCanvasMouseDown}
+              onMouseMove={handleCanvasMouseMove}
+              onMouseUp={handleCanvasMouseUp}
+              onMouseLeave={handleCanvasMouseUp}
+            />
+          )}
           <DrawingProperties
             activeTool={graphSettings.activeTool}
             strokeWidth={graphSettings.strokeWidth}

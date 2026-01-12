@@ -42,17 +42,28 @@ export function DrawingCanvas({ activeTool, width, height, strokeWidth, strokeCo
 
     const isDrawingTool = ['pen', 'rectangle', 'diamond', 'circle', 'arrow', 'line'].includes(activeTool);
 
+    const screenToWorld = useCallback((screenX: number, screenY: number): Point => {
+        return {
+            x: (screenX - transform.x) / transform.k,
+            y: (screenY - transform.y) / transform.k,
+        };
+    }, [transform.x, transform.y, transform.k]);
+
+    const worldToScreen = useCallback((worldX: number, worldY: number): Point => {
+        return {
+            x: worldX * transform.k + transform.x,
+            y: worldY * transform.k + transform.y,
+        };
+    }, [transform.x, transform.y, transform.k]);
+
     const getCanvasPoint = useCallback((e: React.MouseEvent<HTMLCanvasElement>): Point => {
         const canvas = canvasRef.current;
         if (!canvas) return { x: 0, y: 0 };
         const rect = canvas.getBoundingClientRect();
         const screenX = e.clientX - rect.left;
         const screenY = e.clientY - rect.top;
-        return {
-            x: (screenX - transform.x) / transform.k,
-            y: (screenY - transform.y) / transform.k,
-        };
-    }, [transform]);
+        return screenToWorld(screenX, screenY);
+    }, [screenToWorld]);
 
     const handleMouseDown = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
         if (!isDrawingTool) return;
@@ -99,10 +110,10 @@ export function DrawingCanvas({ activeTool, width, height, strokeWidth, strokeCo
         setCurrentPoints([]);
     }, [isDrawing, currentPoints, activeTool, strokeColor, strokeWidth, strokeStyle]);
 
-    const drawShape = useCallback((ctx: CanvasRenderingContext2D, shape: DrawnShape, isPreview = false) => {
+    const drawShapeOnCanvas = useCallback((ctx: CanvasRenderingContext2D, shape: DrawnShape, isPreview = false) => {
         ctx.strokeStyle = shape.color;
         ctx.fillStyle = 'transparent';
-        ctx.lineWidth = shape.width;
+        ctx.lineWidth = shape.width * transform.k;
         ctx.lineCap = 'round';
         ctx.lineJoin = 'round';
 
@@ -121,31 +132,31 @@ export function DrawingCanvas({ activeTool, width, height, strokeWidth, strokeCo
             }
         }
 
-        const points = shape.points;
-        if (points.length < 2 && shape.type !== 'pen') return;
+        const screenPoints = shape.points.map(p => worldToScreen(p.x, p.y));
+        if (screenPoints.length < 2 && shape.type !== 'pen') return;
 
         ctx.beginPath();
 
         switch (shape.type) {
             case 'pen':
-                if (points.length === 0) return;
-                ctx.moveTo(points[0].x, points[0].y);
-                for (let i = 1; i < points.length; i++) {
-                    ctx.lineTo(points[i].x, points[i].y);
+                if (screenPoints.length === 0) return;
+                ctx.moveTo(screenPoints[0].x, screenPoints[0].y);
+                for (let i = 1; i < screenPoints.length; i++) {
+                    ctx.lineTo(screenPoints[i].x, screenPoints[i].y);
                 }
                 ctx.stroke();
                 break;
 
             case 'line':
-                ctx.moveTo(points[0].x, points[0].y);
-                ctx.lineTo(points[1].x, points[1].y);
+                ctx.moveTo(screenPoints[0].x, screenPoints[0].y);
+                ctx.lineTo(screenPoints[1].x, screenPoints[1].y);
                 ctx.stroke();
                 break;
 
             case 'arrow':
-                const [start, end] = [points[0], points[1]];
+                const [start, end] = [screenPoints[0], screenPoints[1]];
                 const angle = Math.atan2(end.y - start.y, end.x - start.x);
-                const headLen = 15;
+                const headLen = 15 * transform.k;
 
                 ctx.moveTo(start.x, start.y);
                 ctx.lineTo(end.x, end.y);
@@ -166,35 +177,33 @@ export function DrawingCanvas({ activeTool, width, height, strokeWidth, strokeCo
                 break;
 
             case 'rectangle':
-                const rectWidth = points[1].x - points[0].x;
-                const rectHeight = points[1].y - points[0].y;
-                ctx.strokeRect(points[0].x, points[0].y, rectWidth, rectHeight);
+                const rectWidth = screenPoints[1].x - screenPoints[0].x;
+                const rectHeight = screenPoints[1].y - screenPoints[0].y;
+                ctx.strokeRect(screenPoints[0].x, screenPoints[0].y, rectWidth, rectHeight);
                 break;
 
             case 'circle':
-                const radiusX = Math.abs(points[1].x - points[0].x) / 2;
-                const radiusY = Math.abs(points[1].y - points[0].y) / 2;
-                const centerX = points[0].x + (points[1].x - points[0].x) / 2;
-                const centerY = points[0].y + (points[1].y - points[0].y) / 2;
+                const radiusX = Math.abs(screenPoints[1].x - screenPoints[0].x) / 2;
+                const radiusY = Math.abs(screenPoints[1].y - screenPoints[0].y) / 2;
+                const centerX = screenPoints[0].x + (screenPoints[1].x - screenPoints[0].x) / 2;
+                const centerY = screenPoints[0].y + (screenPoints[1].y - screenPoints[0].y) / 2;
                 ctx.ellipse(centerX, centerY, radiusX, radiusY, 0, 0, 2 * Math.PI);
                 ctx.stroke();
                 break;
 
             case 'diamond':
-                const midX = (points[0].x + points[1].x) / 2;
-                const midY = (points[0].y + points[1].y) / 2;
-                const halfWidth = Math.abs(points[1].x - points[0].x) / 2;
-                const halfHeight = Math.abs(points[1].y - points[0].y) / 2;
+                const midX = (screenPoints[0].x + screenPoints[1].x) / 2;
+                const midY = (screenPoints[0].y + screenPoints[1].y) / 2;
 
-                ctx.moveTo(midX, points[0].y);
-                ctx.lineTo(points[1].x, midY);
-                ctx.lineTo(midX, points[1].y);
-                ctx.lineTo(points[0].x, midY);
+                ctx.moveTo(midX, screenPoints[0].y);
+                ctx.lineTo(screenPoints[1].x, midY);
+                ctx.lineTo(midX, screenPoints[1].y);
+                ctx.lineTo(screenPoints[0].x, midY);
                 ctx.closePath();
                 ctx.stroke();
                 break;
         }
-    }, []);
+    }, [transform.k, worldToScreen]);
 
     useEffect(() => {
         const canvas = canvasRef.current;
@@ -205,12 +214,8 @@ export function DrawingCanvas({ activeTool, width, height, strokeWidth, strokeCo
 
         ctx.clearRect(0, 0, width, height);
 
-        ctx.save();
-        ctx.translate(transform.x, transform.y);
-        ctx.scale(transform.k, transform.k);
-
         shapes.forEach(shape => {
-            drawShape(ctx, shape);
+            drawShapeOnCanvas(ctx, shape);
         });
 
         if (isDrawing && currentPoints.length > 0) {
@@ -222,11 +227,9 @@ export function DrawingCanvas({ activeTool, width, height, strokeWidth, strokeCo
                 width: strokeWidth,
                 style: strokeStyle,
             };
-            drawShape(ctx, previewShape, true);
+            drawShapeOnCanvas(ctx, previewShape, true);
         }
-
-        ctx.restore();
-    }, [shapes, isDrawing, currentPoints, activeTool, strokeColor, strokeWidth, strokeStyle, width, height, drawShape, transform.x, transform.y, transform.k]);
+    }, [shapes, isDrawing, currentPoints, activeTool, strokeColor, strokeWidth, strokeStyle, width, height, drawShapeOnCanvas]);
 
     useEffect(() => {
         if (activeTool === 'eraser') {
