@@ -58,9 +58,28 @@ export interface GraphData {
   links: Link[];
 }
 
+export type DrawingTool = 
+  | 'pan' 
+  | 'select' 
+  | 'rectangle' 
+  | 'diamond' 
+  | 'circle' 
+  | 'arrow' 
+  | 'line' 
+  | 'pen' 
+  | 'text' 
+  | 'image' 
+  | 'eraser';
+
+export type StrokeStyle = 'solid' | 'dashed' | 'dotted';
+
 export interface GraphSettings {
-  freezeOthersOnDrag: boolean;
+  isPreviewMode: boolean;
   lockAllMovement: boolean;
+  activeTool: DrawingTool;
+  strokeWidth: number;
+  strokeColor: string;
+  strokeStyle: StrokeStyle;
 }
 
 export interface PresenceState {

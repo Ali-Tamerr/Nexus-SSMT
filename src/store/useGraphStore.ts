@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 import type { Project, Node, Link, GraphData, GraphSettings, Tag, Attachment } from '@/types/knowledge';
 
 interface AppState {
@@ -16,7 +17,9 @@ interface AppState {
   isLoading: boolean;
   graphSettings: GraphSettings;
   currentUserId: string | null;
+  hasHydrated: boolean;
   
+  setHasHydrated: (hydrated: boolean) => void;
   setCurrentUserId: (userId: string | null) => void;
   setProjects: (projects: Project[]) => void;
   addProject: (project: Project) => void;
@@ -47,24 +50,33 @@ interface AppState {
   setGraphSettings: (settings: Partial<GraphSettings>) => void;
 }
 
-export const useGraphStore = create<AppState>()((set) => ({
-  projects: [],
-  currentProject: null,
-  nodes: [],
-  links: [],
-  tags: [],
-  activeNode: null,
-  hoveredNode: null,
-  searchQuery: '',
-  isEditorOpen: false,
-  isCommandPaletteOpen: false,
-  isCreateProjectOpen: false,
-  isLoading: false,
-  graphSettings: {
-    freezeOthersOnDrag: false,
-    lockAllMovement: false,
-  },
-  currentUserId: null,
+export const useGraphStore = create<AppState>()(
+  persist(
+    (set) => ({
+      projects: [],
+      currentProject: null,
+      nodes: [],
+      links: [],
+      tags: [],
+      activeNode: null,
+      hoveredNode: null,
+      searchQuery: '',
+      isEditorOpen: false,
+      isCommandPaletteOpen: false,
+      isCreateProjectOpen: false,
+      isLoading: false,
+      graphSettings: {
+        isPreviewMode: false,
+        lockAllMovement: false,
+        activeTool: 'select',
+        strokeWidth: 2,
+        strokeColor: '#3B82F6',
+        strokeStyle: 'solid',
+      },
+      currentUserId: null,
+      hasHydrated: false,
+
+      setHasHydrated: (hydrated) => set({ hasHydrated: hydrated }),
 
   setCurrentUserId: (userId) => set({ currentUserId: userId }),
   setProjects: (projects) => set({ projects }),
@@ -188,7 +200,20 @@ export const useGraphStore = create<AppState>()((set) => ({
   setGraphSettings: (settings) => set((state) => ({
     graphSettings: { ...state.graphSettings, ...settings }
   })),
-}));
+    }),
+    {
+      name: 'nexus-graph',
+      partialize: (state) => ({
+        currentProject: state.currentProject,
+        projects: state.projects,
+        graphSettings: state.graphSettings,
+      }),
+      onRehydrateStorage: () => (state) => {
+        state?.setHasHydrated(true);
+      },
+    }
+  )
+);
 
 export function filterNodes(nodes: Node[], searchQuery: string): Node[] {
   if (!searchQuery) return nodes;

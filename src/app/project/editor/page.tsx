@@ -22,7 +22,7 @@ export default function EditorPage() {
     const [isMounted, setIsMounted] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    const { user, isAuthenticated, hasHydrated } = useAuthStore();
+    const { user, isAuthenticated, hasHydrated: authHydrated } = useAuthStore();
 
     const {
         currentProject,
@@ -37,8 +37,10 @@ export default function EditorPage() {
         addNode,
         isLoading,
         setLoading,
+        hasHydrated: graphHydrated,
     } = useGraphStore();
 
+    const hasHydrated = authHydrated && graphHydrated;
     const projectId = currentProject?.id;
 
     useEffect(() => {

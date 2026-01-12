@@ -5,10 +5,12 @@ import { useRef, useCallback, useMemo, useEffect, useState } from 'react';
 import { useGraphStore, filterNodes } from '@/store/useGraphStore';
 import { GROUP_COLORS, RELATIONSHIP_COLORS } from '@/types/knowledge';
 import type { RelationshipType } from '@/types/knowledge';
+import { DrawingCanvas } from './DrawingCanvas';
+import { DrawingProperties } from './DrawingProperties';
 
 const ForceGraph2D = dynamic(() => import('react-force-graph-2d'), {
   ssr: false,
-});
+}) as any;
 
 export function GraphCanvas() {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -26,6 +28,7 @@ export function GraphCanvas() {
   const setHoveredNode = useGraphStore((s) => s.setHoveredNode);
   const searchQuery = useGraphStore((s) => s.searchQuery);
   const graphSettings = useGraphStore((s) => s.graphSettings);
+  const setGraphSettings = useGraphStore((s) => s.setGraphSettings);
 
   const filteredNodes = useMemo(
     () => filterNodes(nodes, searchQuery),
@@ -177,37 +180,75 @@ export function GraphCanvas() {
     [activeNode]
   );
 
+  const graphRef = useRef<any>(null);
+  const isPreviewMode = graphSettings.isPreviewMode;
+  const prevPreviewModeRef = useRef(isPreviewMode);
+  const [graphTransform, setGraphTransform] = useState({ x: 0, y: 0, k: 1 });
+
+  useEffect(() => {
+    if (isPreviewMode && !prevPreviewModeRef.current && graphRef.current) {
+      graphRef.current.d3ReheatSimulation?.();
+    }
+    prevPreviewModeRef.current = isPreviewMode;
+  }, [isPreviewMode]);
+
+  const handleZoom = useCallback((transform: { x: number; y: number; k: number }) => {
+    setGraphTransform(transform);
+  }, []);
+
   return (
     <div ref={containerRef} className="relative h-full w-full bg-zinc-950" suppressHydrationWarning>
       {isMounted ? (
-        <ForceGraph2D
-          width={dimensions.width}
-          height={dimensions.height}
-          graphData={graphData}
-          nodeId="id"
-          nodeCanvasObject={nodeCanvasObject}
-          nodePointerAreaPaint={(node: { x?: number; y?: number }, color: string, ctx: CanvasRenderingContext2D) => {
-            ctx.fillStyle = color;
-            ctx.beginPath();
-            ctx.arc(node.x || 0, node.y || 0, 10, 0, 2 * Math.PI);
-            ctx.fill();
-          }}
-          linkColor={linkColor}
-          linkWidth={linkWidth}
-          linkDirectionalArrowLength={4}
-          linkDirectionalArrowRelPos={1}
-          linkCurvature={0.1}
-          onNodeClick={handleNodeClick}
-          onNodeHover={handleNodeHover}
-          onBackgroundClick={() => setActiveNode(null)}
-          enableNodeDrag={!graphSettings.lockAllMovement}
-          enableZoomInteraction={true}
-          enablePanInteraction={true}
-          cooldownTicks={100}
-          d3AlphaDecay={0.02}
-          d3VelocityDecay={0.3}
-          backgroundColor="transparent"
-        />
+        <>
+          <ForceGraph2D
+            ref={graphRef}
+            width={dimensions.width}
+            height={dimensions.height}
+            graphData={graphData}
+            nodeId="id"
+            nodeCanvasObject={nodeCanvasObject}
+            nodePointerAreaPaint={(node: { x?: number; y?: number }, color: string, ctx: CanvasRenderingContext2D) => {
+              ctx.fillStyle = color;
+              ctx.beginPath();
+              ctx.arc(node.x || 0, node.y || 0, 10, 0, 2 * Math.PI);
+              ctx.fill();
+            }}
+            linkColor={linkColor}
+            linkWidth={linkWidth}
+            linkDirectionalArrowLength={4}
+            linkDirectionalArrowRelPos={1}
+            linkCurvature={0.1}
+            onNodeClick={handleNodeClick}
+            onNodeHover={handleNodeHover}
+            onBackgroundClick={() => setActiveNode(null)}
+            onZoom={handleZoom}
+            enableNodeDrag={!graphSettings.lockAllMovement && !['pen', 'rectangle', 'diamond', 'circle', 'arrow', 'line'].includes(graphSettings.activeTool)}
+            enableZoomInteraction={true}
+            enablePanInteraction={graphSettings.activeTool === 'pan' || graphSettings.activeTool === 'select'}
+            cooldownTicks={isPreviewMode ? 100 : 0}
+            d3AlphaDecay={isPreviewMode ? 0.02 : 1}
+            d3VelocityDecay={isPreviewMode ? 0.3 : 0.9}
+            backgroundColor="transparent"
+          />
+          <DrawingCanvas
+            activeTool={graphSettings.activeTool}
+            width={dimensions.width}
+            height={dimensions.height}
+            strokeWidth={graphSettings.strokeWidth}
+            strokeColor={graphSettings.strokeColor}
+            strokeStyle={graphSettings.strokeStyle}
+            transform={graphTransform}
+          />
+          <DrawingProperties
+            activeTool={graphSettings.activeTool}
+            strokeWidth={graphSettings.strokeWidth}
+            strokeColor={graphSettings.strokeColor}
+            strokeStyle={graphSettings.strokeStyle}
+            onStrokeWidthChange={(w) => setGraphSettings({ strokeWidth: w })}
+            onStrokeColorChange={(c) => setGraphSettings({ strokeColor: c })}
+            onStrokeStyleChange={(s) => setGraphSettings({ strokeStyle: s })}
+          />
+        </>
       ) : (
         <div className="flex h-full w-full items-center justify-center">
           <div className="flex flex-col items-center gap-4">
