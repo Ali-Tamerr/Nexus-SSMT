@@ -108,3 +108,34 @@ export function drawShapeOnContext(
 
     ctx.restore();
 }
+
+function distanceToSegment(p: {x: number, y: number}, a: {x: number, y: number}, b: {x: number, y: number}) {
+    const l2 = (a.x - b.x)**2 + (a.y - b.y)**2;
+    if (l2 === 0) return Math.sqrt((p.x - a.x)**2 + (p.y - a.y)**2);
+    let t = ((p.x - a.x) * (b.x - a.x) + (p.y - a.y) * (b.y - a.y)) / l2;
+    t = Math.max(0, Math.min(1, t));
+    const proj = { x: a.x + t * (b.x - a.x), y: a.y + t * (b.y - a.y) };
+    return Math.sqrt((p.x - proj.x)**2 + (p.y - proj.y)**2);
+}
+
+export function isPointNearShape(point: {x: number, y: number}, shape: DrawnShape, globalScale = 1, tolerance = 25): boolean {
+    const { type, points } = shape;
+    if (!points || points.length === 0) return false;
+
+    const margin = tolerance / globalScale;
+
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    for (const p of points) {
+        minX = Math.min(minX, p.x);
+        maxX = Math.max(maxX, p.x);
+        minY = Math.min(minY, p.y);
+        maxY = Math.max(maxY, p.y);
+    }
+
+    minX -= margin;
+    maxX += margin;
+    minY -= margin;
+    maxY += margin;
+
+    return point.x >= minX && point.x <= maxX && point.y >= minY && point.y <= maxY;
+}

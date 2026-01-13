@@ -6,7 +6,7 @@ import { useGraphStore, filterNodes } from '@/store/useGraphStore';
 import { GROUP_COLORS, RELATIONSHIP_COLORS } from '@/types/knowledge';
 import type { RelationshipType } from '@/types/knowledge';
 import { DrawingProperties } from './DrawingProperties';
-import { drawShapeOnContext } from './drawingUtils';
+import { drawShapeOnContext, isPointNearShape } from './drawingUtils';
 import { DrawnShape } from '@/types/knowledge';
 
 const ForceGraph2D = dynamic(() => import('react-force-graph-2d'), {
@@ -188,16 +188,17 @@ export function GraphCanvas() {
   const [graphTransform, setGraphTransform] = useState({ x: 0, y: 0, k: 1 });
 
   const shapes = useGraphStore(state => state.shapes);
+  const setShapes = useGraphStore(state => state.setShapes);
   const addShape = useGraphStore(state => state.addShape);
   const undo = useGraphStore(state => state.undo);
   const redo = useGraphStore(state => state.redo);
-  const clearShapes = useGraphStore(state => state.clearShapes);
+  const pushToUndoStack = useGraphStore(state => state.pushToUndoStack);
 
   const [isDrawing, setIsDrawing] = useState(false);
   const [startPoint, setStartPoint] = useState<{ x: number; y: number } | null>(null);
   const [currentPoints, setCurrentPoints] = useState<{ x: number; y: number }[]>([]);
 
-  const isDrawingTool = ['pen', 'rectangle', 'diamond', 'circle', 'arrow', 'line'].includes(graphSettings.activeTool);
+  const isDrawingTool = ['pen', 'rectangle', 'diamond', 'circle', 'arrow', 'line', 'eraser'].includes(graphSettings.activeTool);
 
   // Reheat simulation for undo/redo
   useEffect(() => {
@@ -233,11 +234,7 @@ export function GraphCanvas() {
     prevPreviewModeRef.current = isPreviewMode;
   }, [isPreviewMode]);
 
-  useEffect(() => {
-    if (graphSettings.activeTool === 'eraser') {
-      clearShapes();
-    }
-  }, [graphSettings.activeTool, clearShapes]);
+
 
 
 
@@ -260,6 +257,12 @@ export function GraphCanvas() {
   const handleCanvasMouseDown = useCallback((e: React.MouseEvent) => {
     if (!isDrawingTool) return;
 
+    if (graphSettings.activeTool === 'eraser') {
+      setIsDrawing(true);
+      pushToUndoStack(shapes);
+      return;
+    }
+
     const rect = e.currentTarget.getBoundingClientRect();
     const screenX = e.clientX - rect.left;
     const screenY = e.clientY - rect.top;
@@ -268,7 +271,7 @@ export function GraphCanvas() {
     setIsDrawing(true);
     setStartPoint(worldPoint);
     setCurrentPoints([worldPoint]);
-  }, [isDrawingTool, screenToWorld]);
+  }, [isDrawingTool, screenToWorld, graphSettings.activeTool, shapes, pushToUndoStack]);
 
   const drawPreview = useCallback((points: { x: number; y: number }[]) => {
     const canvas = previewCanvasRef.current;
@@ -349,12 +352,23 @@ export function GraphCanvas() {
   }, [graphTransform, graphSettings.activeTool, graphSettings.strokeColor, graphSettings.strokeWidth]);
 
   const handleCanvasMouseMove = useCallback((e: React.MouseEvent) => {
-    if (!isDrawing || !startPoint) return;
+    if (!isDrawing) return;
 
     const rect = e.currentTarget.getBoundingClientRect();
     const screenX = e.clientX - rect.left;
     const screenY = e.clientY - rect.top;
     const worldPoint = screenToWorld(screenX, screenY);
+
+    if (graphSettings.activeTool === 'eraser') {
+      const scale = graphTransform.k || 1;
+      const remaining = shapes.filter(s => !isPointNearShape(worldPoint, s, scale));
+      if (remaining.length !== shapes.length) {
+        setShapes(remaining);
+      }
+      return;
+    }
+
+    if (!startPoint) return;
 
     let newPoints: { x: number; y: number }[];
     if (graphSettings.activeTool === 'pen') {
@@ -370,10 +384,17 @@ export function GraphCanvas() {
       graphRef.current.zoom(z * 1.00001, 0);
       graphRef.current.zoom(z, 0);
     }
-  }, [isDrawing, startPoint, screenToWorld, graphSettings.activeTool, currentPoints]);
+  }, [isDrawing, startPoint, screenToWorld, graphSettings.activeTool, currentPoints, shapes, setShapes, graphTransform]);
 
   const handleCanvasMouseUp = useCallback(() => {
-    if (!isDrawing || currentPoints.length === 0) {
+    if (!isDrawing) return;
+
+    if (graphSettings.activeTool === 'eraser') {
+      setIsDrawing(false);
+      return;
+    }
+
+    if (currentPoints.length === 0) {
       setIsDrawing(false);
       return;
     }

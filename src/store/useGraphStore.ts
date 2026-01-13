@@ -38,6 +38,7 @@ interface AppState {
   undo: () => void;
   redo: () => void;
   clearShapes: () => void;
+  pushToUndoStack: (shapes: DrawnShape[]) => void;
   
   setNodes: (nodes: Node[]) => void;
   setLinks: (links: Link[]) => void;
@@ -220,6 +221,11 @@ export const useGraphStore = create<AppState>()(
 
   // Drawing actions
   setShapes: (shapes) => set({ shapes }),
+  
+  pushToUndoStack: (shapes) => set((state) => ({
+    undoStack: [...state.undoStack, shapes],
+    redoStack: [],
+  })),
   
   addShape: (shape) => set((state) => ({
     undoStack: [...state.undoStack, state.shapes],
