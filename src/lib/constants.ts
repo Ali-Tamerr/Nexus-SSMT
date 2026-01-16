@@ -22,10 +22,13 @@ export const NODE_COLORS = [
   '#84CC16',
 ];
 
-export type RelationshipType = 'supports' | 'contradicts' | 'neutral';
-
-export const RELATIONSHIP_COLORS: Record<string, string> = {
-  supports: '#10B981',
-  contradicts: '#EF4444',
-  neutral: '#6B7280',
-};
+export const COLOR_PALETTE = [
+  '#3B82F6',
+  '#EF4444',
+  '#10B981',
+  '#F59E0B',
+  '#8B5CF6',
+  '#EC4899',
+  '#FFFFFF',
+  '#6B7280',
+];

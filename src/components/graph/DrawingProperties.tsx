@@ -1,6 +1,6 @@
 'use client';
 
-import { DrawingTool } from '@/types/knowledge';
+import { DrawingTool, COLOR_PALETTE } from '@/types/knowledge';
 
 interface DrawingPropertiesProps {
     activeTool: DrawingTool;
@@ -15,17 +15,6 @@ interface DrawingPropertiesProps {
     onFontSizeChange: (size: number) => void;
     onFontFamilyChange: (family: string) => void;
 }
-
-const colors = [
-    '#3B82F6',
-    '#EF4444',
-    '#10B981',
-    '#F59E0B',
-    '#8B5CF6',
-    '#EC4899',
-    '#FFFFFF',
-    '#6B7280',
-];
 
 const widths = [1, 2, 3, 5, 8];
 const fontSizes = [12, 16, 20, 24, 32];
@@ -68,7 +57,7 @@ export function DrawingProperties({
             <div className="space-y-2">
                 <label className="text-xs text-zinc-500">Color</label>
                 <div className="flex flex-wrap gap-1.5">
-                    {colors.map((color) => (
+                    {COLOR_PALETTE.map((color) => (
                         <button
                             key={color}
                             onClick={() => onStrokeColorChange(color)}

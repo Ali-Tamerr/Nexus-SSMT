@@ -3,9 +3,9 @@
 import dynamic from 'next/dynamic';
 import { useRef, useCallback, useMemo, useEffect, useState } from 'react';
 import { useGraphStore, filterNodes } from '@/store/useGraphStore';
-import { GROUP_COLORS, RELATIONSHIP_COLORS } from '@/types/knowledge';
-import type { RelationshipType } from '@/types/knowledge';
+import { GROUP_COLORS } from '@/types/knowledge';
 import { DrawingProperties } from './DrawingProperties';
+import { ConnectionProperties } from './ConnectionProperties';
 import { drawShapeOnContext, isPointNearShape, drawSelectionBox, isShapeInMarquee, drawMarquee } from './drawingUtils';
 import { DrawnShape } from '@/types/knowledge';
 import { api, ApiDrawing } from '@/lib/api';
@@ -33,6 +33,8 @@ export function GraphCanvas() {
   const setGraphSettings = useGraphStore((s) => s.setGraphSettings);
 
   const [selectedNodeIds, setSelectedNodeIds] = useState<Set<string>>(new Set());
+  const [selectedLink, setSelectedLink] = useState<any | null>(null);
+  const [hoveredLink, setHoveredLink] = useState<any | null>(null);
 
   const filteredNodes = useMemo(
     () => filterNodes(nodes, searchQuery),
@@ -75,7 +77,7 @@ export function GraphCanvas() {
       .map((l) => ({
         source: l.sourceId,
         target: l.targetId,
-        relationshipType: l.relationshipType,
+        color: l.color,
         description: l.description,
       }));
 
@@ -130,6 +132,28 @@ export function GraphCanvas() {
     },
     [nodes, setHoveredNode]
   );
+
+  const handleLinkClick = useCallback((link: any) => {
+    const fullLink = links.find(l =>
+      (l.sourceId === link.source.id || l.sourceId === link.source) &&
+      (l.targetId === link.target.id || l.targetId === link.target)
+    );
+    if (fullLink) {
+      setSelectedLink({
+        ...fullLink,
+        source: link.source,
+        target: link.target,
+      });
+    }
+  }, [links]);
+
+  const handleLinkHover = useCallback((link: any) => {
+    if (link) {
+      setHoveredLink(link);
+    } else {
+      setHoveredLink(null);
+    }
+  }, []);
 
   const nodeCanvasObject = useCallback(
     (
@@ -212,19 +236,31 @@ export function GraphCanvas() {
   );
 
   const linkColor = useCallback((link: unknown) => {
-    const l = link as { relationshipType?: string };
-    const relType = l.relationshipType as RelationshipType || 'neutral';
-    return (RELATIONSHIP_COLORS[relType] || RELATIONSHIP_COLORS.neutral) + '80';
-  }, []);
+    const l = link as { color?: string; source?: any; target?: any };
+    const baseColor = l.color || '#3B82F6';
+
+    const isHovered = hoveredLink &&
+      ((hoveredLink.source === l.source || hoveredLink.source?.id === l.source?.id) &&
+        (hoveredLink.target === l.target || hoveredLink.target?.id === l.target?.id));
+
+    return isHovered ? baseColor : baseColor + '80';
+  }, [hoveredLink]);
 
   const linkWidth = useCallback(
     (link: unknown) => {
       const l = link as { source?: string | { id?: string }; target?: string | { id?: string } };
       const srcId = typeof l.source === 'string' ? l.source : l.source?.id;
       const tgtId = typeof l.target === 'string' ? l.target : l.target?.id;
-      return activeNode?.id === srcId || activeNode?.id === tgtId ? 2 : 1;
+
+      const isHovered = hoveredLink &&
+        ((typeof hoveredLink.source === 'string' ? hoveredLink.source === srcId : hoveredLink.source?.id === srcId) &&
+          (typeof hoveredLink.target === 'string' ? hoveredLink.target === tgtId : hoveredLink.target?.id === tgtId));
+
+      const isActive = activeNode?.id === srcId || activeNode?.id === tgtId;
+
+      return isHovered ? 3 : (isActive ? 2 : 1);
     },
-    [activeNode]
+    [activeNode, hoveredLink]
   );
 
   const graphRef = useRef<any>(null);
@@ -971,8 +1007,23 @@ export function GraphCanvas() {
               const target = link.target;
               if (!source?.x || !target?.x) return;
 
-              const midX = (source.x + target.x) / 2;
-              const midY = (source.y + target.y) / 2;
+              const curvature = 0.1;
+              const dx = target.x - source.x;
+              const dy = target.y - source.y;
+              const l = Math.sqrt(dx * dx + dy * dy);
+
+              if (l === 0) return;
+
+              const straightMidX = (source.x + target.x) / 2;
+              const straightMidY = (source.y + target.y) / 2;
+
+              const controlPointOffset = curvature * l;
+              const controlX = straightMidX + dy / l * controlPointOffset;
+              const controlY = straightMidY - dx / l * controlPointOffset;
+
+              const t = 0.5;
+              const midX = (1 - t) * (1 - t) * source.x + 2 * (1 - t) * t * controlX + t * t * target.x;
+              const midY = (1 - t) * (1 - t) * source.y + 2 * (1 - t) * t * controlY + t * t * target.y;
 
               const fontSize = Math.max(10 / globalScale, 2);
               ctx.font = `${fontSize}px Inter, sans-serif`;
@@ -994,6 +1045,8 @@ export function GraphCanvas() {
             onNodeHover={handleNodeHover}
             onNodeDrag={handleNodeDrag}
             onNodeDragEnd={handleNodeDragEnd}
+            onLinkClick={handleLinkClick}
+            onLinkHover={handleLinkHover}
             onBackgroundClick={() => setActiveNode(null)}
             onZoom={handleZoom}
             onRenderFramePost={onRenderFramePost}
@@ -1324,6 +1377,13 @@ export function GraphCanvas() {
           </div>
         ))}
       </div>
+
+      {selectedLink && (
+        <ConnectionProperties
+          link={selectedLink}
+          onClose={() => setSelectedLink(null)}
+        />
+      )}
     </div>
   );
 }

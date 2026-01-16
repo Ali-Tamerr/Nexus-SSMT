@@ -48,7 +48,7 @@ export interface Link {
   id: string;
   sourceId: string;
   targetId: string;
-  relationshipType: 'supports' | 'contradicts' | 'neutral' | string;
+  color: string;
   description?: string;
   userId?: string;
   createdAt?: string;
@@ -119,6 +119,4 @@ export interface RegisterRequest {
   password: string;
 }
 
-export type RelationshipType = Link['relationshipType'];
-
-export { RELATIONSHIP_COLORS, GROUP_COLORS, BRAND_COLOR, NODE_COLORS } from '@/lib/constants';
+export { GROUP_COLORS, BRAND_COLOR, NODE_COLORS, COLOR_PALETTE } from '@/lib/constants';

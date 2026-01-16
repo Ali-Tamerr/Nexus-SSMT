@@ -1,10 +1,10 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { X, Save, Trash2, Plus, Image, Video, Link2, FileText, ExternalLink, Tag, Loader2, ArrowRight } from 'lucide-react';
+import { X, Save, Trash2, Plus, Image, Video, Link2, FileText, ExternalLink, Tag, Loader2, ArrowRight, Pencil } from 'lucide-react';
 import { useGraphStore } from '@/store/useGraphStore';
 import { useAuthStore } from '@/store/useAuthStore';
-import { Attachment, Tag as TagType, Link as LinkType, GROUP_COLORS, RELATIONSHIP_COLORS } from '@/types/knowledge';
+import { Attachment, Tag as TagType, Link as LinkType, GROUP_COLORS, COLOR_PALETTE } from '@/types/knowledge';
 import { api } from '@/lib/api';
 
 export function NodeEditor() {
@@ -37,7 +37,8 @@ export function NodeEditor() {
   const [newTagColor, setNewTagColor] = useState('#8B5CF6');
   const [selectedTargetNodeId, setSelectedTargetNodeId] = useState('');
   const [connectionDescription, setConnectionDescription] = useState('');
-  const [connectionType, setConnectionType] = useState<'supports' | 'contradicts' | 'neutral'>('neutral');
+  const [connectionColor, setConnectionColor] = useState('#3B82F6');
+  const [editingConnectionId, setEditingConnectionId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -199,8 +200,8 @@ export function NodeEditor() {
     const linkData = {
       sourceId: activeNode.id,
       targetId: selectedTargetNodeId,
-      relationshipType: connectionType,
-      description: connectionDescription.trim() || null,
+      color: connectionColor,
+      description: connectionDescription.trim() || undefined,
       userId: userId,
     };
 
@@ -211,7 +212,7 @@ export function NodeEditor() {
       addLink(newLink);
       setSelectedTargetNodeId('');
       setConnectionDescription('');
-      setConnectionType('neutral');
+      setConnectionColor('#3B82F6');
       setShowConnectionMenu(false);
       setError(null);
     } catch (err) {
@@ -227,6 +228,60 @@ export function NodeEditor() {
     } catch (err) {
       console.error('Failed to remove connection:', err);
     }
+  };
+
+  const handleEditConnection = (link: LinkType) => {
+    setEditingConnectionId(link.id);
+    const connectedNodeId = link.sourceId === activeNode?.id ? link.targetId : link.sourceId;
+    setSelectedTargetNodeId(connectedNodeId);
+    setConnectionDescription(link.description || '');
+    setConnectionColor(link.color || '#3B82F6');
+    setShowConnectionMenu(true);
+  };
+
+  const handleUpdateConnection = async () => {
+    if (!editingConnectionId || !activeNode) return;
+
+    const userId = currentUserId || user?.id;
+    if (!userId) {
+      setError('User ID is required to update connections');
+      return;
+    }
+
+    const link = links.find(l => l.id === editingConnectionId);
+    if (!link) return;
+
+    try {
+      const updatedLink = await api.links.update(editingConnectionId, {
+        id: editingConnectionId,
+        sourceId: link.sourceId,
+        targetId: link.targetId,
+        color: connectionColor,
+        description: connectionDescription.trim() || undefined,
+        userId: userId,
+      });
+
+      deleteLink(editingConnectionId);
+      addLink(updatedLink);
+
+      setSelectedTargetNodeId('');
+      setConnectionDescription('');
+      setConnectionColor('#3B82F6');
+      setEditingConnectionId(null);
+      setShowConnectionMenu(false);
+      setError(null);
+    } catch (err) {
+      console.error('Failed to update connection:', err);
+      setError(err instanceof Error ? err.message : 'Failed to update connection');
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditingConnectionId(null);
+    setSelectedTargetNodeId('');
+    setConnectionDescription('');
+    setConnectionColor('#3B82F6');
+    setShowConnectionMenu(false);
   };
 
   const getContentTypeFromUrl = (url: string): string => {
@@ -482,29 +537,34 @@ export function NodeEditor() {
                       <select
                         value={selectedTargetNodeId}
                         onChange={(e) => setSelectedTargetNodeId(e.target.value)}
-                        className="mt-1 w-full rounded-lg bg-zinc-700 px-3 py-1.5 text-sm text-white outline-none"
+                        disabled={!!editingConnectionId}
+                        className="mt-1 w-full rounded-lg bg-zinc-700 px-3 py-1.5 text-sm text-white outline-none disabled:opacity-50"
                       >
                         <option value="">Select a node...</option>
                         {availableNodes.map(n => (
                           <option key={n.id} value={n.id}>{n.title}</option>
                         ))}
+                        {editingConnectionId && (
+                          <option key={selectedTargetNodeId} value={selectedTargetNodeId}>
+                            {nodes.find(n => n.id === selectedTargetNodeId)?.title}
+                          </option>
+                        )}
                       </select>
                     </div>
                     <div className="mb-2">
-                      <label className="text-xs text-zinc-400">Relationship Type</label>
-                      <div className="mt-1 flex gap-1">
-                        {(['supports', 'neutral', 'contradicts'] as const).map(type => (
+                      <label className="text-xs text-zinc-400">Color</label>
+                      <div className="mt-1 flex flex-wrap gap-1.5">
+                        {COLOR_PALETTE.map(c => (
                           <button
-                            key={type}
-                            onClick={() => setConnectionType(type)}
-                            className={`flex-1 rounded-lg px-2 py-1.5 text-xs capitalize transition-colors ${connectionType === type
-                              ? 'ring-2 ring-white'
-                              : 'hover:brightness-110'
+                            key={c}
+                            onClick={() => setConnectionColor(c)}
+                            className={`w-6 h-6 rounded-md border-2 transition-all ${connectionColor === c
+                              ? 'border-white scale-110'
+                              : 'border-zinc-700 hover:border-zinc-500'
                               }`}
-                            style={{ backgroundColor: RELATIONSHIP_COLORS[type] }}
-                          >
-                            {type}
-                          </button>
+                            style={{ backgroundColor: c }}
+                            title={c}
+                          />
                         ))}
                       </div>
                     </div>
@@ -518,13 +578,30 @@ export function NodeEditor() {
                         className="mt-1 w-full rounded-lg bg-zinc-700 px-3 py-1.5 text-sm text-white placeholder-zinc-500 outline-none"
                       />
                     </div>
-                    <button
-                      onClick={handleAddConnection}
-                      disabled={!selectedTargetNodeId}
-                      className="w-full rounded-lg bg-[#3B82F6] py-1.5 text-sm font-medium text-white transition-colors hover:bg-[#265fbd] disabled:opacity-50"
-                    >
-                      Add Connection
-                    </button>
+                    {editingConnectionId ? (
+                      <div className="flex gap-2">
+                        <button
+                          onClick={handleCancelEdit}
+                          className="flex-1 rounded-lg bg-zinc-700 py-1.5 text-sm font-medium text-white transition-colors hover:bg-zinc-600"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          onClick={handleUpdateConnection}
+                          className="flex-1 rounded-lg bg-[#3B82F6] py-1.5 text-sm font-medium text-white transition-colors hover:bg-[#265fbd]"
+                        >
+                          Update
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={handleAddConnection}
+                        disabled={!selectedTargetNodeId}
+                        className="w-full rounded-lg bg-[#3B82F6] py-1.5 text-sm font-medium text-white transition-colors hover:bg-[#265fbd] disabled:opacity-50"
+                      >
+                        Add Connection
+                      </button>
+                    )}
                   </div>
                 )}
               </div>
@@ -546,7 +623,7 @@ export function NodeEditor() {
                       <div className="flex items-center gap-2 overflow-hidden">
                         <span
                           className="h-2 w-2 rounded-full"
-                          style={{ backgroundColor: RELATIONSHIP_COLORS[link.relationshipType as keyof typeof RELATIONSHIP_COLORS] || RELATIONSHIP_COLORS.neutral }}
+                          style={{ backgroundColor: link.color || '#3B82F6' }}
                         />
                         <span className="text-xs text-zinc-400">{isSource ? 'to' : 'from'}</span>
                         <span className="truncate text-sm text-white">{connectedNode?.title || 'Unknown'}</span>
@@ -554,12 +631,20 @@ export function NodeEditor() {
                           <span className="truncate text-xs text-zinc-500">({link.description})</span>
                         )}
                       </div>
-                      <button
-                        onClick={() => handleRemoveConnection(link.id)}
-                        className="rounded p-1 text-zinc-400 transition-colors hover:bg-zinc-700 hover:text-red-400"
-                      >
-                        <X className="h-3.5 w-3.5" />
-                      </button>
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => handleEditConnection(link)}
+                          className="rounded p-1 text-zinc-400 transition-colors hover:bg-zinc-700 hover:text-blue-400"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          onClick={() => handleRemoveConnection(link.id)}
+                          className="rounded p-1 text-zinc-400 transition-colors hover:bg-zinc-700 hover:text-red-400"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
                     </div>
                   );
                 })
