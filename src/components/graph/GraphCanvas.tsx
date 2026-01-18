@@ -339,6 +339,9 @@ export function GraphCanvas() {
   const [hoveredResizeHandle, setHoveredResizeHandle] = useState<ResizeHandle | null>(null);
   const [resizeUpdateCounter, setResizeUpdateCounter] = useState(0);
 
+  const [isMiddleMousePanning, setIsMiddleMousePanning] = useState(false);
+  const middleMouseStartRef = useRef<{ x: number; y: number } | null>(null);
+
   const isDrawingTool = ['pen', 'rectangle', 'diamond', 'circle', 'arrow', 'line', 'eraser'].includes(graphSettings.activeTool);
   const isTextTool = graphSettings.activeTool === 'text';
   const isSelectTool = graphSettings.activeTool === 'select';
@@ -1117,10 +1120,19 @@ export function GraphCanvas() {
             <div
               className="absolute inset-0 z-20"
               style={{
-                pointerEvents: (isHoveringShape || isDraggingSelection || isMarqueeSelecting || isResizing || hoveredResizeHandle) ? 'auto' : 'none',
-                cursor: hoveredResizeHandle ? getCursorForHandle(hoveredResizeHandle) : (isHoveringShape ? 'move' : 'crosshair')
+                pointerEvents: (isHoveringShape || isDraggingSelection || isMarqueeSelecting || isResizing || hoveredResizeHandle || isMiddleMousePanning) ? 'auto' : 'none',
+                cursor: isMiddleMousePanning ? 'grabbing' : (hoveredResizeHandle ? getCursorForHandle(hoveredResizeHandle) : (isHoveringShape ? 'move' : 'crosshair'))
               }}
               onMouseDown={(e) => {
+                if (e.button === 1) {
+                  e.preventDefault();
+                  setIsMiddleMousePanning(true);
+                  middleMouseStartRef.current = { x: e.clientX, y: e.clientY };
+                  return;
+                }
+
+                if (e.button !== 0) return;
+
                 const rect = e.currentTarget.getBoundingClientRect();
                 const screenX = e.clientX - rect.left;
                 const screenY = e.clientY - rect.top;
@@ -1185,6 +1197,20 @@ export function GraphCanvas() {
                 const screenY = e.clientY - rect.top;
                 const worldPoint = screenToWorld(screenX, screenY);
                 const scale = graphTransform.k || 1;
+
+                if (isMiddleMousePanning && middleMouseStartRef.current && graphRef.current) {
+                  const dx = e.clientX - middleMouseStartRef.current.x;
+                  const dy = e.clientY - middleMouseStartRef.current.y;
+
+                  graphRef.current.centerAt(
+                    graphTransform.x - dx,
+                    graphTransform.y - dy,
+                    0
+                  );
+
+                  middleMouseStartRef.current = { x: e.clientX, y: e.clientY };
+                  return;
+                }
 
                 if (isMarqueeSelecting) {
                   setMarqueeEnd(worldPoint);
@@ -1265,6 +1291,12 @@ export function GraphCanvas() {
                 }
               }}
               onMouseUp={() => {
+                if (isMiddleMousePanning) {
+                  setIsMiddleMousePanning(false);
+                  middleMouseStartRef.current = null;
+                  return;
+                }
+
                 if (isResizing && resizingShapeIdRef.current) {
                   const finalShapes = shapesRef.current;
                   setShapes(finalShapes);
