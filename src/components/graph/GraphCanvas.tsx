@@ -403,6 +403,19 @@ export function GraphCanvas() {
     };
   }, [isResizing]);
 
+  useEffect(() => {
+    const preventBrowserGestures = (e: WheelEvent) => {
+      if (containerRef.current?.contains(e.target as Node)) {
+        if (Math.abs(e.deltaX) > Math.abs(e.deltaY) && !e.ctrlKey) {
+          e.preventDefault();
+        }
+      }
+    };
+
+    window.addEventListener('wheel', preventBrowserGestures, { passive: false });
+    return () => window.removeEventListener('wheel', preventBrowserGestures);
+  }, []);
+
   // Handle Undo/Redo and Delete shortcuts
   const shapesRef = useRef(shapes);
   const selectedShapeIdsRef = useRef(selectedShapeIds);
@@ -1037,7 +1050,11 @@ export function GraphCanvas() {
     <div
       ref={containerRef}
       className="relative h-full w-full bg-zinc-950"
-      style={{ cursor: getToolCursor() }}
+      style={{
+        cursor: getToolCursor(),
+        overscrollBehavior: 'none',
+        touchAction: 'none',
+      }}
       suppressHydrationWarning
       onMouseMove={handleContainerMouseMove}
       onMouseDownCapture={handleContainerMouseDownCapture}

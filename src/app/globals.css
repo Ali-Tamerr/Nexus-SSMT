@@ -41,6 +41,8 @@ html,
 body {
   height: 100%;
   overflow: hidden;
+  overscroll-behavior: none;
+  overscroll-behavior-x: none;
 }
 
 body {
@@ -51,15 +53,30 @@ body {
 
 .graph-container {
   background:
-    radial-gradient(ellipse at 50% 0%, rgba(139, 92, 246, 0.08) 0%, transparent 50%),
-    radial-gradient(ellipse at 80% 80%, rgba(59, 130, 246, 0.05) 0%, transparent 40%),
-    radial-gradient(ellipse at 20% 100%, rgba(16, 185, 129, 0.05) 0%, transparent 40%),
+    radial-gradient(
+      ellipse at 50% 0%,
+      rgba(139, 92, 246, 0.08) 0%,
+      transparent 50%
+    ),
+    radial-gradient(
+      ellipse at 80% 80%,
+      rgba(59, 130, 246, 0.05) 0%,
+      transparent 40%
+    ),
+    radial-gradient(
+      ellipse at 20% 100%,
+      rgba(16, 185, 129, 0.05) 0%,
+      transparent 40%
+    ),
     linear-gradient(180deg, #0a0a0a 0%, #09090b 100%);
 }
 
 .graph-canvas {
-  background-image:
-    radial-gradient(circle at 1px 1px, rgba(255, 255, 255, 0.03) 1px, transparent 0);
+  background-image: radial-gradient(
+    circle at 1px 1px,
+    rgba(255, 255, 255, 0.03) 1px,
+    transparent 0
+  );
   background-size: 32px 32px;
 }
 
@@ -90,7 +107,8 @@ body {
 }
 
 @keyframes pulse-glow {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 0.6;
   }
   50% {
@@ -103,7 +121,8 @@ body {
 }
 
 @keyframes float {
-  0%, 100% {
+  0%,
+  100% {
     transform: translateY(0);
   }
   50% {
