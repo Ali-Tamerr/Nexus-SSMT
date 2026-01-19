@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { Project, Node, Link, GraphData, GraphSettings, Tag, Attachment, DrawnShape } from '@/types/knowledge';
+import type { Group } from '@/components/graph/GroupsTabs';
 
 interface AppState {
   projects: Project[];
@@ -18,6 +19,9 @@ interface AppState {
   graphSettings: GraphSettings;
   currentUserId: string | null;
   hasHydrated: boolean;
+  
+  groups: Group[];
+  activeGroupId: number | null;
   
   // Drawing state
   shapes: DrawnShape[];
@@ -41,6 +45,13 @@ interface AppState {
   redo: () => void;
   clearShapes: () => void;
   pushToUndoStack: (shapes: DrawnShape[]) => void;
+  
+  // Group actions
+  setGroups: (groups: Group[]) => void;
+  addGroup: (group: Group) => void;
+  updateGroup: (id: number, updates: Partial<Group>) => void;
+  deleteGroup: (id: number) => void;
+  setActiveGroupId: (groupId: number | null) => void;
   
   setNodes: (nodes: Node[]) => void;
   setLinks: (links: Link[]) => void;
@@ -92,6 +103,9 @@ export const useGraphStore = create<AppState>()(
       },
       currentUserId: null,
       hasHydrated: false,
+
+      groups: [],
+      activeGroupId: null,
 
       // Drawing state
       shapes: [],
@@ -246,6 +260,25 @@ export const useGraphStore = create<AppState>()(
     redoStack: [],
     shapes: state.shapes.filter(s => s.id !== id),
   })),
+
+  setGroups: (groups) => set({ groups }),
+  
+  addGroup: (group) => set((state) => ({
+    groups: [...state.groups, group],
+  })),
+  
+  updateGroup: (id, updates) => set((state) => ({
+    groups: state.groups.map(g => g.id === id ? { ...g, ...updates } : g),
+  })),
+  
+  deleteGroup: (id) => set((state) => ({
+    groups: state.groups.filter(g => g.id !== id),
+    activeGroupId: state.activeGroupId === id 
+      ? (state.groups.filter(g => g.id !== id)[0]?.id || null) 
+      : state.activeGroupId,
+  })),
+  
+  setActiveGroupId: (groupId) => set({ activeGroupId: groupId }),
   
   undo: () => set((state) => {
     if (state.undoStack.length === 0) return state;

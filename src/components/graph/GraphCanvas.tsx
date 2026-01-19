@@ -3,12 +3,12 @@
 import dynamic from 'next/dynamic';
 import { useRef, useCallback, useMemo, useEffect, useState } from 'react';
 import { useGraphStore, filterNodes } from '@/store/useGraphStore';
-import { GROUP_COLORS } from '@/types/knowledge';
 import { DrawingProperties } from './DrawingProperties';
 import { ConnectionProperties } from './ConnectionProperties';
 import { drawShapeOnContext, isPointNearShape, drawSelectionBox, isShapeInMarquee, drawMarquee } from './drawingUtils';
 import { getShapeBounds, drawResizeHandles, getHandleAtPoint, resizeShape, getCursorForHandle, ResizeHandle, ShapeBounds } from './resizeUtils';
 import { SelectionPane } from './SelectionPane';
+import { GroupsTabs, getNextGroupColor } from './GroupsTabs';
 import { DrawnShape } from '@/types/knowledge';
 import { api, ApiDrawing } from '@/lib/api';
 
@@ -33,6 +33,14 @@ export function GraphCanvas() {
   const searchQuery = useGraphStore((s) => s.searchQuery);
   const graphSettings = useGraphStore((s) => s.graphSettings);
   const setGraphSettings = useGraphStore((s) => s.setGraphSettings);
+
+  const groups = useGraphStore(state => state.groups);
+  const activeGroupId = useGraphStore(state => state.activeGroupId);
+  const setGroups = useGraphStore(state => state.setGroups);
+  const setActiveGroupId = useGraphStore(state => state.setActiveGroupId);
+  const addGroup = useGraphStore(state => state.addGroup);
+  const updateGroup = useGraphStore(state => state.updateGroup);
+  const deleteGroup = useGraphStore(state => state.deleteGroup);
 
   const [selectedNodeIds, setSelectedNodeIds] = useState<Set<string>>(new Set());
   const [selectedLink, setSelectedLink] = useState<any | null>(null);
@@ -176,7 +184,7 @@ export function GraphCanvas() {
         searchQuery &&
         label.toLowerCase().includes(searchQuery.toLowerCase());
 
-      const baseColor = node.customColor || GROUP_COLORS[nodeGroup] || GROUP_COLORS[0];
+      const baseColor = node.customColor || groups.find(g => g.order === nodeGroup)?.color || groups[0]?.color || '#8B5CF6';
       const nodeRadius = isActive ? 8 : 6;
       const x = node.x || 0;
       const y = node.y || 0;
@@ -235,7 +243,7 @@ export function GraphCanvas() {
       ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
       ctx.fillText(label, x, y + nodeRadius + 3);
     },
-    [activeNode, searchQuery, selectedNodeIds]
+    [activeNode, searchQuery, selectedNodeIds, groups]
   );
 
   const linkColor = useCallback((link: unknown) => {
@@ -317,6 +325,19 @@ export function GraphCanvas() {
       })
       .catch(err => console.error('Failed to load drawings:', err));
   }, [currentProject?.id, apiDrawingToShape, setShapes]);
+
+  useEffect(() => {
+    fetch('/api/groups')
+      .then(res => res.json())
+      .then((backendGroups: Array<{ id: number; name: string; color: string }>) => {
+        const groupsWithOrder = backendGroups.map((g, i) => ({ ...g, order: i }));
+        setGroups(groupsWithOrder);
+        if (groupsWithOrder.length > 0 && !activeGroupId) {
+          setActiveGroupId(groupsWithOrder[0].id);
+        }
+      })
+      .catch(err => console.error('Failed to load groups:', err));
+  }, [setGroups, setActiveGroupId, activeGroupId]);
 
   const [isDrawing, setIsDrawing] = useState(false);
   const [startPoint, setStartPoint] = useState<{ x: number; y: number } | null>(null);
@@ -1577,20 +1598,18 @@ export function GraphCanvas() {
         </div>
       )}
 
-      <div className="absolute bottom-4 left-4 flex flex-wrap gap-2">
-        {Object.entries(GROUP_COLORS).map(([group, color]) => (
-          <div
-            key={group}
-            className="flex items-center gap-1.5 rounded-full bg-zinc-800/60 px-2 py-1 text-xs text-zinc-400 backdrop-blur-sm"
-          >
-            <span
-              className="h-2.5 w-2.5 rounded-full"
-              style={{ backgroundColor: color }}
-            />
-            <span>Group {group}</span>
-          </div>
-        ))}
-      </div>
+
+      <GroupsTabs
+        groups={groups}
+        activeGroupId={activeGroupId}
+        onSelectGroup={setActiveGroupId}
+        onAddGroup={() => {
+          console.log('TODO: Implement backend group creation');
+        }}
+        onRenameGroup={(id, newName) => updateGroup(id, { name: newName })}
+        onDeleteGroup={deleteGroup}
+        onReorderGroups={setGroups}
+      />
 
       <button
         onClick={() => {
