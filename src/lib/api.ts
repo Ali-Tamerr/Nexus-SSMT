@@ -288,6 +288,7 @@ export const api = {
 export interface ApiDrawing {
   id: string;
   projectId: string;
+  groupId?: number;
   type: string;
   points: string;
   color: string;

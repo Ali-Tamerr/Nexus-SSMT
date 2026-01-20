@@ -150,8 +150,10 @@ export function GraphCanvas() {
         lastHoveredNodeIdRef.current = nodeId;
         const node = nodes.find((n) => n.id === nodeId);
         setHoveredNode(node || null);
+        setIsHoveringNode(true);
       } else {
         setHoveredNode(null);
+        setIsHoveringNode(false);
       }
     },
     [nodes, setHoveredNode]
@@ -315,10 +317,12 @@ export function GraphCanvas() {
     text: d.text || undefined,
     fontSize: d.fontSize || undefined,
     fontFamily: d.fontFamily || undefined,
+    groupId: d.groupId,
   }), []);
 
-  const shapeToApiDrawing = useCallback((s: DrawnShape, projectId: string) => ({
+  const shapeToApiDrawing = useCallback((s: DrawnShape, projectId: string, groupId?: number) => ({
     projectId,
+    groupId: groupId ?? s.groupId,
     type: s.type,
     points: JSON.stringify(s.points),
     color: s.color,
@@ -454,6 +458,7 @@ export function GraphCanvas() {
   const [selectedShapeIds, setSelectedShapeIds] = useState<Set<string>>(new Set());
   const [isDraggingSelection, setIsDraggingSelection] = useState(false);
   const [isHoveringShape, setIsHoveringShape] = useState(false);
+  const [isHoveringNode, setIsHoveringNode] = useState(false);
   const [dragStartWorld, setDragStartWorld] = useState<{ x: number; y: number } | null>(null);
   const [isMarqueeSelecting, setIsMarqueeSelecting] = useState(false);
   const [marqueeStart, setMarqueeStart] = useState<{ x: number; y: number } | null>(null);
@@ -480,6 +485,9 @@ export function GraphCanvas() {
   const isPanTool = graphSettings.activeTool === 'pan' || (!isDrawingTool && !isTextTool && !isSelectTool);
 
   const getToolCursor = () => {
+    // When hovering over a node, show grab cursor (indicates draggable)
+    if (isHoveringNode && !isDrawingTool) return 'grab';
+
     if (isPanTool) return 'grab';
     if (isSelectTool) {
       if (isMiddleMousePanning) return 'grabbing';
@@ -567,12 +575,20 @@ export function GraphCanvas() {
   }, [graphTransform.k]);
 
   // Handle Undo/Redo and Delete shortcuts
-  const shapesRef = useRef(shapes);
+  // Filter shapes by active group
+  const filteredShapes = useMemo(() => {
+    if (activeGroupId === null || activeGroupId === undefined) {
+      return shapes;
+    }
+    return shapes.filter(s => s.groupId === activeGroupId || s.groupId === undefined);
+  }, [shapes, activeGroupId]);
+
+  const shapesRef = useRef(filteredShapes);
   const selectedShapeIdsRef = useRef(selectedShapeIds);
   const selectedNodeIdsRefForDelete = useRef(selectedNodeIds);
   // Only sync refs with state if NOT dragging and NOT resizing (to allow transient updates)
   if (!dragNodePrevRef.current && !isResizing) {
-    shapesRef.current = shapes;
+    shapesRef.current = filteredShapes;
   }
   selectedShapeIdsRef.current = selectedShapeIds;
   selectedNodeIdsRefForDelete.current = selectedNodeIds;
@@ -1184,12 +1200,13 @@ export function GraphCanvas() {
       color: graphSettings.strokeColor,
       width: graphSettings.strokeWidth,
       style: graphSettings.strokeStyle,
+      groupId: activeGroupId ?? undefined,
     };
 
     addShape(newShape);
 
     if (currentProject?.id) {
-      api.drawings.create(shapeToApiDrawing(newShape, currentProject.id))
+      api.drawings.create(shapeToApiDrawing(newShape, currentProject.id, activeGroupId ?? undefined))
         .then(createdDrawing => {
           updateShape(newShape.id, { id: createdDrawing.id });
         })
@@ -1259,7 +1276,12 @@ export function GraphCanvas() {
     >
       {isMounted ? (
         <>
-          <div style={{ cursor: getToolCursor() }}>
+          <div
+            style={{
+              cursor: getToolCursor(),
+            }}
+            className="[&_canvas]:!cursor-[inherit]"
+          >
             <ForceGraph2D
               ref={graphRef}
               width={dimensions.width}
@@ -1358,7 +1380,7 @@ export function GraphCanvas() {
               className="absolute inset-0"
               style={{
                 cursor: getToolCursor(),
-                pointerEvents: 'none'
+                pointerEvents: 'auto'
               }}
               onMouseDown={handleCanvasMouseDown}
               onMouseMove={handleCanvasMouseMove}
@@ -1669,10 +1691,11 @@ export function GraphCanvas() {
                       text: textInputValue.trim(),
                       fontSize: graphSettings.fontSize || 16,
                       fontFamily: graphSettings.fontFamily || 'Inter',
+                      groupId: activeGroupId ?? undefined,
                     };
                     addShape(newShape);
                     if (currentProject?.id) {
-                      api.drawings.create(shapeToApiDrawing(newShape, currentProject.id))
+                      api.drawings.create(shapeToApiDrawing(newShape, currentProject.id, activeGroupId ?? undefined))
                         .then(createdDrawing => {
                           updateShape(newShape.id, { id: createdDrawing.id });
                         })
@@ -1704,10 +1727,11 @@ export function GraphCanvas() {
                       text: textInputValue.trim(),
                       fontSize: graphSettings.fontSize || 16,
                       fontFamily: graphSettings.fontFamily || 'Inter',
+                      groupId: activeGroupId ?? undefined,
                     };
                     addShape(newShape);
                     if (currentProject?.id) {
-                      api.drawings.create(shapeToApiDrawing(newShape, currentProject.id))
+                      api.drawings.create(shapeToApiDrawing(newShape, currentProject.id, activeGroupId ?? undefined))
                         .then(createdDrawing => {
                           updateShape(newShape.id, { id: createdDrawing.id });
                         })
@@ -1783,13 +1807,19 @@ export function GraphCanvas() {
         }}
         onDeleteGroup={async (id) => {
           const groupToDelete = groups.find(g => g.id === id);
-          const nodesInGroup = nodes.filter(n => n.groupId === id);
+          const groupOrder = groupToDelete?.order;
+          const nodesInGroup = nodes.filter(n => n.groupId === groupOrder);
+          const shapesInGroup = shapes.filter(s => s.groupId === groupOrder);
           const nodeCount = nodesInGroup.length;
+          const shapeCount = shapesInGroup.length;
 
           const groupName = groupToDelete?.name || 'this group';
-          const message = nodeCount > 0
-            ? `Are you sure you want to delete "${groupName}"?\n\nThis will permanently delete ${nodeCount} node${nodeCount > 1 ? 's' : ''} in this group.`
-            : `Are you sure you want to delete "${groupName}"?`;
+          let message = `Are you sure you want to delete "${groupName}"?`;
+          if (nodeCount > 0 || shapeCount > 0) {
+            message += '\n\nThis will permanently delete:';
+            if (nodeCount > 0) message += `\n• ${nodeCount} node${nodeCount > 1 ? 's' : ''}`;
+            if (shapeCount > 0) message += `\n• ${shapeCount} drawing${shapeCount > 1 ? 's' : ''}`;
+          }
 
           if (!window.confirm(message)) {
             return;
@@ -1799,6 +1829,12 @@ export function GraphCanvas() {
           for (const node of nodesInGroup) {
             deleteNode(node.id);
             api.nodes.delete(node.id).catch(() => { });
+          }
+
+          // Delete all shapes/drawings in this group
+          for (const shape of shapesInGroup) {
+            deleteShape(shape.id);
+            api.drawings.delete(shape.id).catch(() => { });
           }
 
           // Delete the group locally

@@ -52,11 +52,15 @@ export function NodeEditor() {
   const [showCustomColorPicker, setShowCustomColorPicker] = useState(false);
   const [tempCustomColor, setTempCustomColor] = useState('#3B82F6');
 
+  // Track original color to revert on cancel
+  const [originalCustomColor, setOriginalCustomColor] = useState<string | undefined>(undefined);
+
   useEffect(() => {
     if (activeNode) {
       setTitle(activeNode.title);
       setContent(activeNode.content || '');
       setCustomColor(activeNode.customColor);
+      setOriginalCustomColor(activeNode.customColor);
     }
   }, [activeNode]);
 
@@ -99,6 +103,8 @@ export function NodeEditor() {
         y: activeNode.y,
       });
       updateNode(activeNode.id, { title, content, customColor });
+      // Update original color so close doesn't revert the saved color
+      setOriginalCustomColor(customColor);
     } catch (err) {
       console.error('Failed to save node:', err);
       setError(err instanceof Error ? err.message : 'Failed to save');
@@ -125,6 +131,10 @@ export function NodeEditor() {
   };
 
   const handleClose = () => {
+    // Revert color if it was changed but not saved
+    if (activeNode && customColor !== originalCustomColor) {
+      updateNode(activeNode.id, { customColor: originalCustomColor });
+    }
     setActiveNode(null);
     toggleEditor(false);
   };

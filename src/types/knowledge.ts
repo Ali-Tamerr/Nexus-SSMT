@@ -84,6 +84,7 @@ export interface DrawnShape {
   text?: string;
   fontSize?: number;
   fontFamily?: string;
+  groupId?: number;
 }
 
 export interface GraphSettings {
