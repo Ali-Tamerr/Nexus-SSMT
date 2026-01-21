@@ -3,7 +3,6 @@ import type { Project, Node, Link, Tag, Attachment, Profile, RegisterRequest } f
 const RAW_API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:7007';
 const API_BASE_URL = RAW_API_URL.endsWith('/') ? RAW_API_URL.slice(0, -1) : RAW_API_URL;
 
-console.log('[API] Base URL:', API_BASE_URL);
 
 function snakeToCamel(str: string): string {
   return str.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
@@ -40,7 +39,6 @@ async function fetchApi<T>(endpoint: string, options?: RequestInit & { suppressL
   const url = `${API_BASE_URL}${endpoint}`;
   const { suppressLog, ...fetchOptions } = options || {};
 
-  console.log(`[API] ${fetchOptions.method || 'GET'} ${url}`);
   
   const headers: Record<string, string> = {
     ...fetchOptions.headers as Record<string, string>,
@@ -69,7 +67,6 @@ async function fetchApi<T>(endpoint: string, options?: RequestInit & { suppressL
     }
 
     const data = await response.json();
-    console.log(`[API] Response:`, data);
     return toFrontend<T>(data);
   } catch (err) {
     if (!suppressLog) {
@@ -81,9 +78,7 @@ async function fetchApi<T>(endpoint: string, options?: RequestInit & { suppressL
 
 async function fetchApiWithBody<T>(endpoint: string, method: string, body: unknown, suppressLog?: boolean): Promise<T> {
   const convertedBody = toApi(body);
-  if (!suppressLog) {
-    console.log('[API] Sending body:', JSON.stringify(convertedBody, null, 2));
-  }
+  
   return fetchApi<T>(endpoint, {
     method,
     body: JSON.stringify(convertedBody),
@@ -256,7 +251,6 @@ export const api = {
       fontFamily?: string;
     }) => {
       // Bypass toApi conversion to preserve camelCase as per API docs
-      console.log('[API] Sending body (raw):', JSON.stringify(data, null, 2));
       return fetchApi<ApiDrawing>('/api/drawings', {
         method: 'POST',
         body: JSON.stringify(data),

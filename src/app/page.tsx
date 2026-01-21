@@ -51,7 +51,6 @@ export default function HomePage() {
         const fetchedProjects = await api.projects.getByUser(user.id);
         setProjects(fetchedProjects);
       } catch (err) {
-        console.log('Demo mode: Using local projects (API unavailable)');
         setProjects([]);
       } finally {
         setLoading(false);
@@ -83,7 +82,6 @@ export default function HomePage() {
       addProject(newProject);
       toggleCreateProject(false);
     } catch (err) {
-      console.log('Demo mode: Creating local project (API unavailable)');
       const demoProject: Project = {
         id: crypto.randomUUID(),
         name: data.name,

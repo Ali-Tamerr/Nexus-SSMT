@@ -84,7 +84,6 @@ export default function EditorPage() {
                 );
                 setLinks(projectLinks);
             } catch (err) {
-                console.log('Demo mode: Using local data (API unavailable)');
                 setNodes([]);
                 setLinks([]);
             } finally {
@@ -166,7 +165,6 @@ export default function EditorPage() {
 
             addNode(newNode);
         } catch (err) {
-            console.log('Demo mode: Creating local node (API unavailable)');
             addNode(demoNode);
         } finally {
             setLoading(false);

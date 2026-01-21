@@ -74,7 +74,6 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
         );
         setLinks(projectLinks);
       } catch (err) {
-        console.log('Demo mode: Using local data (API unavailable)');
         setCurrentProject({
           id,
           name: 'Project',
@@ -160,7 +159,6 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
 
       addNode(newNode);
     } catch (err) {
-      console.log('Demo mode: Creating local node (API unavailable)');
       addNode(demoNode);
     } finally {
       setLoading(false);

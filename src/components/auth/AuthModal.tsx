@@ -48,20 +48,16 @@ export function AuthModal({ isOpen, onClose, initialMode = 'login' }: AuthModalP
 
     try {
       if (mode === 'signup') {
-        console.log('[Auth] Registering user...');
         const profile = await api.auth.register({
           email,
           password,
           displayName: displayName || undefined,
         });
-        console.log('[Auth] Registration successful:', profile);
         login(profile);
         onClose();
         resetForm();
       } else {
-        console.log('[Auth] Looking up user by email...');
         const profile = await api.profiles.getByEmail(email);
-        console.log('[Auth] Login successful:', profile);
         login(profile);
         onClose();
         resetForm();

@@ -224,7 +224,6 @@ export function NodeEditor() {
       userId: userId,
     };
 
-    console.log('Creating link with data:', linkData);
 
     try {
       const newLink = await api.links.create(linkData);
