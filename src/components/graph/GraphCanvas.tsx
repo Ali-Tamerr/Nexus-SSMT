@@ -108,11 +108,12 @@ export function GraphCanvas() {
   const isNodeDraggingRef = useRef(false);
   const lastDragTimeRef = useRef(0);
   const dragStartPosRef = useRef<{ x: number; y: number } | null>(null);
+  const wasGlobalDragRef = useRef(false);
 
   const handleNodeClick = useCallback(
     (nodeObj: { id?: string | number; x?: number; y?: number }, event: MouseEvent) => {
       // Check drag state flags
-      if (isNodeDraggingRef.current || Date.now() - lastDragTimeRef.current < 300) return;
+      if (wasGlobalDragRef.current || isNodeDraggingRef.current || Date.now() - lastDragTimeRef.current < 300) return;
 
       // Check drag distance (safeguard against drag events not firing or clearing too fast)
       if (dragStartPosRef.current && event.clientX !== undefined && event.clientY !== undefined) {
@@ -217,17 +218,7 @@ export function GraphCanvas() {
         searchQuery &&
         label.toLowerCase().includes(searchQuery.toLowerCase());
 
-      // Debug: log node color rendering
       const baseColor = node.customColor || groups.find(g => g.order === nodeGroup)?.color || groups[0]?.color || '#8B5CF6';
-      console.log('[NodeRenderDebug]', {
-        nodeId: node.id,
-        title: node.title,
-        customColor: node.customColor,
-        groupId: node.groupId,
-        groupColor: groups.find(g => g.order === nodeGroup)?.color,
-        fallbackColor: groups[0]?.color,
-        baseColor
-      });
       const nodeRadius = isActive ? 8 : 6;
       const x = node.x || 0;
       const y = node.y || 0;
@@ -609,13 +600,36 @@ export function GraphCanvas() {
   }, [graphTransform.k]);
 
   // Handle Undo/Redo and Delete shortcuts
-  // Filter shapes by active group
+  // Filter shapes strictly by active group (match node filtering)
   const filteredShapes = useMemo(() => {
     if (activeGroupId === null || activeGroupId === undefined) {
       return shapes;
     }
-    return shapes.filter(s => s.groupId === activeGroupId || s.groupId === undefined);
+    return shapes.filter(s => s.groupId === activeGroupId);
   }, [shapes, activeGroupId]);
+  // On group load, delete any nodes/drawings with a groupId not in the current group list
+  useEffect(() => {
+    if (!groups || groups.length === 0) return;
+    const validGroupIds = new Set(groups.map(g => g.id));
+    // Remove nodes with invalid groupId
+    const validNodes = nodes.filter(n => validGroupIds.has(n.groupId));
+    if (validNodes.length !== nodes.length) {
+      const toDelete = nodes.filter(n => !validGroupIds.has(n.groupId));
+      toDelete.forEach(n => {
+        api.nodes.delete(n.id).catch(err => console.error('Failed to delete node with invalid group:', err));
+      });
+      useGraphStore.getState().setNodes(validNodes);
+    }
+    // Remove shapes with invalid groupId
+    const validShapes = shapes.filter(s => validGroupIds.has(s.groupId));
+    if (validShapes.length !== shapes.length) {
+      const toDelete = shapes.filter(s => !validGroupIds.has(s.groupId));
+      toDelete.forEach(s => {
+        api.drawings.delete(s.id).catch(err => console.error('Failed to delete drawing with invalid group:', err));
+      });
+      useGraphStore.getState().setShapes(validShapes);
+    }
+  }, [groups, nodes, shapes]);
 
   const shapesRef = useRef(filteredShapes);
   const selectedShapeIdsRef = useRef(selectedShapeIds);
@@ -858,16 +872,11 @@ export function GraphCanvas() {
 
 
 
-    // If we clicked on a node that is part of selection, start group drag AND open editor
+    // If we clicked on a node that is part of selection, start group drag
+    // NOTE: Do NOT open editor here - wait for click handler to determine if it was a drag or click
     if (clickedNodeId && selectedNodeIds.has(clickedNodeId)) {
       lastHoveredNodeIdRef.current = clickedNodeId;
       lastNodeClickTimeRef.current = Date.now();
-
-      // Open editor for clicked node
-      const fullNode = nodes.find(n => n.id === clickedNodeId);
-      if (fullNode) {
-        setActiveNode(fullNode);
-      }
 
       const initialNodes = new Map();
       graphDataRef.current.nodes.forEach((n: any) => {
@@ -896,19 +905,13 @@ export function GraphCanvas() {
       return;
     }
 
-    // If we clicked on a node that is NOT in selection, select it and open editor
-    // Don't return - let ForceGraph2D handle the drag
+    // If we clicked on a node that is NOT in selection, select it
+    // NOTE: Do NOT open editor here - wait for click handler to determine if it was a drag or click
     if (clickedNodeId && !selectedNodeIds.has(clickedNodeId)) {
       lastHoveredNodeIdRef.current = clickedNodeId;
       lastNodeClickTimeRef.current = Date.now();
 
-      // Find the full node object and activate it
-      const fullNode = nodes.find(n => n.id === clickedNodeId);
-      if (fullNode) {
-        setActiveNode(fullNode);
-      }
-
-      // Also select it
+      // Select the node
       setSelectedShapeIds(new Set());
       setSelectedNodeIds(new Set([clickedNodeId]));
       return;
@@ -927,7 +930,19 @@ export function GraphCanvas() {
     setMarqueeEnd(worldPoint);
   }, [screenToWorld, graphTransform, graphSettings.activeTool, shapes, nodes, setActiveNode]);
 
-  const handleContainerMouseUpCapture = useCallback(() => {
+  const handleContainerMouseUpCapture = useCallback((e: React.MouseEvent) => {
+    // Check global drag distance to prevent click triggers
+    if (dragStartPosRef.current) {
+      const dx = e.clientX - dragStartPosRef.current.x;
+      const dy = e.clientY - dragStartPosRef.current.y;
+      if (Math.sqrt(dx * dx + dy * dy) > 5) {
+        wasGlobalDragRef.current = true;
+        // Clear the flag after a short delay to allow click handlers to read it
+        setTimeout(() => { wasGlobalDragRef.current = false; }, 100);
+      }
+    }
+    dragStartPosRef.current = null;
+
     // Finalize group drag
     if (dragGroupRef.current?.active) {
       const selectedShapeIds = selectedShapeIdsRef.current;

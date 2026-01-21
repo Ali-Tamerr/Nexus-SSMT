@@ -55,7 +55,7 @@ export default function EditorPage() {
     }, [hasHydrated, isAuthenticated, router]);
 
     useEffect(() => {
-        if (hasHydrated && isAuthenticated && !currentProject) {
+        if (hasHydrated && isAuthenticated && !currentProject?.id) {
             router.push('/');
         }
     }, [hasHydrated, isAuthenticated, currentProject, router]);
@@ -74,7 +74,26 @@ export default function EditorPage() {
                 const project = await api.projects.getById(projectId);
                 setCurrentProject(project);
 
-                const projectNodes = await api.nodes.getByProject(projectId);
+                const GROUP_COLORS = ['#8B5CF6', '#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#EC4899', '#06B6D4', '#84CC16'];
+
+                const hashString = (str: string) => {
+                    let hash = 0;
+                    for (let i = 0; i < str.length; i++) {
+                        const char = str.charCodeAt(i);
+                        hash = ((hash << 5) - hash) + char;
+                        hash = hash & hash;
+                    }
+                    return Math.abs(hash);
+                };
+
+                let projectNodes = await api.nodes.getByProject(projectId);
+                projectNodes = projectNodes.map((n) => {
+                    const isValid = (c: any) => typeof c === 'string' && c.trim() && c !== 'null' && c !== 'undefined';
+                    if (!isValid(n.customColor)) {
+                        return { ...n, customColor: GROUP_COLORS[hashString(n.id) % GROUP_COLORS.length] };
+                    }
+                    return n;
+                });
                 setNodes(projectNodes);
 
                 const allLinks = await api.links.getAll();
@@ -103,9 +122,12 @@ export default function EditorPage() {
     const activeGroupId = useGraphStore(state => state.activeGroupId);
 
     const handleCreateNode = async () => {
-        if (!currentProject || !projectId) return;
+        if (!currentProject || !projectId || !user?.id) {
+            console.log('Add node aborted: missing currentProject, projectId, or user.id', { currentProject, projectId, user });
+            return;
+        }
 
-        const groupId = activeGroupId ?? 0;
+        const groupId = typeof activeGroupId === 'number' ? activeGroupId : 0;
 
         const GROUP_COLORS: Record<number, string> = {
             0: '#8B5CF6', 1: '#3B82F6', 2: '#10B981', 3: '#F59E0B',
@@ -127,14 +149,14 @@ export default function EditorPage() {
             customColor: randomColor,
             x: randomX,
             y: randomY,
-            userId: user?.id,
+            userId: user.id,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
         };
 
         setLoading(true);
         try {
-            let newNode = await api.nodes.create({
+            const payload = {
                 title: 'New Node',
                 content: '',
                 excerpt: '',
@@ -143,8 +165,11 @@ export default function EditorPage() {
                 customColor: randomColor,
                 x: randomX,
                 y: randomY,
-                userId: user?.id,
-            });
+                userId: user.id,
+            };
+            console.log('Creating node with payload:', payload);
+            let newNode = await api.nodes.create(payload);
+            console.log('Node created from API:', newNode);
 
             // If backend didn't return position/color, force update with full node object
             if (newNode.x === null || newNode.x === undefined || newNode.customColor !== randomColor) {
@@ -165,6 +190,7 @@ export default function EditorPage() {
 
             addNode(newNode);
         } catch (err) {
+            console.error('Error creating node:', err);
             addNode(demoNode);
         } finally {
             setLoading(false);

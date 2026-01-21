@@ -91,6 +91,7 @@ export function GroupsTabs({
     const sortedGroups = [...groups].sort((a, b) => a.order - b.order);
 
     return (
+
         <div className="absolute bottom-4 left-4 flex items-center gap-1 max-w-[60%] overflow-x-auto">
             {sortedGroups.map((group) => (
                 <div
@@ -107,8 +108,6 @@ export function GroupsTabs({
                     onDoubleClick={() => handleStartEdit(group)}
                 >
                     <GripVertical className="w-3 h-3 opacity-0 group-hover:opacity-50 cursor-grab" />
-
-
 
                     {editingId === group.id ? (
                         <input
@@ -131,16 +130,18 @@ export function GroupsTabs({
                         <span className="truncate max-w-24">{group.name}</span>
                     )}
 
-                    <button
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            onDeleteGroup(group.id);
-                        }}
-                        className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-red-600/50 transition-all"
-                        title="Delete group"
-                    >
-                        <X className="w-3 h-3" />
-                    </button>
+                    {sortedGroups.length > 1 && (
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onDeleteGroup(group.id);
+                            }}
+                            className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-red-600/50 transition-all"
+                            title="Delete group"
+                        >
+                            <X className="w-3 h-3" />
+                        </button>
+                    )}
                 </div>
             ))}
 
@@ -155,7 +156,12 @@ export function GroupsTabs({
     );
 }
 
+// Ensure new groups always get a unique id
+let nextGroupId = 1;
 export function getNextGroupColor(existingGroups: Group[]): string {
     const usedColors = new Set(existingGroups.map(g => g.color));
+    // Find max id to ensure uniqueness
+    const maxId = existingGroups.reduce((max, g) => Math.max(max, g.id), 0);
+    nextGroupId = maxId + 1;
     return DEFAULT_COLORS.find(c => !usedColors.has(c)) || DEFAULT_COLORS[existingGroups.length % DEFAULT_COLORS.length];
 }

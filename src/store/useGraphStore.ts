@@ -121,14 +121,46 @@ export const useGraphStore = create<AppState>()(
     projects: [...state.projects, project] 
   })),
   
-  updateProject: (id, updates) => set((state) => ({
-    projects: state.projects.map((p) => 
-      p.id === id ? { ...p, ...updates, updatedAt: new Date().toISOString() } : p
-    ),
-    currentProject: state.currentProject?.id === id 
-      ? { ...state.currentProject, ...updates, updatedAt: new Date().toISOString() } 
-      : state.currentProject
-  })),
+  updateProject: async (id, updates) => {
+    const getFullProject = (state) => {
+      const project = state.projects.find((p) => p.id === id) || state.currentProject;
+      if (!project) throw new Error('Project not found');
+      return {
+        id: project.id,
+        name: updates.name ?? project.name,
+        color: updates.color ?? project.color ?? '',
+        userId: updates.userId ?? project.userId ?? '',
+        wallpaper: updates.wallpaper ?? project.wallpaper ?? '',
+        description: updates.description ?? project.description ?? '',
+      };
+    };
+    try {
+      const fullProject = getFullProject(useGraphStore.getState());
+      const updated = await import('@/lib/api').then(m => {
+        return m.api.projects.update(id, fullProject);
+      });
+      set((state) => {
+        const prev = state.projects.find((p) => p.id === id) || state.currentProject || {};
+        const cleanUpdated = Object.fromEntries(
+          Object.entries(updated || {}).filter(([, v]) => v !== undefined && v !== null)
+        );
+        const merged = { ...prev, ...cleanUpdated, id };
+        return {
+          projects: state.projects.map((p) => p.id === id ? merged : p),
+          currentProject: (state.currentProject?.id === id || prev.id === id) ? merged : state.currentProject
+        };
+      });
+    } catch (err) {
+      set((state) => {
+        const prev = state.projects.find((p) => p.id === id) || state.currentProject || {};
+        const merged = { ...prev, ...updates, id, updatedAt: new Date().toISOString() };
+        return {
+          projects: state.projects.map((p) => p.id === id ? merged : p),
+          currentProject: (state.currentProject?.id === id || prev.id === id) ? merged : state.currentProject
+        };
+      });
+    }
+  },
   
   deleteProject: (id) => set((state) => ({
     projects: state.projects.filter((p) => p.id !== id),
@@ -290,12 +322,39 @@ export const useGraphStore = create<AppState>()(
     groups: state.groups.map(g => g.id === id ? { ...g, ...updates } : g),
   })),
   
-  deleteGroup: (id) => set((state) => ({
-    groups: state.groups.filter(g => g.id !== id),
-    activeGroupId: state.activeGroupId === id 
-      ? (state.groups.filter(g => g.id !== id)[0]?.id || null) 
-      : state.activeGroupId,
-  })),
+  deleteGroup: (id) => set((state) => {
+    if (state.groups.length <= 1) {
+      // Prevent deleting the last group
+      return {};
+    }
+    const sortedGroups = [...state.groups].sort((a, b) => a.order - b.order);
+    const idx = sortedGroups.findIndex(g => g.id === id);
+    const newGroups = state.groups.filter(g => g.id !== id);
+    let newActiveGroupId = state.activeGroupId;
+    if (state.activeGroupId === id) {
+      // Try to go to the previous group in order, or next if no previous, or null if none remain
+      let fallback = null;
+      if (idx > 0) fallback = sortedGroups[idx - 1].id;
+      else if (idx === 0 && sortedGroups.length > 1) fallback = sortedGroups[1].id;
+      newActiveGroupId = newGroups.find(g => g.id === fallback)?.id || (newGroups[0]?.id ?? null);
+    }
+    return {
+      groups: newGroups,
+      activeGroupId: newActiveGroupId,
+    };
+  }),
+    // Ensure at least one group exists at all times
+    addGroup: (group) => set((state) => {
+      const newGroups = [...state.groups, group];
+      return { groups: newGroups };
+    }),
+    // On initialization or if groups ever become empty, auto-create a default group
+    ensureAtLeastOneGroup: () => set((state) => {
+      if (state.groups.length === 0) {
+        return { groups: [{ id: 0, name: 'Default', color: '#808080', order: 0 }] };
+      }
+      return {};
+    }),
   
   setActiveGroupId: (groupId) => set({ activeGroupId: groupId }),
   

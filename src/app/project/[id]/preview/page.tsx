@@ -79,20 +79,26 @@ export default function PreviewPage({ params }: { params: Promise<{ id: string }
 
                 let projectNodes = await api.nodes.getByProject(id);
 
-                // Robustly fix node colors: ensure every node has a valid customColor
-                projectNodes = projectNodes.map((n, idx) => {
-                    const pickPalette = () => NODE_COLORS[idx % NODE_COLORS.length];
+                const hashString = (str: string) => {
+                    let hash = 0;
+                    for (let i = 0; i < str.length; i++) {
+                        const char = str.charCodeAt(i);
+                        hash = ((hash << 5) - hash) + char;
+                        hash = hash & hash;
+                    }
+                    return Math.abs(hash);
+                };
+
+                projectNodes = projectNodes.map((n) => {
+                    const pickPalette = () => NODE_COLORS[hashString(n.id) % NODE_COLORS.length];
                     const isValid = (c: any) => typeof c === 'string' && c.trim() && c !== 'null' && c !== 'undefined';
 
                     let customColor = n.customColor;
-                    let colorSource = 'original';
                     if (!isValid(customColor)) {
                         if (isValid(n.color)) {
                             customColor = n.color;
-                            colorSource = 'color-field';
                         } else {
                             customColor = pickPalette();
-                            colorSource = 'palette';
                         }
                     }
                     return {
@@ -100,7 +106,6 @@ export default function PreviewPage({ params }: { params: Promise<{ id: string }
                         customColor,
                     };
                 });
-                console.log('[NodeColorDebug][FinalNodes]', projectNodes.map(n => ({ id: n.id, title: n.title, customColor: n.customColor, color: n.color })));
                 setNodes(projectNodes);
 
                 const allLinks = await api.links.getAll();
