@@ -1,17 +1,30 @@
 'use client';
 
 import { useState } from 'react';
-import { ChevronRight, FolderOpen, Loader2 } from 'lucide-react';
-import { Project } from '@/types/knowledge';
+import { ChevronRight, FolderOpen, Loader2, Trash2, Pencil } from 'lucide-react';
+
+interface Project {
+  id: string;
+  name: string;
+  description?: string;
+  color?: string;
+  createdAt: string;
+  updatedAt: string;
+}
 
 interface ProjectCardProps {
   project: Project;
   onClick: (project: Project) => void;
+  onDelete?: (project: Project) => void;
+  onEdit?: (project: Project, newName: string) => void;
   viewMode?: 'grid' | 'list';
 }
 
-export function ProjectCard({ project, onClick, viewMode = 'grid' }: ProjectCardProps) {
+export function ProjectCard({ project, onClick, onDelete, onEdit, viewMode = 'grid' }: ProjectCardProps) {
   const [isLoading, setIsLoading] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [editValue, setEditValue] = useState(project.name);
   const isListView = viewMode === 'list';
 
   const handleClick = () => {
@@ -19,14 +32,40 @@ export function ProjectCard({ project, onClick, viewMode = 'grid' }: ProjectCard
     onClick(project);
   };
 
+  const handleDelete = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (typeof onDelete === 'function') onDelete(project);
+  };
+
+  const handleEdit = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsEditing(true);
+  };
+
+  const handleEditSave = async () => {
+    if (editValue.trim() && editValue.trim() !== project.name && typeof onEdit === 'function') {
+      setIsSaving(true);
+      setIsEditing(false);
+      try {
+        await onEdit(project, editValue.trim());
+      } finally {
+        setIsSaving(false);
+      }
+    } else {
+      setIsEditing(false);
+    }
+  };
+
   return (
-    <button
-      onClick={handleClick}
-      disabled={isLoading}
+    <div
+      onClick={isLoading ? undefined : handleClick}
+      role="button"
+      tabIndex={isLoading ? -1 : 0}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleClick(); }}
       className={`
         group relative rounded-xl border border-zinc-800 bg-zinc-900/50 p-5 text-left 
-        transition-all hover:border-zinc-700 hover:bg-zinc-900
-        disabled:cursor-wait disabled:opacity-80
+        transition-all hover:border-zinc-700 hover:bg-zinc-900 cursor-pointer
+        ${isLoading ? 'cursor-wait opacity-80' : ''}
         ${isListView ? 'flex items-center justify-between' : ''}
       `}
     >
@@ -41,19 +80,35 @@ export function ProjectCard({ project, onClick, viewMode = 'grid' }: ProjectCard
 
       <div className={isListView ? 'flex items-center gap-4' : ''}>
         <div className="flex items-start gap-3">
-
           <div className="flex items-center gap-3">
-            {project.color && (
+            {isSaving ? (
+              <Loader2 className="h-3 w-3 animate-spin text-blue-400 flex-shrink-0" />
+            ) : project.color ? (
               <div
                 className="h-3 w-3 rounded-full flex-shrink-0"
                 style={{ backgroundColor: project.color }}
               />
+            ) : null}
+            {isEditing ? (
+              <input
+                className="bg-zinc-800 text-white rounded px-1 text-sm w-32 border border-zinc-700 outline-none"
+                value={editValue}
+                onChange={e => setEditValue(e.target.value)}
+                onClick={e => e.stopPropagation()}
+                onBlur={handleEditSave}
+                onKeyDown={e => {
+                  e.stopPropagation();
+                  if (e.key === 'Enter') handleEditSave();
+                  if (e.key === 'Escape') setIsEditing(false);
+                }}
+                autoFocus
+              />
+            ) : (
+              <h3 className="font-semibold text-white group-hover:text-[#3B82F6] transition-colors">
+                {project.name}
+              </h3>
             )}
-            <h3 className="font-semibold text-white group-hover:text-[#3B82F6] transition-colors">
-              {project.name}
-            </h3>
             <ChevronRight className="h-5 w-5 -ml-1 text-zinc-600 transition-transform group-hover:translate-x-1 group-hover:text-zinc-400" />
-
           </div>
           {project.description && (
             <p className="mt-1 text-sm text-zinc-500 line-clamp-2">
@@ -66,10 +121,27 @@ export function ProjectCard({ project, onClick, viewMode = 'grid' }: ProjectCard
           <span className="text-zinc-600">
             {new Date(project.updatedAt).toLocaleDateString()}
           </span>
+          <button
+            className="p-1 rounded hover:bg-zinc-800 text-zinc-400 hover:text-blue-400 transition-colors"
+            title="Edit project name"
+            onClick={handleEdit}
+            tabIndex={-1}
+            type="button"
+          >
+            <Pencil className="w-4 h-4" />
+          </button>
+          <button
+            className="p-1 rounded hover:bg-zinc-800 text-zinc-400 hover:text-red-500 transition-colors"
+            title="Delete project"
+            onClick={handleDelete}
+            tabIndex={-1}
+            type="button"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
         </div>
       </div>
-
-    </button>
+    </div>
   );
 }
 
@@ -77,9 +149,11 @@ interface ProjectGridProps {
   projects: Project[];
   viewMode: 'grid' | 'list';
   onProjectClick: (project: Project) => void;
+  onProjectDelete?: (project: Project) => void;
+  onProjectEdit?: (project: Project, newName: string) => void;
 }
 
-export function ProjectGrid({ projects, viewMode, onProjectClick }: ProjectGridProps) {
+export function ProjectGrid({ projects, viewMode, onProjectClick, onProjectDelete, onProjectEdit }: ProjectGridProps) {
   if (projects.length === 0) {
     return <EmptyProjectsState />;
   }
@@ -95,6 +169,8 @@ export function ProjectGrid({ projects, viewMode, onProjectClick }: ProjectGridP
           key={project.id}
           project={project}
           onClick={onProjectClick}
+          onDelete={onProjectDelete}
+          onEdit={onProjectEdit}
           viewMode={viewMode}
         />
       ))}

@@ -103,6 +103,15 @@ export default function HomePage() {
     router.push('/project/editor');
   };
 
+  const handleEditProject = async (project: Project, newName: string) => {
+    try {
+      await api.projects.update(project.id, { ...project, name: newName });
+      setProjects(projects.map(p => p.id === project.id ? { ...p, name: newName } : p));
+    } catch (err) {
+      setProjects(projects.map(p => p.id === project.id ? { ...p, name: newName } : p));
+    }
+  };
+
   const openAuth = (mode: 'login' | 'signup') => {
     setAuthMode(mode);
     setShowAuthModal(true);
@@ -147,6 +156,7 @@ export default function HomePage() {
                 projects={filteredProjects}
                 viewMode={viewMode}
                 onProjectClick={handleOpenProject}
+                onProjectEdit={handleEditProject}
               />
             )}
           </>
