@@ -279,6 +279,13 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
 
   const handleNodeClick = useCallback(
     (nodeObj: { id?: string | number; x?: number; y?: number }, event: MouseEvent) => {
+      const state = useGraphStore.getState();
+      if (state.isConnectionPickerActive) {
+        state.setConnectionPickerResult(Number(nodeObj.id));
+        state.setConnectionPickerActive(false);
+        return;
+      }
+
       // Check drag state flags
       if (wasGlobalDragRef.current || isNodeDraggingRef.current || Date.now() - lastDragTimeRef.current < 300) return;
 
@@ -725,6 +732,8 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
   const isPanTool = graphSettings.activeTool === 'pan' || (!isDrawingTool && !isTextTool && !isSelectTool);
 
   const getToolCursor = () => {
+    if (useGraphStore.getState().isConnectionPickerActive) return 'crosshair';
+
     if (graphSettings.isPreviewMode) {
       return isHoveringNode ? 'pointer' : 'default';
     }

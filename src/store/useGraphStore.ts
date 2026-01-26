@@ -28,6 +28,12 @@ interface AppState {
   shapes: DrawnShape[];
   undoStack: DrawnShape[][];
   redoStack: DrawnShape[][];
+  
+  // Connection Picker state
+  isConnectionPickerActive: boolean;
+  connectionPickerResult: number | null;
+  setConnectionPickerActive: (active: boolean) => void;
+  setConnectionPickerResult: (nodeId: number | null) => void;
 
   setHasHydrated: (hydrated: boolean) => void;
   setCurrentUserId: (userId: string | null) => void;
@@ -113,6 +119,10 @@ export const useGraphStore = create<AppState>()(
       shapes: [],
       undoStack: [],
       redoStack: [],
+
+      // Connection Picker state
+      isConnectionPickerActive: false,
+      connectionPickerResult: null,
 
       setHasHydrated: (hydrated) => set({ hasHydrated: hydrated }),
 
@@ -315,6 +325,9 @@ export const useGraphStore = create<AppState>()(
   // Drawing actions
   setShapes: (shapes) => set({ shapes }),
   
+  setConnectionPickerActive: (active) => set({ isConnectionPickerActive: active }),
+  setConnectionPickerResult: (nodeId) => set({ connectionPickerResult: nodeId }),
+
   pushToUndoStack: (shapes) => set((state) => ({
     undoStack: [...state.undoStack, shapes],
     redoStack: [],

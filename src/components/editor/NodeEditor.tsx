@@ -26,6 +26,11 @@ export function NodeEditor() {
   const addLink = useGraphStore((s) => s.addLink);
   const updateLink = useGraphStore((s) => s.updateLink);
   const deleteLink = useGraphStore((s) => s.deleteLink);
+
+  const isConnectionPickerActive = useGraphStore(s => s.isConnectionPickerActive);
+  const setConnectionPickerActive = useGraphStore(s => s.setConnectionPickerActive);
+  const connectionPickerResult = useGraphStore(s => s.connectionPickerResult);
+  const setConnectionPickerResult = useGraphStore(s => s.setConnectionPickerResult);
   const { user } = useAuthStore();
   const { showToast, showConfirmation } = useToast();
 
@@ -58,6 +63,13 @@ export function NodeEditor() {
 
   // Track original color to revert on cancel
   const originalColorRef = useRef<string | undefined>(undefined);
+
+  useEffect(() => {
+    if (connectionPickerResult !== null) {
+      setSelectedTargetNodeId(connectionPickerResult);
+      setConnectionPickerResult(null); // Reset after using
+    }
+  }, [connectionPickerResult, setConnectionPickerResult]);
 
   useEffect(() => {
     if (activeNode) {
@@ -741,23 +753,35 @@ export function NodeEditor() {
                     <div className="absolute right-0 top-8 z-10 w-72 rounded-lg border border-zinc-700 bg-zinc-800 p-3 shadow-xl">
                       <div className="mb-2">
                         <label className="text-xs text-zinc-400">Connect to Node</label>
-                        <select
-                          value={selectedTargetNodeId}
-                          onChange={(e) => setSelectedTargetNodeId(e.target.value ? Number(e.target.value) : '')}
-                          disabled={!!editingConnectionId}
-                          className="mt-1 w-full rounded-lg bg-zinc-700 px-3 py-1.5 text-sm text-white outline-none disabled:opacity-50"
-                        >
-                          <option value="">Select a node...</option>
-                          {availableNodes.map(n => (
-                            <option key={n.id} value={n.id}>{n.title}</option>
-                          ))}
-                          {editingConnectionId && (
-                            <option key={selectedTargetNodeId} value={selectedTargetNodeId}>
-                              {nodes.find(n => n.id === selectedTargetNodeId)?.title}
-                            </option>
-                          )}
-                        </select>
-                      </div>
+                        <div className="flex gap-2">
+                          <select
+                            value={selectedTargetNodeId}
+                            onChange={(e) => setSelectedTargetNodeId(e.target.value ? Number(e.target.value) : '')}
+                            disabled={!!editingConnectionId}
+                            className="mt-1 w-full rounded-lg bg-zinc-700 px-3 py-1.5 text-sm text-white outline-none disabled:opacity-50"
+                          >
+                            <option value="">Select a node...</option>
+                            {availableNodes.map(n => (
+                              <option key={n.id} value={n.id}>{n.title}</option>
+                            ))}
+                            {editingConnectionId && (
+                              <option key={selectedTargetNodeId} value={selectedTargetNodeId}>
+                                {nodes.find(n => n.id === selectedTargetNodeId)?.title}
+                              </option>
+                            )}
+                          </select>
+                          <button
+                            onClick={() => {
+                              setConnectionPickerActive(!isConnectionPickerActive);
+                              // We could potentially keep the menu open or let the effect handle things.
+                              // The user asked for a button to click and then "just after that click on any node".
+                            }}
+                            className={`mt-1 flex items-center justify-center rounded-lg px-2 py-1.5 transition-colors ${isConnectionPickerActive ? 'bg-blue-600 text-white' : 'bg-zinc-700 text-zinc-400 hover:bg-zinc-600 hover:text-white'}`}
+                            title="Pick from graph"
+                          >
+                            <ArrowRight className="h-4 w-4" />
+                          </button>
+                        </div>                      </div>
                       <div className="mb-2">
                         <ColorPicker
                           selectedColor={connectionColor}
