@@ -134,6 +134,7 @@ export interface Profile {
   createdAt: string;
   updatedAt: string;
   passwordHash?: string; // Should not be exposed ideally
+  provider?: 'email' | 'google';
 }
 
 export interface RegisterRequest {

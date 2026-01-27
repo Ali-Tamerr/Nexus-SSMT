@@ -88,6 +88,7 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
           color: '#355ea1',
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
+          userId: user?.id || 'unknown',
         });
         setNodes([]);
         setLinks([]);
@@ -204,7 +205,7 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
 
   const filteredNodes = filterNodes(nodes, searchQuery);
 
-  if (!hasHydrated || !isMounted) {
+  if (!hasHydrated || !isMounted || !isAuthenticated) {
     return <LoadingScreen />;
   }
 

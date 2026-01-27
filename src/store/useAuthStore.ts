@@ -51,6 +51,11 @@ export const useAuthStore = create<AuthState>()(
       }),
       onRehydrateStorage: () => (state) => {
         state?.setHasHydrated(true);
+        // Validation check for bad legacy data (numeric Google IDs)
+        if (state?.user?.id && /^\d+$/.test(state.user.id)) {
+           console.warn('[store] Found invalid numeric user ID, clearing session.');
+           state.logout();
+        }
       },
     }
   )

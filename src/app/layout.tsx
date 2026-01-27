@@ -36,7 +36,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark" suppressHydrationWarning>
       <body className={`${inter.variable} ${ka1.variable} antialiased`} suppressHydrationWarning>
-        <Providers>
+        <Providers googleClientId={process.env.GOOGLE_CLIENT_ID || process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID}>
           {children}
         </Providers>
       </body>

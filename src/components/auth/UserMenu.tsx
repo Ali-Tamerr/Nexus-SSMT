@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import { LogOut, Settings, User, ChevronDown, UserPen, Lock } from 'lucide-react';
 import { useAuthStore } from '@/store/useAuthStore';
 import { ProfileModal, ModalMode } from './ProfileModal';
+import { useToast } from '@/context/ToastContext';
 
 export function UserMenu() {
   const [isOpen, setIsOpen] = useState(false);
@@ -12,6 +13,7 @@ export function UserMenu() {
   const menuRef = useRef<HTMLDivElement>(null);
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
+  const { showToast } = useToast();
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -67,6 +69,11 @@ export function UserMenu() {
           <div className="py-1">
             <button
               onClick={() => {
+                if (user.provider === 'google') {
+                  showToast("You can't edit profile because you're signed in with Google account", 'error');
+                  setIsOpen(false);
+                  return;
+                }
                 setModalMode('edit_profile');
                 setShowProfileModal(true);
                 setIsOpen(false);
@@ -78,6 +85,11 @@ export function UserMenu() {
             </button>
             <button
               onClick={() => {
+                if (user.provider === 'google') {
+                  showToast("You can't change password because you're signed in with Google account", 'error');
+                  setIsOpen(false);
+                  return;
+                }
                 setModalMode('change_password');
                 setShowProfileModal(true);
                 setIsOpen(false);

@@ -245,7 +245,7 @@ export default function EditorPage() {
 
     const filteredNodes = filterNodes(nodes, searchQuery);
 
-    if (!hasHydrated || !isMounted) {
+    if (!hasHydrated || !isMounted || !isAuthenticated) {
         return <LoadingScreen />;
     }
 
