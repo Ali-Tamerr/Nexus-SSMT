@@ -42,6 +42,7 @@ export function UserMenu() {
             src={user.avatarUrl}
             alt={user.displayName || 'User'}
             className="h-8 w-8 rounded-full object-cover"
+            referrerPolicy="no-referrer"
           />
         ) : (
           <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#355ea1] text-sm font-semibold text-white">
