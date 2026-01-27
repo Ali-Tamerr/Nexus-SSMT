@@ -4,16 +4,13 @@
   "description": "An interactive personal knowledge graph explorer built with Next.js and D3-force.",
   "author": "Ali Tamer",
   "private": true,
-  "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "eslint",
-    "build:worker": "opennextjs-cloudflare build",
-    "preview":"opennextjs-cloudflare build && opennextjs-cloudflare preview",
-    "deploy":"opennextjs-cloudflare build && opennextjs-cloudflare deploy",
-    "upload":"opennextjs-cloudflare build && opennextjs-cloudflare upload"
-  },
+"scripts": {
+  "dev": "next dev",
+  "build": "next build",
+  "lint": "eslint",
+  "build:worker": "npx @opennextjs/cloudflare",
+  "deploy:worker": "npm run build:worker && wrangler pages deploy .open-next"
+},
   "dependencies": {
     "@opennextjs/cloudflare": "^1.16.0",
     "@react-oauth/google": "^0.13.4",
