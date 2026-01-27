@@ -266,7 +266,7 @@ export default function EditorPage() {
             >
                 {!isPreviewMode && (
                     <>
-                        <div className="w-64">
+                        <div className="w-64 h-9">
                             <SearchInput
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -279,6 +279,7 @@ export default function EditorPage() {
                             onClick={handleCreateNode}
                             loading={isLoading}
                             icon={<Plus className="h-4 w-4" />}
+                            className="h-9"
                         >
                             Add Node
                         </Button>

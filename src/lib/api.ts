@@ -65,10 +65,8 @@ async function fetchApi<T>(endpoint: string, options?: RequestInit & { suppressL
         error = { message: text };
       }
       
-      if (!suppressLog) {
-        console.error(`[API] ${fetchOptions.method || 'GET'} ${url} Error ${response.status}:`, error);
-        console.error(`[API] Raw Output:`, text);
-      }
+      // Removed API error logging to prevent exposure
+      
       if (error.errors) {
         throw new Error(JSON.stringify(error.errors));
       }
@@ -83,7 +81,7 @@ async function fetchApi<T>(endpoint: string, options?: RequestInit & { suppressL
     return toFrontend<T>(data);
   } catch (err) {
     if (!suppressLog) {
-      console.error(`[API] Request failed:`, err);
+      // console.error(`[API] Request failed:`, err);
     }
     throw err;
   }
@@ -93,9 +91,6 @@ async function fetchApiWithBody<T>(endpoint: string, method: string, body: unkno
   // We need to be careful not to double stringify if body is already prepared, but transformKeys expects object
   // For drawings points, we already stringified it in the caller.
   const convertedBody = toApi(body);
-  if (!suppressLog) {
-     console.log(`[API] ${method} ${endpoint} Payload:`, JSON.stringify(convertedBody, null, 2));
-  }
   
   return fetchApi<T>(endpoint, {
     method,
@@ -305,15 +300,12 @@ export const api = {
       fontFamily?: string;
       groupId?: number;
     }) => {
-      // API expects Points as a JSON array now
+      // API expects Points as a JSON string
       const payload = {
         ...data,
+        points: JSON.stringify(data.points)
       };
       
-      // We know response defines points as object/array from backend now (based on GET)
-      // but let's keep the parse check in case backend still sends string for some reason 
-      // or if we need to be safe. Actually, the GET methods handle the parsing.
-      // fetchApiWithBody generic T is return type.
       return fetchApiWithBody<any>('/api/drawings', 'POST', payload)
         .then(d => ({
           ...d,
@@ -332,9 +324,10 @@ export const api = {
       fontFamily: string;
       groupId: number;
     }>) => {
-      const payload = {
-        ...data,
-      };
+      const payload: any = { ...data };
+      if (data.points) {
+          payload.points = JSON.stringify(data.points);
+      }
       return fetchApiWithBody<any>(`/api/drawings/${id}`, 'PUT', payload)
         .then(d => ({
             ...d,

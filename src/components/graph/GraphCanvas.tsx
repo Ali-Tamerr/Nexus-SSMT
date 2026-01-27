@@ -278,6 +278,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
   const dragStartPosRef = useRef<{ x: number; y: number } | null>(null);
   const wasGlobalDragRef = useRef(false);
   const isMarqueeSelectingRef = useRef(false);
+  const marqueeStartScreenPosRef = useRef<{ x: number; y: number } | null>(null);
 
   const handleNodeClick = useCallback(
     (nodeObj: { id?: string | number; x?: number; y?: number }, event: MouseEvent) => {
@@ -1143,6 +1144,24 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
       return;
     }
 
+    // Check for marquee start threshold
+    if (marqueeStartScreenPosRef.current && !isMarqueeSelecting && !isMarqueeSelectingRef.current) {
+      const dx = e.clientX - marqueeStartScreenPosRef.current.x;
+      const dy = e.clientY - marqueeStartScreenPosRef.current.y;
+      if (Math.sqrt(dx * dx + dy * dy) > 5) {
+        isMarqueeSelectingRef.current = true;
+        setIsMarqueeSelecting(true);
+        // setMarqueeStart was already set in mousedown
+        // Update ends
+        const rect = e.currentTarget.getBoundingClientRect();
+        const screenX = e.clientX - rect.left;
+        const screenY = e.clientY - rect.top;
+        const worldPoint = screenToWorld(screenX, screenY);
+        setMarqueeEnd(worldPoint);
+      }
+      return;
+    }
+
     if (graphSettings.activeTool !== 'select') return;
 
     // Hover Logic
@@ -1275,18 +1294,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
       return;
     }
 
-    // Not over a node or shape - start marquee selection
-
-    lastHoveredNodeIdRef.current = null;
-
-    if (!e.shiftKey) {
-      setSelectedShapeIds(new Set());
-      setSelectedNodeIds(new Set());
-    }
-    isMarqueeSelectingRef.current = true;
-    setIsMarqueeSelecting(true);
-    setMarqueeStart(worldPoint);
-    setMarqueeEnd(worldPoint);
+    // Do nothing - let bubble phase handle marquee start (handleSelectMouseDown)
   }, [screenToWorld, graphTransform, graphSettings.activeTool, shapes, nodes, setActiveNode]);
 
   const handleContainerMouseUpCapture = useCallback((e: React.MouseEvent) => {
@@ -1392,6 +1400,9 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
       setMarqueeStart(null);
       setMarqueeEnd(null);
     }
+
+    // Always clear the start ref
+    marqueeStartScreenPosRef.current = null;
   }, [setShapes, isMarqueeSelecting, marqueeStart, marqueeEnd, filteredShapes, isResizing, isDraggingSelection, selectedShapeIds]);
 
   // Handle node drag via ForceGraph - move other selected nodes along
@@ -1851,8 +1862,9 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
         setSelectedShapeIds(new Set());
         setSelectedNodeIds(new Set());
       }
-      isMarqueeSelectingRef.current = true;
-      setIsMarqueeSelecting(true);
+      isMarqueeSelectingRef.current = false;
+      setIsMarqueeSelecting(false);
+      marqueeStartScreenPosRef.current = { x: e.clientX, y: e.clientY };
       setMarqueeStart(worldPoint);
       setMarqueeEnd(worldPoint);
     }

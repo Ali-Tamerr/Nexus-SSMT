@@ -12,13 +12,13 @@ interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
 export const Input = forwardRef<HTMLInputElement, InputProps>(
   ({ label, icon, error, className = '', ...props }, ref) => {
     return (
-      <div className="w-full">
+      <div className="w-full h-full">
         {label && (
           <label className="block text-sm font-medium text-zinc-300 mb-2">
             {label}
           </label>
         )}
-        <div className="relative">
+        <div className="relative h-full">
           {icon && (
             <div className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500">
               {icon}
@@ -27,9 +27,9 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
           <input
             ref={ref}
             className={`
-              w-full rounded-lg bg-zinc-800 text-sm text-white placeholder-zinc-500
+              w-full h-full rounded-lg bg-zinc-800 text-sm text-white placeholder-zinc-500
               outline-none ring-1 ring-zinc-700 transition-all focus:ring-[#355ea1]
-              ${icon ? 'pl-10 pr-4' : 'px-4'} py-2.5
+              ${icon ? 'pl-10 pr-4' : 'px-4'} 
               ${error ? 'ring-red-500' : ''}
               ${className}
             `}

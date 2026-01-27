@@ -106,7 +106,7 @@ export default function HomePage() {
 
   const handleOpenProject = (project: Project) => {
     setCurrentProject(project);
-    router.push(`/project/${project.id}`);
+    router.push('/project/editor');
   };
 
   const handleEditProject = async (project: Project, newName: string) => {
