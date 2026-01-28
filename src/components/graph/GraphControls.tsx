@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import {
   Play, Pause,
   Hand, MousePointer2, Square, Diamond, Circle,
@@ -37,6 +37,30 @@ export function GraphControls({ settings, onSettingsChange }: GraphControlsProps
   const canRedo = useGraphStore(state => state.redoStack.length > 0);
   const currentProject = useGraphStore(state => state.currentProject);
 
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [showLeftShadow, setShowLeftShadow] = useState(false);
+  const [showRightShadow, setShowRightShadow] = useState(false);
+
+  const checkScroll = () => {
+    if (scrollContainerRef.current) {
+      const { scrollLeft, scrollWidth, clientWidth } = scrollContainerRef.current;
+      setShowLeftShadow(scrollLeft > 0);
+      // Use a small tolerance of 1px for floating point scroll values
+      setShowRightShadow(scrollLeft < scrollWidth - clientWidth - 1);
+    }
+  };
+
+  useEffect(() => {
+    checkScroll();
+    window.addEventListener('resize', checkScroll);
+    return () => window.removeEventListener('resize', checkScroll);
+  }, []);
+
+  // Update shadows when resizing or mode switching might change content width
+  useEffect(() => {
+    checkScroll();
+  }, [settings.activeTool, settings.isPreviewMode]);
+
   const setActiveTool = (tool: DrawingTool) => {
     onSettingsChange({ activeTool: tool });
   };
@@ -44,24 +68,45 @@ export function GraphControls({ settings, onSettingsChange }: GraphControlsProps
   return (
     <>
       {!settings.isPreviewMode && (
-        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-30 flex items-center gap-1 rounded-xl bg-zinc-900/90 p-1.5 backdrop-blur-sm border border-zinc-800 graph-ui-hide max-w-[95vw] overflow-x-auto scrollbar-thin scrollbar-thumb-zinc-700 scrollbar-track-transparent">
-          {drawingTools.map((tool) => {
-            const Icon = tool.icon;
-            const isActive = settings.activeTool === tool.id;
-            return (
-              <button
-                key={tool.id}
-                onClick={() => setActiveTool(tool.id)}
-                className={`p-2 rounded-lg transition-all ${isActive
-                  ? 'bg-[#355ea1] text-white'
-                  : 'text-zinc-400 hover:bg-zinc-800 hover:text-white'
-                  }`}
-                title={tool.label}
-              >
-                <Icon className="h-4 w-4" />
-              </button>
-            );
-          })}
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-30 flex items-center justify-center graph-ui-hide max-w-[95vw]">
+          <div className="relative flex items-center rounded-xl bg-zinc-900/90 p-1.5 backdrop-blur-sm border border-zinc-800 shadow-sm overflow-hidden">
+
+            {/* Scroll Container */}
+            <div
+              ref={scrollContainerRef}
+              onScroll={checkScroll}
+              className="flex items-center gap-1 overflow-x-auto scrollbar-none max-w-full"
+            >
+              {drawingTools.map((tool) => {
+                const Icon = tool.icon;
+                const isActive = settings.activeTool === tool.id;
+                return (
+                  <button
+                    key={tool.id}
+                    onClick={() => setActiveTool(tool.id)}
+                    className={`p-2 rounded-lg transition-all flex-shrink-0 ${isActive
+                      ? 'bg-[#355ea1] text-white'
+                      : 'text-zinc-400 hover:bg-zinc-800 hover:text-white'
+                      }`}
+                    title={tool.label}
+                  >
+                    <Icon className="h-4 w-4" />
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Left Shadow Overlay */}
+            <div
+              className={`absolute left-0 top-0 bottom-0 w-12 bg-gradient-to-r from-zinc-900 to-transparent pointer-events-none transition-opacity duration-200 rounded-l-xl ${showLeftShadow ? 'opacity-100' : 'opacity-0'}`}
+              style={{ paddingLeft: '6px' }} // Match container padding roughly
+            />
+
+            {/* Right Shadow Overlay */}
+            <div
+              className={`absolute right-0 top-0 bottom-0 w-12 bg-gradient-to-l from-zinc-900 to-transparent pointer-events-none transition-opacity duration-200 rounded-r-xl ${showRightShadow ? 'opacity-100' : 'opacity-0'}`}
+            />
+          </div>
         </div>
       )}
 

@@ -127,7 +127,7 @@ export function ProjectNavbar({
         <div className="relative" ref={menuRef}>
           <button
             onClick={() => setIsMenuOpen(!isMenuOpen)}
-            className="flex items-center gap-2 rounded-lg py-1.5 pl-1 pr-2 transition-colors cursor-pointer"
+            className="flex items-center gap-2 rounded-lg py-1.5 pl-1 pr-0.5 transition-colors cursor-pointer"
           >
             <div className="relative h-8 w-8">
               <NextImage src={NexusLogo} alt="Nexus Logo" fill className="object-contain" />
@@ -225,7 +225,7 @@ export function ProjectNavbar({
         <div className="h-6 w-px bg-zinc-800" />
         <div className="flex items-center gap-2">
           <div>
-            <h1 className="text-sm font-semibold text-white max-w-[80px] xs:max-w-[120px] sm:max-w-xs truncate" title={projectName || 'Project'}>{projectName || 'Project'}</h1>
+            <h1 className="text-sm font-semibold text-white max-w-[120px] sm:max-w-xs truncate block" title={projectName || 'Project'}>{projectName || 'Project'}</h1>
           </div>
         </div>
       </div>
