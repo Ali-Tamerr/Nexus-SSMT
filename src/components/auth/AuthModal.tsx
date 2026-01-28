@@ -145,6 +145,8 @@ export function AuthModal({ isOpen, onClose, initialMode = 'login' }: AuthModalP
           } else {
             setError('Registration failed. The server returned 404 - check if the API endpoint exists.');
           }
+        } else if (err.message.includes('already exists')) {
+          setError('An account with this email already exists. Please sign in instead.');
         } else if (err.message.includes('Failed to fetch')) {
           setError('Cannot connect to server. Please check if the backend is running.');
         } else {

@@ -59,10 +59,14 @@ async function backendLogin(credentials: any) {
   }
 }
 
-async function getBackendProfile(email: string) {
+async function getBackendProfile(email: string, provider?: string) {
   const apiUrl = process.env.NEXT_PRIVATE_API_URL?.trim() || process.env.NEXT_PUBLIC_API_URL?.trim() || 'https://localhost:7007';
   try {
-    const res = await fetch(`${apiUrl}/api/profiles/email/${encodeURIComponent(email)}`);
+    let url = `${apiUrl}/api/profiles/email/${encodeURIComponent(email)}`;
+    if (provider) {
+      url += `?provider=${encodeURIComponent(provider)}`;
+    }
+    const res = await fetch(url);
     if (!res.ok) return null;
     return await res.json();
   } catch (error) {
@@ -119,8 +123,8 @@ export const config = {
         if (!email) return false;
 
         try {
-          // Check if user exists in backend
-          let backendUser = await getBackendProfile(email);
+          // Check if user exists in backend specifically for this provider
+          let backendUser = await getBackendProfile(email, 'google');
 
           if (!backendUser) {
             // Register user

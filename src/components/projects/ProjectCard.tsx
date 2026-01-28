@@ -57,13 +57,14 @@ export function ProjectCard({ project, onClick, onDelete, onEdit, viewMode = 'gr
       onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleClick(); }}
       className={`
         group relative rounded-xl border border-zinc-800 bg-zinc-900/50 p-5 text-left 
-        transition-all hover:border-zinc-700 hover:bg-zinc-900 cursor-pointer
+        transition-all cursor-pointer
+        ${!isLoading ? 'hover:border-zinc-700 hover:bg-zinc-900' : ''}
         ${isLoading ? 'cursor-wait opacity-80' : ''}
         ${isListView ? 'flex items-center justify-between' : ''}
       `}
     >
       {isLoading && (
-        <div className="absolute inset-0 flex items-center justify-center rounded-xl bg-zinc-900/80 backdrop-blur-sm">
+        <div className="absolute inset-0 z-10 flex items-center justify-center rounded-xl bg-zinc-900/80 backdrop-blur-sm">
           <div className="flex items-center gap-3">
             <Loader2 className="h-5 w-5 animate-spin text-[#355ea1]" />
             <span className="text-sm text-zinc-300">Loading...</span>
