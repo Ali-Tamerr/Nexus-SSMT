@@ -17,16 +17,16 @@ export function drawShapeOnContext(
     
     ctx.strokeStyle = shape.color;
     ctx.fillStyle = 'transparent';
-    ctx.lineWidth = shape.width / globalScale;
+    ctx.lineWidth = shape.width;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
 
     switch (shape.style) {
         case 'dashed':
-            ctx.setLineDash([10 / globalScale, 5 / globalScale]);
+            ctx.setLineDash([10, 5]);
             break;
         case 'dotted':
-            ctx.setLineDash([2 / globalScale, 4 / globalScale]);
+            ctx.setLineDash([2, 4]);
             break;
         default:
             ctx.setLineDash([]);
@@ -59,7 +59,7 @@ export function drawShapeOnContext(
         case 'arrow':
             const [start, end] = [points[0], points[1]];
             const angle = Math.atan2(end.y - start.y, end.x - start.x);
-            const headLen = 15 / globalScale;
+            const headLen = 15;
 
             ctx.moveTo(start.x, start.y);
             ctx.lineTo(end.x, end.y);
