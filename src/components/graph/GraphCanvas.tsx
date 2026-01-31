@@ -1301,9 +1301,13 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
     if (isMiddleMousePanning && middleMouseStartRef.current && graphRef.current) {
       const dx = e.clientX - middleMouseStartRef.current.x;
       const dy = e.clientY - middleMouseStartRef.current.y;
+
+      const currentCenter = graphRef.current.centerAt();
+      const currentZoom = graphRef.current.zoom();
+
       graphRef.current.centerAt(
-        graphTransform.x - dx,
-        graphTransform.y - dy,
+        currentCenter.x - dx / currentZoom,
+        currentCenter.y - dy / currentZoom,
         0
       );
       middleMouseStartRef.current = { x: e.clientX, y: e.clientY };
@@ -1588,6 +1592,14 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
     // Ignore clicks on UI elements
     const target = e.target as HTMLElement;
     if (target.closest('.graph-ui-hide') || target.closest('button') || target.closest('nav') || target.closest('header')) {
+      return;
+    }
+
+    // Middle Mouse Pan Start (Any Tool)
+    if (e.button === 1) {
+      e.preventDefault();
+      middleMouseStartRef.current = { x: e.clientX, y: e.clientY };
+      setIsMiddleMousePanning(true);
       return;
     }
 
