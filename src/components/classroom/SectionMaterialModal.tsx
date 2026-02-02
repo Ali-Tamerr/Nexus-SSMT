@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { ArrowLeft, FileText, Video, Link2, FormInput, Loader2, Calendar, Clock, BookOpen } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
@@ -150,6 +150,11 @@ export function SectionMaterialModal({
 }: SectionMaterialModalProps) {
   const [activeTab, setActiveTab] = useState<'all' | 'assignments' | 'materials'>('all');
   const [loadingItemId, setLoadingItemId] = useState<string | null>(null);
+  
+  // Reset loading state when modal opens/closes or course changes
+  useEffect(() => {
+    setLoadingItemId(null);
+  }, [isOpen, course?.id]);
   
   const {
     data: courseWork = [],
