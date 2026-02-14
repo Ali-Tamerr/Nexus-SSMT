@@ -56,7 +56,7 @@ export function ProjectCard({
       onClick={isLoading ? undefined : handleClick}
       role="button"
       tabIndex={isLoading ? -1 : 0}
-      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleClick(); }}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleClick(e); }}
       className={`
         group relative rounded-xl border border-zinc-800 bg-zinc-900/50 p-5 text-left 
         transition-all cursor-pointer
@@ -65,7 +65,7 @@ export function ProjectCard({
         flex items-center justify-between ${!isListView ? 'sm:block' : ''}
       `}
     >
-    >
+
       {selectable && (
         <div className={`absolute top-3 right-3 z-20 h-5 w-5 rounded border ${isSelected ? 'bg-[#355ea1] border-[#355ea1]' : 'border-zinc-600 bg-zinc-900/50'} flex items-center justify-center transition-colors`}>
           {isSelected && <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}

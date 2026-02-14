@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { ArrowLeft, Loader2, Link2, ExternalLink } from 'lucide-react';
-import { ProjectCollection, Project } from '@/types/knowledge';
+import { ProjectCollection, Project, ProjectCollectionItem } from '@/types/knowledge';
 import { api } from '@/lib/api';
 import { Navbar } from '@/components/layout';
 import { ProjectCard } from '@/components/projects/ProjectCard';
@@ -32,7 +32,7 @@ export default function CollectionPreviewPage() {
                     setProjects(data.projects);
                 } else if (data.items) {
                     // Fallback if projects are nested in items
-                    setProjects(data.items.map(i => i.project).filter(Boolean) as Project[]);
+                    setProjects(data.items.map((i: ProjectCollectionItem) => i.project).filter(Boolean) as Project[]);
                 }
             } catch (err) {
                 console.error('Failed to fetch collection:', err);

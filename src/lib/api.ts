@@ -7,6 +7,7 @@ import type {
   Profile,
   RegisterRequest,
   DrawnShape,
+  ProjectCollection,
 } from "@/types/knowledge";
 
 const RAW_API_URL =
