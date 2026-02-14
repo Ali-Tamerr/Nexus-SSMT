@@ -18,7 +18,7 @@ export interface Attachment {
   // Extra fields that might come from joins or logical extensions, keeping them optional if unsure
   contentType?: string;
   fileSize?: number;
-  createdAt?: string; 
+  createdAt?: string;
 }
 
 export interface Tag {
@@ -50,7 +50,7 @@ export interface Node {
   customColor?: string | null;
   createdAt: string;
   updatedAt: string;
-  
+
   // Relations
   group?: Group;
   project?: Project;
@@ -77,19 +77,19 @@ export interface GraphData {
   links: Link[];
 }
 
-export type DrawingTool = 
-  | 'pan' 
-  | 'select' 
-  | 'rectangle' 
-  | 'diamond' 
-  | 'circle' 
-  | 'arrow' 
-  | 'line' 
-  | 'pen' 
-  | 'text' 
-  | 'eraser';
+export type DrawingTool =
+  | "pan"
+  | "select"
+  | "rectangle"
+  | "diamond"
+  | "circle"
+  | "arrow"
+  | "line"
+  | "pen"
+  | "text"
+  | "eraser";
 
-export type StrokeStyle = 'solid' | 'dashed' | 'dotted';
+export type StrokeStyle = "solid" | "dashed" | "dotted";
 
 export interface DrawnShape {
   id: number; // API uses int. Frontend temp IDs might need management elsewhere.
@@ -145,4 +145,28 @@ export interface RegisterRequest {
   provider?: string;
 }
 
-export { GROUP_COLORS, BRAND_COLOR, NODE_COLORS, COLOR_PALETTE } from '@/lib/constants';
+export interface ProjectCollection {
+  id: number;
+  name: string;
+  description?: string;
+  userId: string;
+  createdAt: string;
+  updatedAt: string;
+  items?: ProjectCollectionItem[];
+  // Helper for frontend convenience, populated from items
+  projects?: Project[];
+}
+
+export interface ProjectCollectionItem {
+  collectionId: number;
+  projectId: number;
+  order: number;
+  project?: Project;
+}
+
+export {
+  GROUP_COLORS,
+  BRAND_COLOR,
+  NODE_COLORS,
+  COLOR_PALETTE,
+} from "@/lib/constants";
