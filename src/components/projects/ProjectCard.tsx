@@ -11,16 +11,35 @@ interface ProjectCardProps {
   onDelete?: (project: Project) => void;
   onEdit?: (project: Project) => void;
   viewMode?: 'grid' | 'list';
+  selectable?: boolean;
+  isSelected?: boolean;
+  onToggleSelect?: (project: Project) => void;
 }
 
-export function ProjectCard({ project, onClick, onDelete, onEdit, viewMode = 'grid' }: ProjectCardProps) {
+export function ProjectCard({
+  project,
+  onClick,
+  onDelete,
+  onEdit,
+  viewMode = 'grid',
+  selectable = false,
+  isSelected = false,
+  onToggleSelect
+}: ProjectCardProps) {
   const [isLoading, setIsLoading] = useState(false);
   const isListView = viewMode === 'list';
 
-  const handleClick = () => {
+  const handleClick = (e: React.MouseEvent | React.KeyboardEvent) => {
+    if (selectable && onToggleSelect) {
+      // If in selection mode, toggle selection instead of navigation
+      onToggleSelect(project);
+      return;
+    }
+
     setIsLoading(true);
     onClick(project);
   };
+
 
   const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -46,6 +65,13 @@ export function ProjectCard({ project, onClick, onDelete, onEdit, viewMode = 'gr
         flex items-center justify-between ${!isListView ? 'sm:block' : ''}
       `}
     >
+    >
+      {selectable && (
+        <div className={`absolute top-3 right-3 z-20 h-5 w-5 rounded border ${isSelected ? 'bg-[#355ea1] border-[#355ea1]' : 'border-zinc-600 bg-zinc-900/50'} flex items-center justify-center transition-colors`}>
+          {isSelected && <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
+        </div>
+      )}
+
       {isLoading && (
         <div className="absolute inset-0 z-10 flex items-center justify-center rounded-xl bg-zinc-900/80 backdrop-blur-sm">
           <div className="flex items-center gap-3">
@@ -55,7 +81,7 @@ export function ProjectCard({ project, onClick, onDelete, onEdit, viewMode = 'gr
         </div>
       )}
 
-      <div className={`flex max-sm:flex-col items-center gap-4 ${!isListView ? 'sm:block' : ''}`}>
+      <div className={`flex max-sm:flex-col items-center gap-4 ${!isListView ? 'sm:block' : ''} ${selectable && isSelected ? 'opacity-100' : ''}`}>
         <div className="flex flex-col items-start gap-3">
           <div className="flex items-center gap-3">
             {project.color ? (
@@ -110,9 +136,21 @@ interface ProjectGridProps {
   onProjectClick: (project: Project) => void;
   onProjectDelete?: (project: Project) => void;
   onProjectEdit?: (project: Project) => void;
+  selectable?: boolean;
+  selectedIds?: Set<number>;
+  onToggleSelect?: (project: Project) => void;
 }
 
-export function ProjectGrid({ projects, viewMode, onProjectClick, onProjectDelete, onProjectEdit }: ProjectGridProps) {
+export function ProjectGrid({
+  projects,
+  viewMode,
+  onProjectClick,
+  onProjectDelete,
+  onProjectEdit,
+  selectable = false,
+  selectedIds,
+  onToggleSelect
+}: ProjectGridProps) {
   if (projects.length === 0) {
     return <EmptyProjectsState />;
   }
@@ -131,6 +169,9 @@ export function ProjectGrid({ projects, viewMode, onProjectClick, onProjectDelet
           onDelete={onProjectDelete}
           onEdit={onProjectEdit}
           viewMode={viewMode}
+          selectable={selectable}
+          isSelected={selectedIds?.has(project.id)}
+          onToggleSelect={onToggleSelect}
         />
       ))}
     </div>

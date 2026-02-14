@@ -10,6 +10,13 @@ interface ProjectsToolbarProps {
   viewMode: 'grid' | 'list';
   onViewModeChange: (mode: 'grid' | 'list') => void;
   onCreateProject: () => void;
+  // New props
+  activeTab: 'all' | 'groups';
+  onTabChange: (tab: 'all' | 'groups') => void;
+  selectionMode: boolean;
+  onSelectionModeChange: (enabled: boolean) => void;
+  selectedCount: number;
+  onCreateGroup: () => void;
 }
 
 export function ProjectsToolbar({
@@ -18,30 +25,92 @@ export function ProjectsToolbar({
   viewMode,
   onViewModeChange,
   onCreateProject,
+  activeTab,
+  onTabChange,
+  selectionMode,
+  onSelectionModeChange,
+  selectedCount,
+  onCreateGroup
 }: ProjectsToolbarProps) {
   return (
     <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-      <div className="w-full sm:w-72">
-        <SearchInput
-          value={searchQuery}
-          onChange={(e) => onSearchChange(e.target.value)}
-          placeholder="Search for a project"
-        />
+      {/* Left Side: Tabs & Search */}
+      <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
+        <div className="flex rounded-lg bg-zinc-800/50 p-1 w-max">
+          <button
+            onClick={() => onTabChange('all')}
+            className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${activeTab === 'all' ? 'bg-zinc-700 text-white' : 'text-zinc-400 hover:text-white'
+              }`}
+          >
+            All Projects
+          </button>
+          <button
+            onClick={() => onTabChange('groups')}
+            className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${activeTab === 'groups' ? 'bg-zinc-700 text-white' : 'text-zinc-400 hover:text-white'
+              }`}
+          >
+            Groups
+          </button>
+        </div>
+
+        <div className="w-full sm:w-64">
+          <SearchInput
+            value={searchQuery}
+            onChange={(e) => onSearchChange(e.target.value)}
+            placeholder={activeTab === 'groups' ? "Search groups..." : "Search projects..."}
+          />
+        </div>
       </div>
 
+      {/* Right Side: Actions */}
       <div className="flex items-center justify-between gap-3 sm:justify-end">
+        {activeTab === 'all' && (
+          <>
+            {selectionMode ? (
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-zinc-400 hidden sm:inline">{selectedCount} selected</span>
+                <Button
+                  variant="secondary"
+                  onClick={() => onSelectionModeChange(false)}
+                  className="h-9 px-3"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant="brand"
+                  onClick={onCreateGroup}
+                  disabled={selectedCount === 0}
+                  className="h-9 px-3"
+                >
+                  Create Group
+                </Button>
+              </div>
+            ) : (
+              <Button
+                variant="secondary"
+                onClick={() => onSelectionModeChange(true)}
+                className="h-9 px-3"
+              >
+                Select
+              </Button>
+            )}
+          </>
+        )}
+
         <div className="hidden sm:block">
           <ViewModeToggle viewMode={viewMode} onChange={onViewModeChange} />
         </div>
 
-        <Button
-          variant="brand"
-          onClick={onCreateProject}
-          icon={<Plus className="h-4 w-4" />}
-          className="w-full sm:w-auto justify-center"
-        >
-          New project
-        </Button>
+        {activeTab === 'all' && !selectionMode && (
+          <Button
+            variant="brand"
+            onClick={onCreateProject}
+            icon={<Plus className="h-4 w-4" />}
+            className="w-full sm:w-auto justify-center h-9"
+          >
+            New project
+          </Button>
+        )}
       </div>
     </div>
   );

@@ -6,6 +6,7 @@ import { Github } from 'lucide-react';
 
 import { useGraphStore } from '@/store/useGraphStore';
 import { useAuthStore } from '@/store/useAuthStore';
+import { useProjectCollectionStore } from '@/store/useProjectCollectionStore';
 import { useToast } from '@/context/ToastContext';
 import { Project } from '@/types/knowledge';
 import { api } from '@/lib/api';
@@ -14,6 +15,8 @@ import { getFriendlyErrorMessage } from '@/utils/errorUtils';
 import { LoadingScreen, LoadingOverlay } from '@/components/ui';
 import { Navbar, AuthNav } from '@/components/layout';
 import { ProjectGrid, ProjectsToolbar, CreateProjectModal, EditProjectModal } from '@/components/projects';
+import { CreateGroupModal } from '@/components/projects/CreateGroupModal';
+import { GroupList } from '@/components/projects/GroupList';
 import { WelcomeHero } from '@/components/home/WelcomeHero';
 import { AuthModal } from '@/components/auth/AuthModal';
 
@@ -55,6 +58,14 @@ export default function HomePage() {
     setCurrentUserId,
   } = useGraphStore();
 
+  const {
+    collections,
+    fetchCollections,
+    createCollection,
+    deleteCollection,
+    isLoading: isGroupsLoading,
+  } = useProjectCollectionStore();
+
   const { showToast, showConfirmation } = useToast();
 
   const { user, isAuthenticated, hasHydrated } = useAuthStore();
@@ -65,11 +76,18 @@ export default function HomePage() {
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
   const [editingProject, setEditingProject] = useState<Project | null>(null);
 
+  // Group Features State
+  const [activeTab, setActiveTab] = useState<'all' | 'groups'>('all');
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [isCreateGroupOpen, setIsCreateGroupOpen] = useState(false);
+
   useEffect(() => {
     if (user?.id) {
       setCurrentUserId(user.id);
+      fetchCollections(user.id);
     }
-  }, [user, setCurrentUserId]);
+  }, [user, setCurrentUserId, fetchCollections]);
 
   useEffect(() => {
     const loadProjects = async () => {
@@ -95,6 +113,13 @@ export default function HomePage() {
     .filter((p) =>
       p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       p.description?.toLowerCase().includes(searchQuery.toLowerCase())
+    )
+    .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+
+  const filteredGroups = collections
+    .filter((g) =>
+      g.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      g.description?.toLowerCase().includes(searchQuery.toLowerCase())
     )
     .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
 
@@ -166,6 +191,47 @@ export default function HomePage() {
     }
   };
 
+  // Group Handlers
+  const handleToggleSelect = (project: Project) => {
+    const newSelected = new Set(selectedIds);
+    if (newSelected.has(project.id)) {
+      newSelected.delete(project.id);
+    } else {
+      newSelected.add(project.id);
+    }
+    setSelectedIds(newSelected);
+  };
+
+  const handleCreateGroup = async (data: { name: string; description?: string }) => {
+    if (!user?.id) return;
+
+    try {
+      await createCollection({
+        name: data.name,
+        description: data.description,
+        userId: user.id,
+        projectIds: Array.from(selectedIds)
+      });
+      setIsCreateGroupOpen(false);
+      setSelectionMode(false);
+      setSelectedIds(new Set());
+      setActiveTab('groups');
+      showToast('Group created successfully');
+    } catch (err) {
+      showToast(getFriendlyErrorMessage(err), 'error');
+    }
+  };
+
+  const handleDeleteGroup = async (id: number) => {
+    if (!await showConfirmation('Are you sure you want to delete this group?')) return;
+    try {
+      await deleteCollection(id);
+      showToast('Group deleted');
+    } catch (err) {
+      showToast('Failed to delete group', 'error');
+    }
+  };
+
   const openAuth = (mode: 'login' | 'signup') => {
     setAuthMode(mode);
     setShowAuthModal(true);
@@ -210,18 +276,39 @@ export default function HomePage() {
               viewMode={viewMode}
               onViewModeChange={setViewMode}
               onCreateProject={() => toggleCreateProject(true)}
+              activeTab={activeTab}
+              onTabChange={setActiveTab}
+              selectionMode={selectionMode}
+              onSelectionModeChange={(enabled) => {
+                setSelectionMode(enabled);
+                if (!enabled) setSelectedIds(new Set());
+              }}
+              selectedCount={selectedIds.size}
+              onCreateGroup={() => setIsCreateGroupOpen(true)}
             />
 
-            {isLoading ? (
-              <LoadingOverlay message="Loading projects..." />
+            {isLoading || isGroupsLoading ? (
+              <LoadingOverlay message="Loading..." />
             ) : (
-              <ProjectGrid
-                projects={filteredProjects}
-                viewMode={viewMode}
-                onProjectClick={handleOpenProject}
-                onProjectEdit={handleEditProjectClick}
-                onProjectDelete={handleDeleteProject}
-              />
+              <>
+                {activeTab === 'all' ? (
+                  <ProjectGrid
+                    projects={filteredProjects}
+                    viewMode={viewMode}
+                    onProjectClick={handleOpenProject}
+                    onProjectEdit={handleEditProjectClick}
+                    onProjectDelete={handleDeleteProject}
+                    selectable={selectionMode}
+                    selectedIds={selectedIds}
+                    onToggleSelect={handleToggleSelect}
+                  />
+                ) : (
+                  <GroupList
+                    groups={filteredGroups}
+                    onDelete={handleDeleteGroup}
+                  />
+                )}
+              </>
             )}
           </>
         )}
@@ -232,6 +319,13 @@ export default function HomePage() {
         onClose={() => toggleCreateProject(false)}
         onSubmit={handleCreateProject}
         loading={isLoading}
+      />
+
+      <CreateGroupModal
+        isOpen={isCreateGroupOpen}
+        onClose={() => setIsCreateGroupOpen(false)}
+        onSubmit={handleCreateGroup}
+        loading={isGroupsLoading}
       />
 
       {editingProject && (
