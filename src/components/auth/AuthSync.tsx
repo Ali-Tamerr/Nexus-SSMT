@@ -43,7 +43,10 @@ export function AuthSync() {
 
                 setUser(user);
             } else if (status === 'unauthenticated') {
-                setUser(null);
+                const currentUser = useAuthStore.getState().user;
+                if (!currentUser || currentUser.provider !== 'google') {
+                    setUser(null);
+                }
             }
 
             setAuthLoading(false);
