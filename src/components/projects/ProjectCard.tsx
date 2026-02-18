@@ -100,11 +100,11 @@ export function ProjectCard({
         </div>
 
         <div className="flex max-sm:self-start items-center gap-3 text-xs text-zinc-500">
-          <span className="text-zinc-600">
-            {project.updatedAt && !isNaN(new Date(project.updatedAt).getTime())
-              ? new Date(project.updatedAt).toLocaleDateString()
-              : ''}
-          </span>
+          {project.updatedAt && !isNaN(new Date(project.updatedAt).getTime()) && (
+            <span className="text-zinc-600">
+              {new Date(project.updatedAt).toLocaleDateString()}
+            </span>
+          )}
           {onInfoClick && (
             <button
               className="p-1 rounded hover:bg-zinc-800 text-zinc-400 hover:text-white transition-colors"

@@ -128,29 +128,29 @@ export default function CollectionPreviewPage() {
 
     return (
         <div className="min-h-screen bg-zinc-950">
-            <Navbar showSearch={false}>
-                <button
-                    onClick={() => router.push('/')}
-                    className="text-sm text-zinc-400 hover:text-white transition-colors"
-                >
-                    Back to Dashboard
-                </button>
-            </Navbar>
+            <Navbar showSearch={false} />
 
             <main className="mx-auto max-w-6xl px-6 py-8">
                 <div className="mb-8 space-y-4">
-                    <div className="flex items-center gap-3">
+                    <button
+                        onClick={() => router.push('/?tab=groups')}
+                        className="flex items-center cursor-pointer gap-2 text-sm text-zinc-400 hover:text-white transition-colors"
+                    >
+                        <ArrowLeft className="h-4 w-4" /> Back to Dashboard
+                    </button>
 
-                        <h1 className="text-3xl font-bold text-white max-w-2xl truncate" title={collection.name}>
-                            {collection.name}
-                        </h1>
+                    <div className="flex items-center gap-3">
                         <button
                             onClick={() => setShowGroupInfo(true)}
-                            className="p-1 rounded-full hover:bg-zinc-800 text-zinc-400 hover:text-white transition-colors"
+                            className=" rounded-full hover:bg-zinc-800 text-zinc-400 hover:text-white transition-colors cursor-pointer"
                             title="View Description"
                         >
                             <Info className="h-5 w-5" />
                         </button>
+                        <h1 className="text-3xl font-bold text-white max-w-2xl truncate" title={collection.name}>
+                            {collection.name}
+                        </h1>
+
                     </div>
 
                     {owner && (
@@ -188,7 +188,6 @@ export default function CollectionPreviewPage() {
                             onClick={handleProjectClick}
                             onInfoClick={setProjectInfo}
                             viewMode="grid"
-                        // Read only view, no delete/edit
                         />
                     ))}
                 </div>

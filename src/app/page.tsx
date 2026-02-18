@@ -21,9 +21,16 @@ import { GroupList } from '@/components/projects/GroupList';
 import { WelcomeHero } from '@/components/home/WelcomeHero';
 import { AuthModal } from '@/components/auth/AuthModal';
 
-function AuthErrorHandlerContent() {
+function AuthErrorHandlerContent({ onSetTab }: { onSetTab: (t: 'all' | 'groups') => void }) {
   const searchParams = useSearchParams();
   const errorParam = searchParams.get('error');
+  const tabParam = searchParams.get('tab');
+
+  useEffect(() => {
+    if (tabParam === 'groups') {
+      onSetTab('groups');
+    }
+  }, [tabParam, onSetTab]);
 
   useEffect(() => {
     if (errorParam && window.opener) {
@@ -35,10 +42,10 @@ function AuthErrorHandlerContent() {
   return null;
 }
 
-function AuthErrorHandler() {
+function AuthErrorHandler({ onSetTab }: { onSetTab: (t: 'all' | 'groups') => void }) {
   return (
     <Suspense fallback={null}>
-      <AuthErrorHandlerContent />
+      <AuthErrorHandlerContent onSetTab={onSetTab} />
     </Suspense>
   );
 }
@@ -305,7 +312,7 @@ export default function HomePage() {
   return (
     <div className="min-h-screen bg-zinc-950">
       <Suspense fallback={null}>
-        <AuthErrorHandler />
+        <AuthErrorHandler onSetTab={setActiveTab} />
       </Suspense>
       <Navbar showSearch={false}>
         <a
