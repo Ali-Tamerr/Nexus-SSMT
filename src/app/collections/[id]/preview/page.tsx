@@ -8,11 +8,14 @@ import { api } from '@/lib/api';
 import { Navbar } from '@/components/layout';
 import { ProjectCard } from '@/components/projects/ProjectCard';
 import { useAuthStore } from '@/store/useAuthStore';
+import { useGraphStore } from '@/store/useGraphStore';
 
 export default function CollectionPreviewPage() {
     const params = useParams();
     const router = useRouter();
     const id = Number(params?.id);
+    const { user } = useAuthStore();
+    const setCurrentProject = useGraphStore((state) => state.setCurrentProject);
 
     const [collection, setCollection] = useState<ProjectCollection | null>(null);
     const [loading, setLoading] = useState(true);
@@ -60,11 +63,15 @@ export default function CollectionPreviewPage() {
     }, [id]);
 
     const handleProjectClick = (project: Project) => {
-        // Open project in preview mode or editor
-        // Since this is a public view, maybe open in a read-only preview? 
-        // For now, redirect to project preview if possible, or editor.
-        // Ideally: /project/[id]/preview
-        router.push(`/project/${project.id}/preview`);
+        // Check if current user is owner
+        if (user?.id === project.userId) {
+            // Owner -> Editor
+            setCurrentProject(project);
+            router.push('/project/editor');
+        } else {
+            // Guest -> Preview
+            router.push(`/project/${project.id}/preview`);
+        }
     };
 
     const resolveOwnerDisplayName = (profile: Profile | null): string => {
