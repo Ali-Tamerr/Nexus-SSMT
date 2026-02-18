@@ -3,9 +3,6 @@ import Google from "next-auth/providers/google";
 import Credentials from "next-auth/providers/credentials";
 import { headers } from "next/headers";
 
-// CHANGE THIS VALUE TO INVALIDATE ALL SESSIONS
-const SESSION_VERSION = "v3";
-
 // Allow self-signed certificates for .NET backend in development
 if (process.env.NODE_ENV === "development") {
   process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
@@ -240,14 +237,10 @@ export const config = {
     },
     // ... rest of callbacks
     async jwt({ token, user, account }) {
-      if (token && token.version !== SESSION_VERSION && !user) {
-        return {};
-      }
-
       if (user) {
         token.id = user.id;
         token.provider = account?.provider;
-        token.version = SESSION_VERSION;
+        token.provider = account?.provider;
 
         if (account?.provider === "google" && account.access_token) {
           token.accessToken = account.access_token;

@@ -140,7 +140,7 @@ export default function CollectionPreviewPage() {
             <main className="mx-auto max-w-6xl px-6 py-8">
                 <div className="mb-8 space-y-4">
                     <div className="flex items-center gap-3">
-                        <Link2 className="h-6 w-6 text-[#355ea1]" />
+
                         <h1 className="text-3xl font-bold text-white max-w-2xl truncate" title={collection.name}>
                             {collection.name}
                         </h1>

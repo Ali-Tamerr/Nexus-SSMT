@@ -48,26 +48,7 @@ export function AuthModal({ isOpen, onClose, initialMode = 'login' }: AuthModalP
     setIsGoogleLoading(true);
     setError(null);
     try {
-      const { createClient } = await import('@/lib/supabase/client');
-      const supabase = createClient();
-
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: `${window.location.origin}/auth/verify`,
-          queryParams: {
-            access_type: 'offline',
-            prompt: 'consent',
-          },
-        },
-      });
-
-      if (error) {
-        throw error;
-      }
-
-      // Supabase will redirect the browser, so we just wait.
-
+      await signIn('google', { callbackUrl: '/' });
     } catch (err: any) {
       setError('Google login failed: ' + (err.message || String(err)));
       setIsGoogleLoading(false);
