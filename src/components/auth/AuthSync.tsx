@@ -3,6 +3,8 @@
 
 import { useSession } from 'next-auth/react';
 import { useAuthStore } from '@/store/useAuthStore';
+import { useGraphStore } from '@/store/useGraphStore';
+import { useProjectCollectionStore } from '@/store/useProjectCollectionStore';
 import { useEffect } from 'react';
 import { api } from '@/lib/api';
 
@@ -10,6 +12,9 @@ export function AuthSync() {
     const { data: session, status } = useSession();
     const setUser = useAuthStore((s) => s.setUser);
     const setAuthLoading = useAuthStore((s) => s.setAuthLoading);
+    const setProjects = useGraphStore((s) => s.setProjects);
+    const setCurrentProject = useGraphStore((s) => s.setCurrentProject);
+    const setCollections = useProjectCollectionStore((s) => s.setCollections);
 
     useEffect(() => {
         const syncUser = async () => {
@@ -44,17 +49,17 @@ export function AuthSync() {
 
                 setUser(user);
             } else if (status === 'unauthenticated') {
-                const currentUser = useAuthStore.getState().user;
-                if (!currentUser || currentUser.provider !== 'google') {
-                    setUser(null);
-                }
+                setUser(null);
+                setProjects([]);
+                setCurrentProject(null);
+                setCollections([]);
             }
 
             setAuthLoading(false);
         };
 
         syncUser();
-    }, [session, status, setUser, setAuthLoading]);
+    }, [session, status, setUser, setAuthLoading, setProjects, setCurrentProject, setCollections]);
 
     return null;
 }

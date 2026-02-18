@@ -66,6 +66,10 @@ export function UserMenu() {
           <div className="border-b border-zinc-800 px-4 pb-3 pt-1">
             <p className="font-medium text-white">{user.displayName || 'User'}</p>
             <p className="text-sm text-zinc-500 truncate">{user.email}</p>
+            <div className="mt-2 pt-2 border-t border-zinc-800/50">
+              <p className="text-[10px] text-zinc-600 font-mono select-all">ID: {user.id}</p>
+              <p className="text-[10px] text-zinc-600 font-mono">Provider: {user.provider}</p>
+            </div>
           </div>
 
           <div className="py-1">

@@ -37,20 +37,14 @@ export const useProjectCollectionStore = create<ProjectCollectionState>(
     setCollections: (collections) => set({ collections }),
 
     fetchCollections: async (userId) => {
-      console.log("[Store] fetchCollections called for user:", userId);
       set({ isLoading: true, error: null });
       try {
         const raw = await api.projectCollections.getByUser(userId);
-        console.log("[Store] Raw fetched collections:", JSON.stringify(raw));
         const collections = raw.map((c: any) => ({
           ...c,
           projectIds:
             c.projectIds || c.items?.map((i: any) => i.projectId) || [],
         }));
-        console.log(
-          "[Store] Normalized collections:",
-          JSON.stringify(collections),
-        );
         set({ collections, isLoading: false });
       } catch (err) {
         console.error("Failed to fetch collections:", err);
@@ -104,11 +98,6 @@ export const useProjectCollectionStore = create<ProjectCollectionState>(
             items: updatedItems,
             updatedAt: new Date().toISOString(),
           };
-
-          console.log(
-            "[Store] Updating collection manually:",
-            updatedCollection,
-          );
 
           return {
             collections: state.collections.map((c) =>

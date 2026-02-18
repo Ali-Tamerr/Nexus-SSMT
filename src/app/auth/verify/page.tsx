@@ -62,8 +62,37 @@ function VerifyContent() {
             handled.current = true
             const user = data.session.user
 
+            let backendId = user.id
+            try {
+                const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:7007'
+                const oauthRes = await fetch(`${apiUrl}/api/auth/oauth`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        Provider: 'google',
+                        ProviderUserId: user.id,
+                        Email: user.email,
+                        DisplayName: user.user_metadata.full_name || user.user_metadata.name || user.email?.split('@')[0],
+                        AvatarUrl: user.user_metadata.avatar_url,
+                    }),
+                })
+                if (oauthRes.ok) {
+                    const backendProfile = await oauthRes.json()
+                    backendId = backendProfile.id || backendProfile.Id || user.id
+                } else {
+                    console.error('OAuth map failed:', oauthRes.status, await oauthRes.text());
+                    const profileRes = await fetch(`${apiUrl}/api/profiles/email/${encodeURIComponent(user.email || '')}?provider=google`)
+                    if (profileRes.ok) {
+                        const p = await profileRes.json()
+                        backendId = p.id || p.Id || user.id
+                    }
+                }
+            } catch (e) {
+                console.error('OAuth map exception:', e);
+            }
+
             const profile = {
-                id: user.id,
+                id: backendId,
                 email: user.email,
                 displayName: user.user_metadata.full_name || user.user_metadata.name || user.email?.split('@')[0],
                 avatarUrl: user.user_metadata.avatar_url,

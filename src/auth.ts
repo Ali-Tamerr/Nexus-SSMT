@@ -11,14 +11,17 @@ if (process.env.NODE_ENV === "development") {
   process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
 }
 
-// Helper to interact with backend
-async function backendRegister(user: any) {
-  const apiUrl =
+function getApiUrl() {
+  return (
     process.env.NEXT_PRIVATE_API_URL?.trim() ||
     process.env.NEXT_PUBLIC_API_URL?.trim() ||
-    "https://localhost:7007";
+    "https://localhost:7007"
+  );
+}
+
+async function backendRegister(user: any) {
+  const apiUrl = getApiUrl();
   const provider = user.provider || "email";
-  // Random password
   const password =
     user.password ||
     Array(16)
@@ -27,12 +30,6 @@ async function backendRegister(user: any) {
       .join("") + "Aa1";
 
   try {
-    console.log(
-      "Attempting backend registration for:",
-      user.email,
-      "with provider:",
-      provider,
-    );
     const res = await fetch(`${apiUrl}/api/auth/register`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -56,10 +53,6 @@ async function backendRegister(user: any) {
         errorDetail = json.message || json.title || JSON.stringify(json);
       } catch {}
 
-      console.error("Backend registration failed:", {
-        status: res.status,
-        response: errorDetail,
-      });
       return {
         success: false,
         error: `Backend Error ${res.status}: ${errorDetail}`,
@@ -69,16 +62,53 @@ async function backendRegister(user: any) {
     const result = await res.json();
     return { success: true, user: result };
   } catch (error: any) {
-    console.error("Backend registration error:", error);
+    return { success: false, error: error.message || "Connection failed" };
+  }
+}
+
+async function backendOAuthMap(data: {
+  provider: string;
+  providerUserId: string;
+  email: string;
+  displayName?: string;
+  avatarUrl?: string;
+}) {
+  const apiUrl = getApiUrl();
+  try {
+    const res = await fetch(`${apiUrl}/api/auth/oauth`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        Provider: data.provider,
+        ProviderUserId: data.providerUserId,
+        Email: data.email,
+        DisplayName: data.displayName,
+        AvatarUrl: data.avatarUrl,
+      }),
+    });
+
+    if (!res.ok) {
+      const text = await res.text();
+      let errorDetail = text;
+      try {
+        const json = JSON.parse(text);
+        errorDetail = json.message || json.title || JSON.stringify(json);
+      } catch {}
+      return {
+        success: false,
+        error: `Backend Error ${res.status}: ${errorDetail}`,
+      };
+    }
+
+    const result = await res.json();
+    return { success: true, user: result };
+  } catch (error: any) {
     return { success: false, error: error.message || "Connection failed" };
   }
 }
 
 async function backendLogin(credentials: any) {
-  const apiUrl =
-    process.env.NEXT_PRIVATE_API_URL?.trim() ||
-    process.env.NEXT_PUBLIC_API_URL?.trim() ||
-    "https://localhost:7007";
+  const apiUrl = getApiUrl();
   try {
     const res = await fetch(`${apiUrl}/api/auth/login`, {
       method: "POST",
@@ -110,10 +140,7 @@ async function backendLogin(credentials: any) {
 }
 
 async function getBackendProfile(email: string, provider?: string) {
-  const apiUrl =
-    process.env.NEXT_PRIVATE_API_URL?.trim() ||
-    process.env.NEXT_PUBLIC_API_URL?.trim() ||
-    "https://localhost:7007";
+  const apiUrl = getApiUrl();
   try {
     let url = `${apiUrl}/api/profiles/email/${encodeURIComponent(email)}`;
     if (provider) {
@@ -180,65 +207,36 @@ export const config = {
 
   callbacks: {
     async signIn({ user, account, profile }) {
-      console.log("Core Auth: signIn callback initiated", {
-        provider: account?.provider,
-        email: user?.email,
-        name: user?.name,
-      });
-
       if (account?.provider === "google") {
         const email = user.email;
-        if (!email) {
-          console.error(
-            "Core Auth: Google sign-in missing email. User object:",
-            user,
-          );
-          return false;
-        }
+        if (!email) return false;
 
         try {
-          // Check if user exists in backend specifically for this provider
-          let backendUser = await getBackendProfile(email, "google");
+          const oauthResult = await backendOAuthMap({
+            provider: "google",
+            providerUserId: account.providerAccountId,
+            email,
+            displayName: user.name || undefined,
+            avatarUrl: user.image || undefined,
+          });
 
-          if (!backendUser) {
-            // Register user
-            const regResult = await backendRegister({
-              email,
-              name: user.name,
-              image: user.image,
-              provider: "google",
-            });
-
-            if (regResult.success) {
-              backendUser = regResult.user;
-            } else {
-              // Registration failed
-
-              // Double check if it exists now (race condition)
-              const retryUser = await getBackendProfile(email, "google");
-              if (retryUser) {
-                backendUser = retryUser;
-              } else {
-                console.error(
-                  "Registration failed and user not found:",
-                  regResult.error,
-                );
-                // Redirect to error page with DETAILED message
-                return `/auth/error?error=${encodeURIComponent(regResult.error || "Registration failed backend")}`;
-              }
-            }
+          if (oauthResult.success && oauthResult.user) {
+            user.id = oauthResult.user.id || oauthResult.user.Id;
+            return true;
           }
 
-          // Mutate user object to include backend ID so it propagates to JWT
-          user.id = backendUser.id || backendUser.Id;
-          return true;
+          const retryUser = await getBackendProfile(email, "google");
+          if (retryUser) {
+            user.id = retryUser.id || retryUser.Id;
+            return true;
+          }
+
+          return `/auth/error?error=${encodeURIComponent(oauthResult.error || "OAuth registration failed")}`;
         } catch (e: any) {
-          console.error("Core Auth: Error in signIn callback", e);
-          // Redirect to error page with DETAILED message
           return `/auth/error?error=${encodeURIComponent(e.message || "Authentication exception")}`;
         }
       }
-      return true; // Credentials provider already validated in authorize
+      return true;
     },
     // ... rest of callbacks
     async jwt({ token, user, account }) {

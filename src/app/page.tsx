@@ -48,6 +48,7 @@ export default function HomePage() {
 
   const collections = useProjectCollectionStore(state => state.collections);
   const fetchCollections = useProjectCollectionStore(state => state.fetchCollections);
+  const setCollections = useProjectCollectionStore(state => state.setCollections);
   const isGroupsLoading = useProjectCollectionStore(state => state.isLoading);
   const updateCollection = useProjectCollectionStore(state => state.updateCollection);
   const createCollection = useProjectCollectionStore(state => state.createCollection);
@@ -87,12 +88,16 @@ export default function HomePage() {
 
   useEffect(() => {
     if (user?.id && fetchedUserIdRef.current !== user.id) {
-      console.log('[Page] Triggering fetchCollections for user:', user.id);
+      // Clear previous user data to prevent leakage
+      setProjects([]);
+      setCollections([]);
+      setCurrentProject(null);
+
       setCurrentUserId(user.id);
       fetchCollections(user.id);
       fetchedUserIdRef.current = user.id;
     }
-  }, [user?.id, setCurrentUserId, fetchCollections]);
+  }, [user?.id, setCurrentUserId, fetchCollections, setProjects, setCollections, setCurrentProject]);
 
   useEffect(() => {
     const loadProjects = async () => {
