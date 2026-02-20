@@ -1,5 +1,53 @@
 # Changelog
 
+All notable changes to this project will be documented in this file.
+
+---
+
+## [v1.8] - 2026-02-20
+
+### Modifications
+
+- **The "Collections" Shift:** Formally rebranded **"Groups"** to **"Collections"** across the entire platform (UI, database logic, and API) to better suit the academic theme.
+- **Navigation Cleanup:** Relocated the **"Back to Dashboard"** button from the navbar to a more contextual position above the collection name.
+
+### Bug Fixes
+
+- **Smart Routing:** Updated `handleProjectClick` to check ownership. **Project Owners** are now redirected directly to the **Project Editor** instead of the read-only guest preview.
+
+---
+
+## [v1.7] - 2026-02-13 — 2026-02-18
+
+### Feature: Authentication & Collection Management
+
+- **Auth Sync:** Implemented **client-side authentication synchronization** and a new **User Profile Menu**.
+- **Collection Previews:** Added a dedicated page to visualize **Project Collections** and their associated graphs.
+- **Multi-Account Support:** Enabled the ability to maintain two separate accounts (Standard vs. Google) using the same email address.
+- **Core API Client:** Built a robust API client for knowledge management entities and authentication types.
+
+### Bug Fixes
+
+- **Persistence Fix:** Resolved a critical bug where users were logged out upon **page refresh** after Google OAuth sign-in.
+- **Access Control:** Fixed owner redirection when navigating from the collections page to individual projects.
+- **Mobile UI:** Fixed visibility issues for the **Groups** and **Selection Pane** on mobile devices.
+
+---
+
+## [v1.6] - 2026-02-02 — 2026-02-03
+
+### Feature: Google Classroom Integration
+
+- **Full Integration:** Completed the three-phase implementation of the **Google Classroom API**.
+- **Resource Referencing:** Students can now pull **Classroom materials** and set them as direct references for graph nodes.
+- **Flexible Fetching:** Enabled data fetching from Google Classroom even for accounts not initially linked via Google OAuth.
+
+### Bug Fixes
+
+- **Material Locking:** Fixed issue where Classroom material rows remained "locked" after navigation.
+
+---
+
 ## [v1.5] - 2026-01-31
 
 ### Feature: Advanced Navigation & Precision
