@@ -8,11 +8,14 @@ import { api } from '@/lib/api';
 import { Navbar } from '@/components/layout';
 import { ProjectCard } from '@/components/projects/ProjectCard';
 import { useAuthStore } from '@/store/useAuthStore';
+import { useGraphStore } from '@/store/useGraphStore';
 
 export default function CollectionPreviewPage() {
     const params = useParams();
     const router = useRouter();
     const id = Number(params?.id);
+    const { user } = useAuthStore();
+    const setCurrentProject = useGraphStore((state) => state.setCurrentProject);
 
     const [collection, setCollection] = useState<ProjectCollection | null>(null);
     const [loading, setLoading] = useState(true);
@@ -60,11 +63,12 @@ export default function CollectionPreviewPage() {
     }, [id]);
 
     const handleProjectClick = (project: Project) => {
-        // Open project in preview mode or editor
-        // Since this is a public view, maybe open in a read-only preview? 
-        // For now, redirect to project preview if possible, or editor.
-        // Ideally: /project/[id]/preview
-        router.push(`/project/${project.id}/preview`);
+        if (user?.id === project.userId) {
+            setCurrentProject(project);
+            router.push('/project/editor');
+        } else {
+            router.push(`/project/${project.id}/preview`);
+        }
     };
 
     const resolveOwnerDisplayName = (profile: Profile | null): string => {
@@ -128,8 +132,8 @@ export default function CollectionPreviewPage() {
 
     return (
         <div className="min-h-screen bg-zinc-950">
-            <Navbar showSearch={false}/>
-              
+            <Navbar showSearch={false} />
+
 
             <main className="mx-auto max-w-6xl px-6 py-8">
                 <div className="mb-8 space-y-4">
@@ -140,7 +144,7 @@ export default function CollectionPreviewPage() {
                         <ArrowLeft className="h-4 w-4" /> Back to Dashboard
                     </button>
                     <div className="flex items-center gap-3">
-                        
+
                         <button
                             onClick={() => setShowGroupInfo(true)}
                             className="rounded-full hover:bg-zinc-800 text-zinc-400 hover:text-white transition-colors"
@@ -172,7 +176,7 @@ export default function CollectionPreviewPage() {
                                     )}
                                 </div>
                                 <span className="text-sm font-medium text-zinc-200">
-                                    {ownerDisplayName}
+                                    {ownerDisplayName} {user?.id === owner.id ? '(You)' : ''}
                                 </span>
                             </div>
                         </div>
