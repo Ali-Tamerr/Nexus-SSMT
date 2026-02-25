@@ -165,7 +165,8 @@ export function drawShapeOnContext(
         ctx.font = `${fontSize}px ${shape.fontFamily || "Inter"}, sans-serif`;
         ctx.fillStyle = shape.color;
         ctx.textBaseline = "top";
-        const currentDir = shape.textDir || "ltr";
+        const autoDir = detectTextDir(shape.text);
+        const currentDir = shape.textDir || autoDir;
         ctx.textAlign = currentDir === "rtl" ? "right" : "left";
         ctx.direction = currentDir;
         const lineHeight = fontSize * 1.2;
@@ -332,4 +333,15 @@ export function drawMarquee(
   ctx.fillRect(x, y, width, height);
   ctx.strokeRect(x, y, width, height);
   ctx.restore();
+}
+
+/**
+ * Detects if a string contains RTL characters (Arabic, Hebrew, etc.)
+ */
+export function detectTextDir(text: string | null | undefined): "ltr" | "rtl" {
+  if (!text) return "ltr";
+  // Pattern for Arabic, Hebrew, etc.
+  const rtlPattern =
+    /[\u0591-\u07FF\uFB1D-\uFDFD\uFE70-\uFEFC\u08A0-\u08FF\u0590-\u05FF\u0600-\u06FF]/;
+  return rtlPattern.test(text) ? "rtl" : "ltr";
 }

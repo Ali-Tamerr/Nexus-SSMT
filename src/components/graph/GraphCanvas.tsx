@@ -6,7 +6,7 @@ import { useGraphStore, filterNodes } from '@/store/useGraphStore';
 import { useToast } from '@/context/ToastContext';
 import { DrawingProperties } from './DrawingProperties';
 import { ConnectionProperties } from './ConnectionProperties';
-import { drawShapeOnContext, isPointNearShape, drawSelectionBox, isShapeInMarquee, drawMarquee } from './drawingUtils';
+import { drawShapeOnContext, isPointNearShape, drawSelectionBox, isShapeInMarquee, drawMarquee, detectTextDir } from './drawingUtils';
 import { getShapeBounds, drawResizeHandles, getHandleAtPoint, resizeShape, rotateShape, getCursorForHandle, ResizeHandle, ShapeBounds, getResizeHandlePosition } from './resizeUtils';
 import { SelectionPane } from './SelectionPane';
 import { GroupsTabs, getNextGroupColor } from './GroupsTabs';
@@ -589,21 +589,27 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
   const redo = useGraphStore(state => state.redo);
   const pushToUndoStack = useGraphStore(state => state.pushToUndoStack);
 
-  const apiDrawingToShape = useCallback((d: ApiDrawing): DrawnShape => ({
-    id: d.id,
-    projectId: d.projectId,
-    type: d.type as DrawnShape['type'],
-    points: d.points,
-    color: d.color,
-    width: d.width,
-    style: d.style as DrawnShape['style'],
-    text: d.text || undefined,
-    fontSize: d.fontSize || undefined,
-    fontFamily: d.fontFamily || undefined,
-    textDir: (d.textDir || (d as any).text_dir || (d as any).TextDir || undefined) as "ltr" | "rtl",
-    groupId: d.groupId,
-    synced: true,
-  }), []);
+  const apiDrawingToShape = useCallback((d: ApiDrawing): DrawnShape => {
+    const rawDir = (d.textDir || (d as any).text_dir || (d as any).TextDir || (d as any).direction || (d as any).TextDirection || undefined) as "ltr" | "rtl";
+    // Fallback to auto-detection if the server didn't specify
+    const finalDir = rawDir || detectTextDir(d.text);
+
+    return {
+      id: d.id,
+      projectId: d.projectId,
+      type: d.type as DrawnShape['type'],
+      points: d.points,
+      color: d.color,
+      width: d.width,
+      style: d.style as DrawnShape['style'],
+      text: d.text || undefined,
+      fontSize: d.fontSize || undefined,
+      fontFamily: d.fontFamily || undefined,
+      textDir: finalDir,
+      groupId: d.groupId,
+      synced: true,
+    };
+  }, []);
 
   const shapeToApiDrawing = useCallback((s: DrawnShape, projectId: number, groupId?: number) => ({
     projectId,
@@ -741,7 +747,9 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
         if (s && s.synced !== false) {
           api.drawings.update(id, {
             textDir: graphSettings.textDir,
-            direction: graphSettings.textDir
+            direction: graphSettings.textDir,
+            text_dir: graphSettings.textDir,
+            textDirection: graphSettings.textDir
           } as any);
         }
       });
@@ -2770,6 +2778,8 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
                           text: textInputValue.trim(),
                           textDir: finalDir,
                           direction: finalDir,
+                          text_dir: finalDir,
+                          textDirection: finalDir,
                           fontFamily: editingShape?.fontFamily || graphSettings.fontFamily
                         } as any)
                           .catch();
