@@ -248,6 +248,12 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
 
   const [showSelectionPane, setShowSelectionPane] = useState(false);
   const [isNodeDragging, setIsNodeDragging] = useState(false);
+  const textInputPosRef = useRef(textInputPos);
+  const textAreaContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    textInputPosRef.current = textInputPos;
+  }, [textInputPos]);
   const [groupsReady, setGroupsReady] = useState(false);
 
   const filteredNodes = useMemo(
@@ -594,7 +600,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
     text: d.text || undefined,
     fontSize: d.fontSize || undefined,
     fontFamily: d.fontFamily || undefined,
-    textDir: d.textDir || 'ltr',
+    textDir: (d.textDir as "ltr" | "rtl") || 'ltr',
     groupId: d.groupId,
     synced: true,
   }), []);
@@ -747,7 +753,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
         // We only update if value exists to avoid resetting to default if undefined
         if (s.fontSize) setGraphSettings({ fontSize: s.fontSize });
         if (s.fontFamily) setGraphSettings({ fontFamily: s.fontFamily });
-        if (s.textDir) setGraphSettings({ textDir: s.textDir });
+        if (s.textDir) setGraphSettings({ textDir: s.textDir as "ltr" | "rtl" });
         if (s.color) setGraphSettings({ strokeColor: s.color });
         if (s.width) setGraphSettings({ strokeWidth: s.width });
         if (s.style) setGraphSettings({ strokeStyle: s.style });
@@ -2198,13 +2204,21 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
     const resizingId = resizingShapeIdRef.current;
     const resizingShape = currentResizingShapeRef.current;
 
+    // Move textarea to match canvas if editing
+    if (textAreaContainerRef.current && textInputPosRef.current && graphRef.current && containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect();
+      const pos = graphRef.current.graph2ScreenCoords(textInputPosRef.current.worldX, textInputPosRef.current.worldY);
+      textAreaContainerRef.current.style.left = `${pos.x + rect.left}px`;
+      textAreaContainerRef.current.style.top = `${pos.y + rect.top}px`;
+    }
+
     const shapesToRender = shapesRef.current;
 
     shapesToRender.forEach(shape => {
       if (activeGroupId !== null && activeGroupId !== undefined && shape.groupId !== activeGroupId) return;
 
-      if (shape.id === currentEditingId) return;
-      if (isResizing && shape.id === resizingId) return;
+      if (currentEditingId !== null && String(shape.id) === String(currentEditingId)) return;
+      if (isResizing && resizingId !== null && String(shape.id) === String(resizingId)) return;
 
       drawShapeOnContext(ctx, shape, globalScale);
       if (selectedShapeIds.has(shape.id)) {
@@ -2705,12 +2719,14 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
             }
             return (
               <div
+                ref={textAreaContainerRef}
                 key={currentEditingId || 'new'}
                 className="fixed z-50 text-area-container"
                 style={{
                   left: screenPos.x,
                   top: screenPos.y,
-                  transform: (editingShape?.textDir || graphSettings.textDir) === 'rtl' ? 'translateX(-100%)' : 'none'
+                  transform: (editingShape?.textDir || graphSettings.textDir) === 'rtl' ? 'translateX(-100%)' : 'none',
+                  pointerEvents: 'auto'
                 }}
               >
                 <textarea
@@ -2740,7 +2756,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
                   }}
                   onBlur={() => {
                     if (textInputValue.trim()) {
-                      if (editingShapeId) {
+                      if (editingShapeId !== null) {
                         const finalDir = editingShape?.textDir || graphSettings.textDir || 'ltr';
                         updateShape(editingShapeId, { text: textInputValue.trim(), textDir: finalDir, fontFamily: editingShape?.fontFamily || graphSettings.fontFamily });
                         api.drawings.update(editingShapeId, { text: textInputValue.trim(), textDir: finalDir, fontFamily: editingShape?.fontFamily || graphSettings.fontFamily })
@@ -2805,10 +2821,12 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
                     lineHeight: 1.2,
                     textAlign: (editingShape?.textDir || graphSettings.textDir) === 'rtl' ? 'right' : 'left',
                     width: 'max-content',
-                    minWidth: '150px',
-                    maxWidth: '80vw',
+                    minWidth: '200px',
+                    maxWidth: '90vw',
                     whiteSpace: 'pre-wrap',
                     wordBreak: 'break-word',
+                    display: 'block',
+                    overflow: 'visible',
                     willChange: 'width, height',
                     transform: 'translateZ(0)',
                   }}
