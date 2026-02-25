@@ -165,8 +165,9 @@ export function drawShapeOnContext(
         ctx.font = `${fontSize}px ${shape.fontFamily || "Inter"}, sans-serif`;
         ctx.fillStyle = shape.color;
         ctx.textBaseline = "top";
-        ctx.textAlign = shape.textDir === "rtl" ? "right" : "left";
-        ctx.direction = shape.textDir || "ltr";
+        const currentDir = shape.textDir || "ltr";
+        ctx.textAlign = currentDir === "rtl" ? "right" : "left";
+        ctx.direction = currentDir;
         const lineHeight = fontSize * 1.2;
         const lines = shape.text.split("\n");
 

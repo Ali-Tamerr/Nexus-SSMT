@@ -102,9 +102,9 @@ export interface DrawnShape {
   text?: string | null;
   fontSize?: number | null;
   fontFamily?: string | null;
-  textDir?: "ltr" | "rtl" | null;
   groupId?: number | null;
   synced?: boolean; // Frontend only
+  textDir?: "ltr" | "rtl" | null;
   createdAt?: string;
   updatedAt?: string;
 }

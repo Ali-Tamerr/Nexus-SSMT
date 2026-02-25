@@ -594,7 +594,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
     text: d.text || undefined,
     fontSize: d.fontSize || undefined,
     fontFamily: d.fontFamily || undefined,
-    textDir: d.textDir || undefined,
+    textDir: d.textDir || 'ltr',
     groupId: d.groupId,
     synced: true,
   }), []);
@@ -610,7 +610,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
     text: s.text ?? undefined,
     fontSize: s.fontSize ?? undefined,
     fontFamily: s.fontFamily ?? undefined,
-    textDir: s.textDir ?? undefined,
+    textDir: s.textDir || 'ltr',
   }), []);
 
   useEffect(() => {
@@ -1220,6 +1220,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
                 text: s.text,
                 fontSize: s.fontSize,
                 fontFamily: s.fontFamily,
+                textDir: s.textDir,
                 groupId: s.groupId
               };
 
@@ -1244,6 +1245,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
             })),
             shapes: cpShapes.map((s: any) => ({
               ...s,
+              id: undefined, // Clear old IDs to ensure uniqueness if logic depends on it
               points: s.points.map((p: any) => ({ x: p.x + offset, y: p.y + offset })),
             })),
           };
@@ -2691,6 +2693,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
             />
           )}
           {textInputPos && (() => {
+            const currentEditingId = editingShapeId;
             let screenPos = { x: textInputPos.x, y: textInputPos.y };
             if (graphRef.current && containerRef.current) {
               const rect = containerRef.current.getBoundingClientRect();
@@ -2702,6 +2705,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
             }
             return (
               <div
+                key={currentEditingId || 'new'}
                 className="fixed z-50 text-area-container"
                 style={{
                   left: screenPos.x,
@@ -2738,8 +2742,8 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
                     if (textInputValue.trim()) {
                       if (editingShapeId) {
                         const finalDir = editingShape?.textDir || graphSettings.textDir || 'ltr';
-                        updateShape(editingShapeId, { text: textInputValue.trim(), textDir: finalDir });
-                        api.drawings.update(editingShapeId, { text: textInputValue.trim(), textDir: finalDir })
+                        updateShape(editingShapeId, { text: textInputValue.trim(), textDir: finalDir, fontFamily: editingShape?.fontFamily || graphSettings.fontFamily });
+                        api.drawings.update(editingShapeId, { text: textInputValue.trim(), textDir: finalDir, fontFamily: editingShape?.fontFamily || graphSettings.fontFamily })
                           .catch();
                       } else {
                         const newShape: DrawnShape = {
@@ -2793,15 +2797,18 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
                       }
                     }, 50);
                   }}
-                  className="bg-transparent border-none outline-none text-white p-0 resize-none overflow-hidden"
+                  className="bg-transparent border-none outline-none text-white p-0 resize-none overflow-visible"
                   style={{
                     fontSize: ((editingShape?.fontSize || graphSettings.fontSize || 16) * (graphTransform.k || 1)),
                     fontFamily: editingShape?.fontFamily || graphSettings.fontFamily || 'Inter',
                     color: editingShape?.color || graphSettings.strokeColor,
                     lineHeight: 1.2,
                     textAlign: (editingShape?.textDir || graphSettings.textDir) === 'rtl' ? 'right' : 'left',
-                    width: Math.max(150, (textInputValue.length + 10) * ((editingShape?.fontSize || graphSettings.fontSize || 16) * (graphTransform.k || 1)) * 0.6) + 'px',
-                    whiteSpace: 'pre',
+                    width: 'max-content',
+                    minWidth: '150px',
+                    maxWidth: '80vw',
+                    whiteSpace: 'pre-wrap',
+                    wordBreak: 'break-word',
                     willChange: 'width, height',
                     transform: 'translateZ(0)',
                   }}
@@ -2809,7 +2816,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
                 />
               </div>
             );
-          })}
+          })()}
           <div className="graph-ui-hide" onMouseDown={(e) => e.stopPropagation()}>
             <DrawingProperties
               activeTool={graphSettings.activeTool}
