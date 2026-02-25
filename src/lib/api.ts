@@ -440,6 +440,7 @@ export const api = {
       fontSize?: number;
       fontFamily?: string;
       textDir?: string;
+      direction?: string;
       groupId?: number;
     }) => {
       // API expects Points as a JSON string
@@ -469,6 +470,7 @@ export const api = {
         fontSize: number;
         fontFamily: string;
         textDir: string;
+        direction: string;
         groupId: number;
       }>,
     ) => {

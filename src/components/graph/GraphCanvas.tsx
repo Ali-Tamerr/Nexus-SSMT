@@ -600,7 +600,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
     text: d.text || undefined,
     fontSize: d.fontSize || undefined,
     fontFamily: d.fontFamily || undefined,
-    textDir: (d.textDir as "ltr" | "rtl") || 'ltr',
+    textDir: (d.textDir || (d as any).text_dir || (d as any).TextDir || undefined) as "ltr" | "rtl",
     groupId: d.groupId,
     synced: true,
   }), []);
@@ -616,7 +616,8 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
     text: s.text ?? undefined,
     fontSize: s.fontSize ?? undefined,
     fontFamily: s.fontFamily ?? undefined,
-    textDir: s.textDir || 'ltr',
+    textDir: s.textDir ?? undefined,
+    direction: s.textDir ?? undefined,
   }), []);
 
   useEffect(() => {
@@ -738,7 +739,10 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
         updateShape(id, { textDir: graphSettings.textDir });
         const s = shapes.find(sh => sh.id === id);
         if (s && s.synced !== false) {
-          api.drawings.update(id, { textDir: graphSettings.textDir });
+          api.drawings.update(id, {
+            textDir: graphSettings.textDir,
+            direction: graphSettings.textDir
+          } as any);
         }
       });
     }
@@ -753,7 +757,9 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
         // We only update if value exists to avoid resetting to default if undefined
         if (s.fontSize) setGraphSettings({ fontSize: s.fontSize });
         if (s.fontFamily) setGraphSettings({ fontFamily: s.fontFamily });
-        if (s.textDir) setGraphSettings({ textDir: s.textDir as "ltr" | "rtl" });
+        if (s.textDir && (s.textDir === 'ltr' || s.textDir === 'rtl')) {
+          setGraphSettings({ textDir: s.textDir as "ltr" | "rtl" });
+        }
         if (s.color) setGraphSettings({ strokeColor: s.color });
         if (s.width) setGraphSettings({ strokeWidth: s.width });
         if (s.style) setGraphSettings({ strokeStyle: s.style });
@@ -1227,6 +1233,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
                 fontSize: s.fontSize,
                 fontFamily: s.fontFamily,
                 textDir: s.textDir,
+                direction: s.textDir,
                 groupId: s.groupId
               };
 
@@ -2759,7 +2766,12 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
                       if (editingShapeId !== null) {
                         const finalDir = editingShape?.textDir || graphSettings.textDir || 'ltr';
                         updateShape(editingShapeId, { text: textInputValue.trim(), textDir: finalDir, fontFamily: editingShape?.fontFamily || graphSettings.fontFamily });
-                        api.drawings.update(editingShapeId, { text: textInputValue.trim(), textDir: finalDir, fontFamily: editingShape?.fontFamily || graphSettings.fontFamily })
+                        api.drawings.update(editingShapeId, {
+                          text: textInputValue.trim(),
+                          textDir: finalDir,
+                          direction: finalDir,
+                          fontFamily: editingShape?.fontFamily || graphSettings.fontFamily
+                        } as any)
                           .catch();
                       } else {
                         const newShape: DrawnShape = {
