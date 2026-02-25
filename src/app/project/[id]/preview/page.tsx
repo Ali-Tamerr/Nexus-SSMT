@@ -396,6 +396,10 @@ export default function PreviewPage({ params }: { params: Promise<{ id: string }
                 )}
             </div>
 
+            <div className="absolute max-md:hidden top-6 left-1/2 -translate-x-1/2 z-30 text-xs text-zinc-400 bg-zinc-900/80 px-3 py-1.5 rounded-lg border border-zinc-800 pointer-events-none w-max shadow-sm">
+                Click on a node to view the details and links
+            </div>
+
             {groups.length > 0 && (
                 <GroupsTabs
                     groups={groups}

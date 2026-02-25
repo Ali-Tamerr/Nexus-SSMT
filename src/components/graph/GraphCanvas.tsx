@@ -2690,115 +2690,126 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
               }}
             />
           )}
-          {textInputPos && (
-            <div
-              className="fixed z-50 text-area-container"
-              style={{
-                left: textInputPos.x,
-                top: textInputPos.y,
-                transform: (editingShape?.textDir || graphSettings.textDir) === 'rtl' ? 'translateX(-100%)' : 'none'
-              }}
-            >
-              <textarea
-                autoFocus
-                dir={editingShape?.textDir || graphSettings.textDir || 'ltr'}
-                value={textInputValue}
-                onChange={(e) => {
-                  setTextInputValue(e.target.value);
+          {textInputPos && (() => {
+            let screenPos = { x: textInputPos.x, y: textInputPos.y };
+            if (graphRef.current && containerRef.current) {
+              const rect = containerRef.current.getBoundingClientRect();
+              const updatedScreen = graphRef.current.graph2ScreenCoords(textInputPos.worldX, textInputPos.worldY);
+              screenPos = {
+                x: updatedScreen.x + rect.left,
+                y: updatedScreen.y + rect.top
+              };
+            }
+            return (
+              <div
+                className="fixed z-50 text-area-container"
+                style={{
+                  left: screenPos.x,
+                  top: screenPos.y,
+                  transform: (editingShape?.textDir || graphSettings.textDir) === 'rtl' ? 'translateX(-100%)' : 'none'
                 }}
-                rows={(textInputValue.match(/\n/g) || []).length + 1}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    if (e.shiftKey) {
-                      // Allow Shift+Enter for newline, don't prevent default
-                      return;
-                    } else {
-                      // Enter to save and exit edit mode
-                      e.preventDefault();
-                      e.currentTarget.blur(); // Trigger save via onBlur
+              >
+                <textarea
+                  autoFocus
+                  dir={editingShape?.textDir || graphSettings.textDir || 'ltr'}
+                  value={textInputValue}
+                  onChange={(e) => {
+                    setTextInputValue(e.target.value);
+                  }}
+                  rows={(textInputValue.match(/\n/g) || []).length + 1}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      if (e.shiftKey) {
+                        // Allow Shift+Enter for newline, don't prevent default
+                        return;
+                      } else {
+                        // Enter to save and exit edit mode
+                        e.preventDefault();
+                        e.currentTarget.blur(); // Trigger save via onBlur
+                      }
+                    } else if (e.key === 'Escape') {
+                      setTextInputPos(null);
+                      setTextInputValue('');
+                      setEditingShapeId(null);
                     }
-                  } else if (e.key === 'Escape') {
+                    e.stopPropagation();
+                  }}
+                  onBlur={() => {
+                    if (textInputValue.trim()) {
+                      if (editingShapeId) {
+                        const finalDir = editingShape?.textDir || graphSettings.textDir || 'ltr';
+                        updateShape(editingShapeId, { text: textInputValue.trim(), textDir: finalDir });
+                        api.drawings.update(editingShapeId, { text: textInputValue.trim(), textDir: finalDir })
+                          .catch();
+                      } else {
+                        const newShape: DrawnShape = {
+                          id: Date.now() * -1,
+                          projectId: currentProject?.id || 0,
+                          type: 'text',
+                          points: [{ x: textInputPos.worldX, y: textInputPos.worldY }],
+                          color: graphSettings.strokeColor,
+                          width: 0,
+                          style: 'solid',
+                          text: textInputValue.trim(),
+                          fontSize: graphSettings.fontSize || 16,
+                          fontFamily: graphSettings.fontFamily || 'Inter',
+                          textDir: graphSettings.textDir || 'ltr',
+                          groupId: activeGroupId ?? undefined,
+                          synced: false,
+                        };
+                        addShape(newShape);
+                        if (currentProject?.id) {
+                          const saveText = async () => {
+                            let groupId = activeGroupId;
+                            if (!groupId || groupId === 0) {
+                              try {
+                                const groups = await api.groups.getByProject(currentProject.id);
+                                if (groups && groups.length > 0) groupId = groups[0].id;
+                                else {
+                                  const newGroup = await api.groups.create({ name: 'Default', color: '#808080', order: 0, projectId: currentProject.id });
+                                  if (newGroup) groupId = newGroup.id;
+                                }
+                              } catch (e) { }
+                            }
+                            return api.drawings.create(shapeToApiDrawing(newShape, currentProject.id, groupId ?? undefined));
+                          };
+
+                          saveText()
+                            .then(createdDrawing => {
+                              updateShape(newShape.id, { id: createdDrawing.id });
+                            })
+                            .catch(() => { });
+                        }
+                      }
+                    }
                     setTextInputPos(null);
                     setTextInputValue('');
                     setEditingShapeId(null);
-                  }
-                  e.stopPropagation();
-                }}
-                onBlur={() => {
-                  if (textInputValue.trim()) {
-                    if (editingShapeId) {
-                      const finalDir = editingShape?.textDir || graphSettings.textDir || 'ltr';
-                      updateShape(editingShapeId, { text: textInputValue.trim(), textDir: finalDir });
-                      api.drawings.update(editingShapeId, { text: textInputValue.trim(), textDir: finalDir })
-                        .catch();
-                    } else {
-                      const newShape: DrawnShape = {
-                        id: Date.now() * -1,
-                        projectId: currentProject?.id || 0,
-                        type: 'text',
-                        points: [{ x: textInputPos.worldX, y: textInputPos.worldY }],
-                        color: graphSettings.strokeColor,
-                        width: 0,
-                        style: 'solid',
-                        text: textInputValue.trim(),
-                        fontSize: graphSettings.fontSize || 16,
-                        fontFamily: graphSettings.fontFamily || 'Inter',
-                        textDir: graphSettings.textDir || 'ltr',
-                        groupId: activeGroupId ?? undefined,
-                        synced: false,
-                      };
-                      addShape(newShape);
-                      if (currentProject?.id) {
-                        const saveText = async () => {
-                          let groupId = activeGroupId;
-                          if (!groupId || groupId === 0) {
-                            try {
-                              const groups = await api.groups.getByProject(currentProject.id);
-                              if (groups && groups.length > 0) groupId = groups[0].id;
-                              else {
-                                const newGroup = await api.groups.create({ name: 'Default', color: '#808080', order: 0, projectId: currentProject.id });
-                                if (newGroup) groupId = newGroup.id;
-                              }
-                            } catch (e) { }
-                          }
-                          return api.drawings.create(shapeToApiDrawing(newShape, currentProject.id, groupId ?? undefined));
-                        };
-
-                        saveText()
-                          .then(createdDrawing => {
-                            updateShape(newShape.id, { id: createdDrawing.id });
-                          })
-                          .catch(() => { });
+                    setTimeout(() => {
+                      if (graphRef.current) {
+                        const z = graphRef.current.zoom();
+                        graphRef.current.zoom(z * 1.00001, 0);
+                        graphRef.current.zoom(z, 0);
                       }
-                    }
-                  }
-                  setTextInputPos(null);
-                  setTextInputValue('');
-                  setEditingShapeId(null);
-                  setTimeout(() => {
-                    if (graphRef.current) {
-                      const z = graphRef.current.zoom();
-                      graphRef.current.zoom(z * 1.00001, 0);
-                      graphRef.current.zoom(z, 0);
-                    }
-                  }, 50);
-                }}
-                className="bg-transparent border-none outline-none text-white p-0 resize-none overflow-hidden"
-                style={{
-                  fontSize: ((editingShape?.fontSize || graphSettings.fontSize || 16) * (graphTransform.k || 1)),
-                  fontFamily: editingShape?.fontFamily || graphSettings.fontFamily || 'Inter',
-                  color: editingShape?.color || graphSettings.strokeColor,
-                  lineHeight: 1.2,
-                  textAlign: (editingShape?.textDir || graphSettings.textDir) === 'rtl' ? 'right' : 'left',
-                  width: Math.max(150, (textInputValue.length + 10) * ((editingShape?.fontSize || graphSettings.fontSize || 16) * (graphTransform.k || 1)) * 0.6) + 'px',
-                  whiteSpace: 'pre',
-                  willChange: 'width, height',
-                  transform: 'translateZ(0)',
-                }}
-                placeholder="Type here..."
-              />
-            </div>
-          )}
+                    }, 50);
+                  }}
+                  className="bg-transparent border-none outline-none text-white p-0 resize-none overflow-hidden"
+                  style={{
+                    fontSize: ((editingShape?.fontSize || graphSettings.fontSize || 16) * (graphTransform.k || 1)),
+                    fontFamily: editingShape?.fontFamily || graphSettings.fontFamily || 'Inter',
+                    color: editingShape?.color || graphSettings.strokeColor,
+                    lineHeight: 1.2,
+                    textAlign: (editingShape?.textDir || graphSettings.textDir) === 'rtl' ? 'right' : 'left',
+                    width: Math.max(150, (textInputValue.length + 10) * ((editingShape?.fontSize || graphSettings.fontSize || 16) * (graphTransform.k || 1)) * 0.6) + 'px',
+                    whiteSpace: 'pre',
+                    willChange: 'width, height',
+                    transform: 'translateZ(0)',
+                  }}
+                  placeholder="Type here..."
+                />
+              </div>
+            );
+          })}
           <div className="graph-ui-hide" onMouseDown={(e) => e.stopPropagation()}>
             <DrawingProperties
               activeTool={graphSettings.activeTool}
