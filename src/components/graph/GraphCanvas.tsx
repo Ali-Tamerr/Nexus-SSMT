@@ -594,6 +594,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
     text: d.text || undefined,
     fontSize: d.fontSize || undefined,
     fontFamily: d.fontFamily || undefined,
+    textDir: d.textDir || undefined,
     groupId: d.groupId,
     synced: true,
   }), []);
@@ -609,6 +610,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
     text: s.text ?? undefined,
     fontSize: s.fontSize ?? undefined,
     fontFamily: s.fontFamily ?? undefined,
+    textDir: s.textDir ?? undefined,
   }), []);
 
   useEffect(() => {
@@ -712,6 +714,30 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
     }
   }, [graphSettings.fontSize]);
 
+  useEffect(() => {
+    if (selectedShapeIds.size > 0) {
+      selectedShapeIds.forEach(id => {
+        updateShape(id, { fontFamily: graphSettings.fontFamily });
+        const s = shapes.find(sh => sh.id === id);
+        if (s && s.synced !== false) {
+          api.drawings.update(id, { fontFamily: graphSettings.fontFamily });
+        }
+      });
+    }
+  }, [graphSettings.fontFamily]);
+
+  useEffect(() => {
+    if (selectedShapeIds.size > 0) {
+      selectedShapeIds.forEach(id => {
+        updateShape(id, { textDir: graphSettings.textDir });
+        const s = shapes.find(sh => sh.id === id);
+        if (s && s.synced !== false) {
+          api.drawings.update(id, { textDir: graphSettings.textDir });
+        }
+      });
+    }
+  }, [graphSettings.textDir]);
+
   // Sync toolbar with selection
   useEffect(() => {
     if (selectedShapeIds.size === 1) {
@@ -720,6 +746,8 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
       if (s) {
         // We only update if value exists to avoid resetting to default if undefined
         if (s.fontSize) setGraphSettings({ fontSize: s.fontSize });
+        if (s.fontFamily) setGraphSettings({ fontFamily: s.fontFamily });
+        if (s.textDir) setGraphSettings({ textDir: s.textDir });
         if (s.color) setGraphSettings({ strokeColor: s.color });
         if (s.width) setGraphSettings({ strokeWidth: s.width });
         if (s.style) setGraphSettings({ strokeStyle: s.style });
@@ -2669,6 +2697,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
             >
               <textarea
                 autoFocus
+                dir={editingShape?.textDir || graphSettings.textDir || 'ltr'}
                 value={textInputValue}
                 onChange={(e) => {
                   setTextInputValue(e.target.value);
@@ -2712,6 +2741,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
                         text: textInputValue.trim(),
                         fontSize: graphSettings.fontSize || 16,
                         fontFamily: graphSettings.fontFamily || 'Inter',
+                        textDir: graphSettings.textDir || 'ltr',
                         groupId: activeGroupId ?? undefined,
                         synced: false,
                       };
@@ -2757,6 +2787,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
                   fontFamily: editingShape?.fontFamily || graphSettings.fontFamily || 'Inter',
                   color: editingShape?.color || graphSettings.strokeColor,
                   lineHeight: 1.2,
+                  textAlign: (editingShape?.textDir || graphSettings.textDir) === 'rtl' ? 'right' : 'left',
                 }}
                 placeholder="Type here..."
               />
@@ -2771,11 +2802,13 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
               strokeStyle={graphSettings.strokeStyle}
               fontSize={graphSettings.fontSize}
               fontFamily={graphSettings.fontFamily}
+              textDir={graphSettings.textDir}
               onStrokeWidthChange={(w) => setGraphSettings({ strokeWidth: w })}
               onStrokeColorChange={(c) => setGraphSettings({ strokeColor: c })}
               onStrokeStyleChange={(s) => setGraphSettings({ strokeStyle: s })}
               onFontSizeChange={(s) => setGraphSettings({ fontSize: s })}
               onFontFamilyChange={(f) => setGraphSettings({ fontFamily: f })}
+              onTextDirChange={(dir) => setGraphSettings({ textDir: dir })}
               onClose={() => setGraphSettings({ activeTool: 'select' })}
               onDelete={async () => {
                 if (selectedShapeIds.size === 0 && !editingShapeId) {

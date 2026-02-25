@@ -117,6 +117,7 @@ export const useGraphStore = create<AppState>()(
         strokeStyle: "solid",
         fontSize: 16,
         fontFamily: "Inter",
+        textDir: "ltr",
       },
       currentUserId: null,
       hasHydrated: false,

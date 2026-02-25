@@ -102,6 +102,7 @@ export interface DrawnShape {
   text?: string | null;
   fontSize?: number | null;
   fontFamily?: string | null;
+  textDir?: "ltr" | "rtl" | null;
   groupId?: number | null;
   synced?: boolean; // Frontend only
   createdAt?: string;
@@ -117,6 +118,7 @@ export interface GraphSettings {
   strokeStyle: StrokeStyle;
   fontSize: number;
   fontFamily: string;
+  textDir: "ltr" | "rtl";
 }
 
 export interface PresenceState {

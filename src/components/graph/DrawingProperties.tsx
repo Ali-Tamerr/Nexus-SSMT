@@ -12,11 +12,13 @@ interface DrawingPropertiesProps {
     strokeStyle: 'solid' | 'dashed' | 'dotted';
     fontSize: number;
     fontFamily: string;
+    textDir?: 'ltr' | 'rtl';
     onStrokeWidthChange: (width: number) => void;
     onStrokeColorChange: (color: string) => void;
     onStrokeStyleChange: (style: 'solid' | 'dashed' | 'dotted') => void;
     onFontSizeChange: (size: number) => void;
     onFontFamilyChange: (family: string) => void;
+    onTextDirChange?: (dir: 'ltr' | 'rtl') => void;
     onClose?: () => void;
     onDelete?: () => void;
     selectedShapeType?: string;
@@ -41,11 +43,13 @@ export function DrawingProperties({
     strokeStyle,
     fontSize,
     fontFamily,
+    textDir = 'ltr',
     onStrokeWidthChange,
     onStrokeColorChange,
     onStrokeStyleChange,
     onFontSizeChange,
     onFontFamilyChange,
+    onTextDirChange,
     onClose,
     onDelete,
     selectedShapeType,
@@ -129,6 +133,26 @@ export function DrawingProperties({
                                     ))}
                                 </div>
                             </div>
+
+                            {onTextDirChange && (
+                                <div className="space-y-2 flex-shrink-0 w-48 md:w-auto">
+                                    <label className="text-xs text-zinc-500">Direction</label>
+                                    <div className="flex gap-1">
+                                        {(['ltr', 'rtl'] as const).map((dir) => (
+                                            <button
+                                                key={dir}
+                                                onClick={() => onTextDirChange(dir)}
+                                                className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-all uppercase ${textDir === dir
+                                                    ? 'bg-[#355ea1] text-white'
+                                                    : 'bg-zinc-800 text-zinc-400 hover:text-white'
+                                                    }`}
+                                            >
+                                                {dir}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
 
                             <div className="space-y-2 flex-shrink-0 w-48 md:w-auto">
                                 <label className="text-xs text-zinc-500">Size</label>
