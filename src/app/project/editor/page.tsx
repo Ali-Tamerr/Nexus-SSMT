@@ -42,6 +42,7 @@ export default function EditorPage() {
     const {
         currentProject,
         setCurrentProject,
+        currentProjectId,
         nodes,
         setNodes,
         setLinks,
@@ -56,7 +57,7 @@ export default function EditorPage() {
     } = useGraphStore();
 
     const hasHydrated = authHydrated && graphHydrated;
-    const projectId = currentProject?.id;
+    const projectId = currentProject?.id || currentProjectId;
 
     useEffect(() => {
         setIsMounted(true);
@@ -69,10 +70,10 @@ export default function EditorPage() {
     }, [hasHydrated, isAuthenticated, router]);
 
     useEffect(() => {
-        if (hasHydrated && isAuthenticated && !currentProject?.id) {
+        if (hasHydrated && isAuthenticated && !projectId) {
             router.push('/');
         }
-    }, [hasHydrated, isAuthenticated, currentProject, router]);
+    }, [hasHydrated, isAuthenticated, projectId, router]);
 
     const dataLoadedRef = useRef(false);
 

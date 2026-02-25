@@ -16,6 +16,7 @@ export default function CollectionPreviewPage() {
     const id = Number(params?.id);
     const { user } = useAuthStore();
     const setCurrentProject = useGraphStore((state) => state.setCurrentProject);
+    const setCurrentProjectId = useGraphStore(state => state.setCurrentProjectId);
 
     const [collection, setCollection] = useState<ProjectCollection | null>(null);
     const [loading, setLoading] = useState(true);
@@ -65,6 +66,7 @@ export default function CollectionPreviewPage() {
     const handleProjectClick = (project: Project) => {
         if (user?.id === project.userId) {
             setCurrentProject(project);
+            setCurrentProjectId(project.id);
             router.push('/project/editor');
         } else {
             router.push(`/project/${project.id}/preview`);

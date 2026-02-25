@@ -33,6 +33,10 @@ interface AppState {
   groups: Group[];
   activeGroupId: number | null;
 
+  // Active selection persistent
+  currentProjectId: number | null;
+  setCurrentProjectId: (id: number | null) => void;
+
   // Drawing state
   shapes: DrawnShape[];
   undoStack: DrawnShape[][];
@@ -122,6 +126,9 @@ export const useGraphStore = create<AppState>()(
       currentUserId: null,
       hasHydrated: false,
 
+      // Initialize persistent ids
+      currentProjectId: null,
+
       groups: [],
       activeGroupId: null,
 
@@ -138,6 +145,7 @@ export const useGraphStore = create<AppState>()(
 
       setCurrentUserId: (userId) => set({ currentUserId: userId }),
       setProjects: (projects) => set({ projects }),
+      setCurrentProjectId: (id) => set({ currentProjectId: id }),
 
       addProject: (project) =>
         set((state) => ({
@@ -538,6 +546,8 @@ export const useGraphStore = create<AppState>()(
         // Do NOT persist projects or currentProject to avoid leaking data between users
         // projects: state.projects,
         // currentProject: state.currentProject,
+        currentProjectId:
+          state.currentProject?.id || state.currentProjectId || null,
         graphSettings: state.graphSettings,
       }),
 
@@ -545,6 +555,7 @@ export const useGraphStore = create<AppState>()(
         return {
           ...currentState,
           ...persistedState,
+          currentProjectId: persistedState?.currentProjectId || null,
           graphSettings: {
             ...currentState.graphSettings,
             ...(persistedState?.graphSettings || {}),

@@ -2692,8 +2692,12 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
           )}
           {textInputPos && (
             <div
-              className="fixed z-50"
-              style={{ left: textInputPos.x, top: textInputPos.y }}
+              className="fixed z-50 text-area-container"
+              style={{
+                left: textInputPos.x,
+                top: textInputPos.y,
+                transform: (editingShape?.textDir || graphSettings.textDir) === 'rtl' ? 'translateX(-100%)' : 'none'
+              }}
             >
               <textarea
                 autoFocus
@@ -2701,19 +2705,18 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
                 value={textInputValue}
                 onChange={(e) => {
                   setTextInputValue(e.target.value);
-                  e.target.style.height = 'auto';
-                  e.target.style.height = e.target.scrollHeight + 'px';
                 }}
+                rows={(textInputValue.match(/\n/g) || []).length + 1}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    // Allow Shift+Enter for newline, Enter to save (standard behavior)
-                    // override: User asked for "insert multiple lines", usually Enter = newline.
-                    // Let's make Enter = Newline, Ctrl+Enter = Save.
-                  }
-
-                  if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
-                    e.preventDefault();
-                    e.currentTarget.blur(); // Trigger save via onBlur
+                  if (e.key === 'Enter') {
+                    if (e.shiftKey) {
+                      // Allow Shift+Enter for newline, don't prevent default
+                      return;
+                    } else {
+                      // Enter to save and exit edit mode
+                      e.preventDefault();
+                      e.currentTarget.blur(); // Trigger save via onBlur
+                    }
                   } else if (e.key === 'Escape') {
                     setTextInputPos(null);
                     setTextInputValue('');
@@ -2724,11 +2727,10 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
                 onBlur={() => {
                   if (textInputValue.trim()) {
                     if (editingShapeId) {
-                      updateShape(editingShapeId, { text: textInputValue.trim() });
-                      api.drawings.update(editingShapeId, { text: textInputValue.trim() })
-                        .catch(
-                        // err => console.error('Failed to update drawing:', err)
-                      );
+                      const finalDir = editingShape?.textDir || graphSettings.textDir || 'ltr';
+                      updateShape(editingShapeId, { text: textInputValue.trim(), textDir: finalDir });
+                      api.drawings.update(editingShapeId, { text: textInputValue.trim(), textDir: finalDir })
+                        .catch();
                     } else {
                       const newShape: DrawnShape = {
                         id: Date.now() * -1,
@@ -2781,13 +2783,17 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
                     }
                   }, 50);
                 }}
-                className="bg-transparent border-none outline-none text-white min-w-[100px] p-0 resize-none overflow-hidden"
+                className="bg-transparent border-none outline-none text-white p-0 resize-none overflow-hidden"
                 style={{
                   fontSize: ((editingShape?.fontSize || graphSettings.fontSize || 16) * (graphTransform.k || 1)),
                   fontFamily: editingShape?.fontFamily || graphSettings.fontFamily || 'Inter',
                   color: editingShape?.color || graphSettings.strokeColor,
                   lineHeight: 1.2,
                   textAlign: (editingShape?.textDir || graphSettings.textDir) === 'rtl' ? 'right' : 'left',
+                  width: Math.max(150, (textInputValue.length + 10) * ((editingShape?.fontSize || graphSettings.fontSize || 16) * (graphTransform.k || 1)) * 0.6) + 'px',
+                  whiteSpace: 'pre',
+                  willChange: 'width, height',
+                  transform: 'translateZ(0)',
                 }}
                 placeholder="Type here..."
               />

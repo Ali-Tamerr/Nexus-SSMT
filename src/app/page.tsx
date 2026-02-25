@@ -162,8 +162,11 @@ export default function HomePage() {
     }
   };
 
+  const setCurrentProjectId = useGraphStore(state => state.setCurrentProjectId);
+
   const handleOpenProject = (project: Project) => {
     setCurrentProject(project);
+    setCurrentProjectId(project.id);
     router.push('/project/editor');
   };
 
