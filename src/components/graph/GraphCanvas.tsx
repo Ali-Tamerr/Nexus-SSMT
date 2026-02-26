@@ -472,8 +472,8 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
     ) => {
       const label = node.title || String(node.id);
       const nodeGroup = node.groupId ?? 0;
-      const fontSize = 12;
-      ctx.font = `600 ${fontSize}px Inter, system-ui, sans-serif`;
+      const fontSize = 10;
+      ctx.font = `500 ${fontSize}px Inter, system-ui, sans-serif`;
 
       const nodeId = Number(node.id);
       const isActive = activeNode?.id === nodeId;
@@ -685,7 +685,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
         // API update
         const s = shapes.find(sh => sh.id === id);
         if (s && s.synced !== false) {
-          api.drawings.update(id, { color: graphSettings.strokeColor });
+          api.drawings.update(id, shapeToApiDrawing({ ...s, color: graphSettings.strokeColor }, currentProject?.id || 0, activeGroupId ?? undefined));
         }
       });
     }
@@ -697,7 +697,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
         updateShape(id, { width: graphSettings.strokeWidth });
         const s = shapes.find(sh => sh.id === id);
         if (s && s.synced !== false) {
-          api.drawings.update(id, { width: graphSettings.strokeWidth });
+          api.drawings.update(id, shapeToApiDrawing({ ...s, width: graphSettings.strokeWidth }, currentProject?.id || 0, activeGroupId ?? undefined));
         }
       });
     }
@@ -709,7 +709,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
         updateShape(id, { style: graphSettings.strokeStyle });
         const s = shapes.find(sh => sh.id === id);
         if (s && s.synced !== false) {
-          api.drawings.update(id, { style: graphSettings.strokeStyle });
+          api.drawings.update(id, shapeToApiDrawing({ ...s, style: graphSettings.strokeStyle }, currentProject?.id || 0, activeGroupId ?? undefined));
         }
       });
     }
@@ -721,7 +721,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
         updateShape(id, { fontSize: graphSettings.fontSize });
         const s = shapes.find(sh => sh.id === id);
         if (s && s.synced !== false) {
-          api.drawings.update(id, { fontSize: graphSettings.fontSize });
+          api.drawings.update(id, shapeToApiDrawing({ ...s, fontSize: graphSettings.fontSize }, currentProject?.id || 0, activeGroupId ?? undefined));
         }
       });
     }
@@ -733,7 +733,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
         updateShape(id, { fontFamily: graphSettings.fontFamily });
         const s = shapes.find(sh => sh.id === id);
         if (s && s.synced !== false) {
-          api.drawings.update(id, { fontFamily: graphSettings.fontFamily });
+          api.drawings.update(id, shapeToApiDrawing({ ...s, fontFamily: graphSettings.fontFamily }, currentProject?.id || 0, activeGroupId ?? undefined));
         }
       });
     }
@@ -745,12 +745,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
         updateShape(id, { textDir: graphSettings.textDir });
         const s = shapes.find(sh => sh.id === id);
         if (s && s.synced !== false) {
-          api.drawings.update(id, {
-            textDir: graphSettings.textDir,
-            direction: graphSettings.textDir,
-            text_dir: graphSettings.textDir,
-            textDirection: graphSettings.textDir
-          } as any);
+          api.drawings.update(id, shapeToApiDrawing({ ...s, textDir: graphSettings.textDir }, currentProject?.id || 0, activeGroupId ?? undefined));
         }
       });
     }
@@ -1028,7 +1023,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
 
     if (orphanedShapes.length > 0 && firstGroupId !== undefined) {
       orphanedShapes.forEach(s => {
-        api.drawings.update(s.id, { groupId: firstGroupId }).catch(() => { });
+        api.drawings.update(s.id, shapeToApiDrawing({ ...s, groupId: firstGroupId }, currentProject?.id || 0, firstGroupId)).catch(() => { });
       });
       const updatedShapes = shapes.map(s => {
         if (s.groupId === undefined || s.groupId === null) {
@@ -1580,7 +1575,10 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
             if (timeouts.has(id)) clearTimeout(timeouts.get(id));
 
             const timeoutId = setTimeout(() => {
-              api.nodes.update(id, { x: newX, y: newY }).catch(() => { });
+              const fullNode = useGraphStore.getState().nodes.find(n => n.id === id);
+              if (fullNode) {
+                api.nodes.update(id, { ...fullNode, x: newX, y: newY }).catch(() => { });
+              }
               timeouts.delete(id);
             }, 300);
 
@@ -1610,8 +1608,9 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
             const timeouts = shapeSaveTimeoutsRef.current;
             if (timeouts.has(s.id)) clearTimeout(timeouts.get(s.id));
 
+            const fullDto = shapeToApiDrawing({ ...s, points: newPoints }, currentProject?.id || 0, activeGroupId ?? undefined);
             const timeoutId = setTimeout(() => {
-              api.drawings.update(s.id, { points: newPoints }).catch(() => { });
+              api.drawings.update(s.id, fullDto).catch(() => { });
               timeouts.delete(s.id);
             }, 300);
 
@@ -1769,7 +1768,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
         const updatedShapes = shapes.map(s => s.id === resizedShape.id ? resizedShape : s);
         setShapes(updatedShapes);
         if (resizedShape.synced !== false) {
-          api.drawings.update(resizedShape.id, { points: resizedShape.points })
+          api.drawings.update(resizedShape.id, shapeToApiDrawing(resizedShape, currentProject?.id || 0, activeGroupId ?? undefined))
             .catch(() => { });
         }
       }
@@ -1781,16 +1780,34 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
       currentResizingShapeRef.current = null;
     }
 
-    // 3. Shape Drag End (Selection)
-    if (isDraggingSelection && selectedShapeIds.size > 0) {
-      filteredShapes.filter(s => selectedShapeIds.has(s.id)).forEach(s => {
-        if (s.synced !== false) {
-          api.drawings.update(s.id, { points: s.points })
-            .catch(
-            // err => console.error('Failed to update drawing:', err)
-          );
-        }
-      });
+    if (isDraggingSelection) {
+      // Save Shapes
+      if (selectedShapeIds.size > 0) {
+        filteredShapes.forEach(s => {
+          if (selectedShapeIds.has(s.id) && s.synced !== false) {
+            api.drawings.update(s.id, shapeToApiDrawing(s, currentProject?.id || 0, activeGroupId ?? undefined))
+              .catch(() => { });
+          }
+        });
+      }
+
+      // Save Nodes
+      if (selectedNodeIds.size > 0) {
+        const currentGraphNodes = (graphDataRef.current?.nodes || []) as any[];
+        currentGraphNodes.forEach(n => {
+          if (selectedNodeIds.has(Number(n.id))) {
+            const fullNode = nodes.find(sn => sn.id === n.id);
+            if (fullNode) {
+              api.nodes.update(n.id, {
+                ...fullNode,
+                x: n.x,
+                y: n.y
+              }).catch(() => { });
+            }
+          }
+        });
+      }
+
       setIsDraggingSelection(false);
       setDragStartWorld(null);
     }
@@ -1815,10 +1832,8 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
         setShapes(finalShapes);
         finalShapes.forEach(s => {
           if (selectedShapeIds.has(s.id) && s.synced !== false) {
-            api.drawings.update(s.id, { points: s.points })
-              .catch(
-              // err => console.error('Failed to update drawing:', err)
-            );
+            api.drawings.update(s.id, shapeToApiDrawing(s, currentProject?.id || 0, activeGroupId ?? undefined))
+              .catch(() => { });
           }
         });
       }
@@ -1861,7 +1876,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
 
     // Always clear the start ref
     marqueeStartScreenPosRef.current = null;
-  }, [setShapes, isMarqueeSelecting, marqueeStart, marqueeEnd, filteredShapes, isResizing, isDraggingSelection, selectedShapeIds]);
+  }, [setShapes, isMarqueeSelecting, marqueeStart, marqueeEnd, filteredShapes, isResizing, isDraggingSelection, selectedShapeIds, selectedNodeIds, nodes, currentProject?.id, activeGroupId, shapeToApiDrawing, setSelectedNodeIds, setSelectedShapeIds, setIsMarqueeSelecting]);
 
   // Handle node drag via ForceGraph - move other selected nodes along
   const handleNodeDrag = useCallback((node: any) => {
@@ -1958,7 +1973,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
         setShapes(finalShapes);
         finalShapes.forEach(s => {
           if (selectedShapeIds.has(s.id)) {
-            api.drawings.update(s.id, { points: s.points })
+            api.drawings.update(s.id, shapeToApiDrawing(s, currentProject?.id || 0, activeGroupId ?? undefined))
               .catch(() => { });
           }
         });

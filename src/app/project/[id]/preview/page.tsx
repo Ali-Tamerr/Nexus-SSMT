@@ -245,8 +245,8 @@ export default function PreviewPage({ params }: { params: Promise<{ id: string }
         globalScale: number
     ) => {
         const label = node.title || String(node.id);
-        const fontSize = 12;
-        ctx.font = `600 ${fontSize}px Inter, system-ui, sans-serif`;
+        const fontSize = 10;
+        ctx.font = `500 ${fontSize}px Inter, system-ui, sans-serif`;
 
         const isMatch = !searchQuery || label.toLowerCase().includes(searchQuery.toLowerCase());
         const opacity = isMatch ? 1 : 0.1;
