@@ -243,7 +243,7 @@ export default function PreviewPage({ params }: { params: Promise<{ id: string }
         globalScale: number
     ) => {
         const label = node.title || String(node.id);
-        const fontSize = Math.max(12 / globalScale, 4);
+        const fontSize = 12;
         ctx.font = `600 ${fontSize}px Inter, system-ui, sans-serif`;
 
         const isMatch = !searchQuery || label.toLowerCase().includes(searchQuery.toLowerCase());
@@ -385,18 +385,18 @@ export default function PreviewPage({ params }: { params: Promise<{ id: string }
                     onBackgroundClick={() => setActiveNode(null)}
                     onZoom={handleZoom}
                 />
-
-                {activeNode && (
-                    <NodePreviewPaneContent
-                        activeNode={activeNode}
-                        nodes={nodes}
-                        links={links}
-                        onClose={() => setActiveNode(null)}
-                    />
-                )}
             </div>
 
-            <div className="absolute max-md:hidden top-6 left-1/2 -translate-x-1/2 z-30 text-xs text-zinc-400 bg-zinc-900/80 px-3 py-1.5 rounded-lg border border-zinc-800 pointer-events-none w-max shadow-sm">
+            {activeNode && (
+                <NodePreviewPaneContent
+                    activeNode={activeNode}
+                    nodes={nodes}
+                    links={links}
+                    onClose={() => setActiveNode(null)}
+                />
+            )}
+
+            <div className="absolute top-16 sm:top-6 left-1/2 -translate-x-1/2 z-30 text-xs text-zinc-400 bg-zinc-900/80 px-3 py-1.5 rounded-lg border border-zinc-800 pointer-events-none w-max shadow-sm">
                 Click on a node to view the details and links
             </div>
 

@@ -30,7 +30,7 @@ export function NodePreviewPaneContent({ activeNode, nodes, links, onClose }: No
     };
 
     return (
-        <div className="fixed right-0 top-0 z-30 flex h-full w-96 flex-col border-l border-zinc-800 bg-zinc-900/95 ">
+        <div className="fixed right-0 top-0 z-30 flex h-full w-full sm:w-96 flex-col border-l border-zinc-800 bg-zinc-900/95 shadow-2xl">
             <div className="flex items-center justify-between border-b border-zinc-800 px-4 py-3">
                 <h2 className="text-sm font-semibold text-white">Node Details</h2>
                 <button

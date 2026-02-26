@@ -472,7 +472,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
     ) => {
       const label = node.title || String(node.id);
       const nodeGroup = node.groupId ?? 0;
-      const fontSize = Math.max(12 / globalScale, 4);
+      const fontSize = 12;
       ctx.font = `600 ${fontSize}px Inter, system-ui, sans-serif`;
 
       const nodeId = Number(node.id);
