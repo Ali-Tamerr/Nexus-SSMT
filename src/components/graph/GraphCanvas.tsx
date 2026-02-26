@@ -1064,14 +1064,14 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
   selectedShapeIdsRef.current = selectedShapeIds;
   selectedNodeIdsRefForDelete.current = selectedNodeIds;
 
-  // Force redraw when activeGroupId changes
+  // Force redraw when activeGroupId or text edit mode changes
   useEffect(() => {
     if (graphRef.current) {
       const z = graphRef.current.zoom() || 1;
       graphRef.current.zoom(z * 1.00001, 0);
       setTimeout(() => graphRef.current?.zoom(z, 0), 20);
     }
-  }, [activeGroupId]);
+  }, [activeGroupId, editingShapeId, textInputPos ? true : false]);
 
   const syncUndoRedo = useCallback(async (isUndo: boolean) => {
     const state = useGraphStore.getState();
@@ -2750,7 +2750,8 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
                   top: screenPos.y,
                   transform: (editingShape?.textDir || graphSettings.textDir) === 'rtl' ? 'translateX(-100%)' : 'none',
                   pointerEvents: 'auto',
-                  display: 'grid'
+                  display: 'grid',
+                  width: 'max-content'
                 }}
               >
                 <div
@@ -2758,6 +2759,9 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
                   style={{
                     gridArea: '1 / 1',
                     visibility: 'hidden',
+                    opacity: 0,
+                    color: 'transparent',
+                    pointerEvents: 'none',
                     whiteSpace: 'pre',
                     wordBreak: 'normal',
                     fontSize: ((editingShape?.fontSize || graphSettings.fontSize || 16) * (graphTransform.k || 1)),
@@ -2766,6 +2770,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
                     minWidth: '50px',
                     padding: 0,
                     margin: 0,
+                    border: 'none',
                   }}
                 >
                   {textInputValue + ' '}
@@ -2795,26 +2800,29 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
                     }
                     e.stopPropagation();
                   }}
-                  onBlur={() => {
+                  onBlur={(e) => {
+                    const related = e.relatedTarget as HTMLElement;
+                    if (related && related.closest('.graph-ui-hide')) {
+                      return;
+                    }
+                    const fallbackPos = textInputPos;
                     if (textInputValue.trim()) {
                       if (editingShapeId !== null) {
                         const finalDir = editingShape?.textDir || graphSettings.textDir || 'ltr';
                         updateShape(editingShapeId, { text: textInputValue.trim(), textDir: finalDir, fontFamily: editingShape?.fontFamily || graphSettings.fontFamily });
                         api.drawings.update(editingShapeId, {
+                          ...(editingShape ? shapeToApiDrawing(editingShape, currentProject?.id || 0, activeGroupId ?? undefined) : {}),
                           text: textInputValue.trim(),
                           textDir: finalDir,
-                          direction: finalDir,
-                          text_dir: finalDir,
-                          textDirection: finalDir,
                           fontFamily: editingShape?.fontFamily || graphSettings.fontFamily
                         } as any)
                           .catch();
-                      } else {
+                      } else if (fallbackPos) {
                         const newShape: DrawnShape = {
                           id: Date.now() * -1,
                           projectId: currentProject?.id || 0,
                           type: 'text',
-                          points: [{ x: textInputPos.worldX, y: textInputPos.worldY }],
+                          points: [{ x: fallbackPos.worldX, y: fallbackPos.worldY }],
                           color: graphSettings.strokeColor,
                           width: 0,
                           style: 'solid',
@@ -2882,7 +2890,15 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
               </div>
             );
           })()}
-          <div className="graph-ui-hide" onMouseDown={(e) => e.stopPropagation()}>
+          <div
+            className="graph-ui-hide"
+            onMouseDown={(e) => {
+              e.stopPropagation();
+              if ((e.target as HTMLElement).tagName !== 'INPUT') {
+                e.preventDefault();
+              }
+            }}
+          >
             <DrawingProperties
               activeTool={graphSettings.activeTool}
               selectedShapeType={selectedShapeIds.size === 1 ? shapes.find(s => s.id === Array.from(selectedShapeIds)[0])?.type : undefined}
