@@ -35,6 +35,7 @@ export default function PreviewPage({ params }: { params: Promise<{ id: string }
     const [error, setError] = useState<string | null>(null);
     const [projectName, setProjectName] = useState('');
     const [projectDescription, setProjectDescription] = useState('');
+    const [projectUpdatedAt, setProjectUpdatedAt] = useState<string | undefined>();
     const [wallpaper, setWallpaper] = useState<string>('');
     const [searchQuery, setSearchQuery] = useState('');
     const [nodes, setNodes] = useState<Node[]>([]);
@@ -84,6 +85,7 @@ export default function PreviewPage({ params }: { params: Promise<{ id: string }
                 const project = await api.projects.getById(id);
                 setProjectName(project.name);
                 setProjectDescription(project.description || '');
+                setProjectUpdatedAt(project.updatedAt);
                 setWallpaper(project.wallpaper || '');
 
                 let projectNodes = await api.nodes.getByProject(id);
@@ -348,6 +350,7 @@ export default function PreviewPage({ params }: { params: Promise<{ id: string }
                 onExportJPG={exportToJPG}
                 currentWallpaper={wallpaper}
                 onWallpaperChange={handleWallpaperChange}
+                projectUpdatedAt={projectUpdatedAt}
             />
 
             <div
@@ -396,7 +399,7 @@ export default function PreviewPage({ params }: { params: Promise<{ id: string }
                 />
             )}
 
-            <div className="absolute top-16 sm:top-6 left-1/2 -translate-x-1/2 z-30 text-xs text-zinc-400 bg-zinc-900/80 px-3 py-1.5 rounded-lg border border-zinc-800 pointer-events-none w-max shadow-sm">
+            <div className="absolute top-16 sm:top-6 left-1/2 -translate-x-1/2 z-28 text-xs text-zinc-400 bg-zinc-900/80 px-3 py-1.5 rounded-lg border border-zinc-800 pointer-events-none w-max shadow-sm">
                 Click on a node to view the details and links
             </div>
 

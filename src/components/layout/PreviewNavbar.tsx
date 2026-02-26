@@ -17,6 +17,7 @@ interface PreviewNavbarProps {
     onExportJPG: () => void;
     currentWallpaper?: string;
     onWallpaperChange?: (wallpaper: string) => void;
+    projectUpdatedAt?: string;
 }
 
 const WALLPAPER_COLORS = [
@@ -40,7 +41,8 @@ export function PreviewNavbar({
     onExportPNG,
     onExportJPG,
     currentWallpaper,
-    onWallpaperChange
+    onWallpaperChange,
+    projectUpdatedAt
 }: PreviewNavbarProps) {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [isSaveAsMenuOpen, setIsSaveAsMenuOpen] = useState(false);
@@ -179,8 +181,21 @@ export function PreviewNavbar({
                             <Info className="h-5 w-5" />
                         </button>
                         {showDescription && (
-                            <div className="absolute top-full left-0 mt-2 w-72 rounded-xl border border-zinc-800 bg-zinc-900/95 backdrop-blur-md p-4 text-sm text-zinc-300 shadow-2xl z-[101] whitespace-pre-wrap animate-in fade-in zoom-in-95 duration-200">
-                                {projectDescription || <span className="text-zinc-500 italic">No description</span>}
+                            <div className="absolute top-full left-0 mt-2 w-72 rounded-xl border border-zinc-800 bg-zinc-900/95 backdrop-blur-md p-4 text-sm text-zinc-300 shadow-2xl z-[101] flex flex-col gap-3 animate-in fade-in zoom-in-95 duration-200">
+                                <div className="whitespace-pre-wrap">
+                                    {projectDescription || <span className="text-zinc-500 italic">No description</span>}
+                                </div>
+                                {projectUpdatedAt && (
+                                    <div className="pt-3 border-t border-zinc-800/50 text-[10px] text-zinc-500">
+                                        Last edit on {new Date(projectUpdatedAt).toLocaleString(undefined, {
+                                            year: 'numeric',
+                                            month: 'short',
+                                            day: 'numeric',
+                                            hour: '2-digit',
+                                            minute: '2-digit'
+                                        })}
+                                    </div>
+                                )}
                             </div>
                         )}
                     </div>
@@ -219,6 +234,17 @@ export function PreviewNavbar({
                         <div className="whitespace-pre-wrap">
                             {projectDescription || <span className="text-zinc-500 italic">No description</span>}
                         </div>
+                        {projectUpdatedAt && (
+                            <div className="mt-4 pt-3 border-t border-zinc-800/50 text-xs text-zinc-500">
+                                Last edit on {new Date(projectUpdatedAt).toLocaleString(undefined, {
+                                    year: 'numeric',
+                                    month: 'short',
+                                    day: 'numeric',
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                })}
+                            </div>
+                        )}
                     </div>
                 </div>
             )}

@@ -1184,6 +1184,10 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
         const selectedNodes = graphDataRef.current.nodes.filter((n: any) => selectedNodeIdsRef.current.has(Number(n.id)));
         const selectedShapes = shapesRef.current.filter(s => selectedShapeIdsRef.current.has(s.id));
 
+        if (selectedNodes.length === 0 && selectedShapes.length === 1 && selectedShapes[0].type === 'text' && selectedShapes[0].text) {
+          navigator.clipboard.writeText(selectedShapes[0].text).catch(() => { });
+        }
+
         if (selectedNodes.length > 0 || selectedShapes.length > 0) {
           clipboardRef.current = {
             nodes: selectedNodes.map((n: any) => ({ ...n })), // Shallow copy properties
@@ -2704,6 +2708,8 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
                 if (clickedTextShape && graphRef.current) {
                   setEditingShapeId(clickedTextShape.id);
                   setTextInputValue(clickedTextShape.text || '');
+                  setSelectedShapeIds(new Set([clickedTextShape.id]));
+                  setSelectedNodeIds(new Set());
 
                   // Position input at shape anchor
                   const screenPos = graphRef.current.graph2ScreenCoords(clickedTextShape.points[0].x, clickedTextShape.points[0].y);
@@ -2715,6 +2721,8 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
                   });
                 } else {
                   setEditingShapeId(null);
+                  setSelectedShapeIds(new Set());
+                  setSelectedNodeIds(new Set());
                   setTextInputPos({ x: e.clientX, y: e.clientY, worldX: worldPoint.x, worldY: worldPoint.y });
                   setTextInputValue('');
                 }
@@ -2741,9 +2749,27 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
                   left: screenPos.x,
                   top: screenPos.y,
                   transform: (editingShape?.textDir || graphSettings.textDir) === 'rtl' ? 'translateX(-100%)' : 'none',
-                  pointerEvents: 'auto'
+                  pointerEvents: 'auto',
+                  display: 'grid'
                 }}
               >
+                <div
+                  aria-hidden="true"
+                  style={{
+                    gridArea: '1 / 1',
+                    visibility: 'hidden',
+                    whiteSpace: 'pre',
+                    wordBreak: 'normal',
+                    fontSize: ((editingShape?.fontSize || graphSettings.fontSize || 16) * (graphTransform.k || 1)),
+                    fontFamily: editingShape?.fontFamily || graphSettings.fontFamily || 'Inter',
+                    lineHeight: 1.2,
+                    minWidth: '50px',
+                    padding: 0,
+                    margin: 0,
+                  }}
+                >
+                  {textInputValue + ' '}
+                </div>
                 <textarea
                   autoFocus
                   dir={editingShape?.textDir || graphSettings.textDir || 'ltr'}
@@ -2835,20 +2861,19 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
                       }
                     }, 50);
                   }}
-                  className="bg-transparent border-none outline-none text-white p-0 resize-none overflow-visible"
+                  className="bg-transparent border-none outline-none text-white p-0 resize-none overflow-hidden"
                   style={{
+                    gridArea: '1 / 1',
+                    width: '100%',
+                    height: '100%',
                     fontSize: ((editingShape?.fontSize || graphSettings.fontSize || 16) * (graphTransform.k || 1)),
                     fontFamily: editingShape?.fontFamily || graphSettings.fontFamily || 'Inter',
                     color: editingShape?.color || graphSettings.strokeColor,
                     lineHeight: 1.2,
                     textAlign: (editingShape?.textDir || graphSettings.textDir) === 'rtl' ? 'right' : 'left',
-                    width: 'max-content',
-                    minWidth: '200px',
-                    maxWidth: '90vw',
-                    whiteSpace: 'pre-wrap',
-                    wordBreak: 'break-word',
+                    whiteSpace: 'pre',
+                    wordBreak: 'normal',
                     display: 'block',
-                    overflow: 'visible',
                     willChange: 'width, height',
                     transform: 'translateZ(0)',
                   }}
