@@ -218,14 +218,97 @@ export function isPointNearShape(
   const bounds = getShapeBounds(shape, globalScale);
   if (!bounds) return false;
 
-  const margin = tolerance / globalScale;
-
-  return (
-    point.x >= bounds.minX - margin &&
-    point.x <= bounds.maxX + margin &&
-    point.y >= bounds.minY - margin &&
-    point.y <= bounds.maxY + margin
+  const margin = Math.max(
+    tolerance / globalScale,
+    (shape.width || 2) / 2 + 5 / globalScale,
   );
+
+  // Quick bounding box rejection
+  if (
+    point.x < bounds.minX - margin ||
+    point.x > bounds.maxX + margin ||
+    point.y < bounds.minY - margin ||
+    point.y > bounds.maxY + margin
+  ) {
+    return false;
+  }
+
+  // Text shapes are solid blocks, hit test the bounding box (which we just did)
+  if (shape.type === "text") {
+    return true;
+  }
+
+  // Freehand lines (pen, arrow, line)
+  if (shape.type === "pen" || shape.type === "arrow" || shape.type === "line") {
+    if (shape.points.length < 2) return true; // Single point is basically the bounding box
+    for (let i = 0; i < shape.points.length - 1; i++) {
+      if (
+        distanceToSegment(point, shape.points[i], shape.points[i + 1]) <= margin
+      ) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  // Geometric shapes: Check distance to the stroke (perimeter) instead of filling
+  if (shape.type === "rectangle") {
+    const dLeft = Math.abs(point.x - bounds.minX);
+    const dRight = Math.abs(point.x - bounds.maxX);
+    const dTop = Math.abs(point.y - bounds.minY);
+    const dBottom = Math.abs(point.y - bounds.maxY);
+
+    const nearVerticalEdge =
+      (dLeft <= margin || dRight <= margin) &&
+      point.y >= bounds.minY - margin &&
+      point.y <= bounds.maxY + margin;
+    const nearHorizontalEdge =
+      (dTop <= margin || dBottom <= margin) &&
+      point.x >= bounds.minX - margin &&
+      point.x <= bounds.maxX + margin;
+
+    return nearVerticalEdge || nearHorizontalEdge;
+  }
+
+  if (shape.type === "diamond") {
+    const midX = (bounds.minX + bounds.maxX) / 2;
+    const midY = (bounds.minY + bounds.maxY) / 2;
+    const p1 = { x: midX, y: bounds.minY };
+    const p2 = { x: bounds.maxX, y: midY };
+    const p3 = { x: midX, y: bounds.maxY };
+    const p4 = { x: bounds.minX, y: midY };
+
+    return (
+      distanceToSegment(point, p1, p2) <= margin ||
+      distanceToSegment(point, p2, p3) <= margin ||
+      distanceToSegment(point, p3, p4) <= margin ||
+      distanceToSegment(point, p4, p1) <= margin
+    );
+  }
+
+  if (shape.type === "circle") {
+    const rx = (bounds.maxX - bounds.minX) / 2;
+    const ry = (bounds.maxY - bounds.minY) / 2;
+    const cx = bounds.minX + rx;
+    const cy = bounds.minY + ry;
+
+    if (rx === 0 || ry === 0) return true;
+
+    const dx = point.x - cx;
+    const dy = point.y - cy;
+
+    // Normalize point to a unit circle to find relative distance
+    const normDist = Math.sqrt((dx * dx) / (rx * rx) + (dy * dy) / (ry * ry));
+
+    // Approximate distance from the stroke
+    const avgR = (rx + ry) / 2;
+    const distToEdge = Math.abs(normDist - 1) * avgR;
+
+    return distToEdge <= margin;
+  }
+
+  // Fallback for any unknown shapes
+  return true;
 }
 
 export function drawSelectionBox(
