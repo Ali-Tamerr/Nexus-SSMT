@@ -1166,7 +1166,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
             setActiveNode(null);
           }
         }
-      } else if ((e.ctrlKey || e.metaKey) && e.key === 'c') {
+      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'c') {
         const activeElement = document.activeElement;
         if (activeElement && (activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA')) return;
 
@@ -1184,17 +1184,17 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
           };
           // Optional: Display "Copied" toast
         }
-      } else if ((e.ctrlKey || e.metaKey) && e.key === 'v') {
+      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'v') {
         const activeElement = document.activeElement;
         if (activeElement && (activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA')) return;
+        
+        const { currentProject, currentUserId, graphSettings, addShape, activeGroupId } = useGraphStore.getState();
+        if (!currentProject) return;
 
-        if (clipboardRef.current) {
+        // Try pasting from clipboardRef first, otherwise read from OS clipboard
+        if (clipboardRef.current && (clipboardRef.current.nodes.length > 0 || clipboardRef.current.shapes.length > 0)) {
           e.preventDefault();
           const { nodes: cpNodes, shapes: cpShapes } = clipboardRef.current;
-          const { currentProject } = useGraphStore.getState();
-          const currentUserId = useGraphStore.getState().currentUserId;
-
-          if (!currentProject) return;
 
           setSelectedNodeIds(new Set());
           setSelectedShapeIds(new Set());
@@ -1263,6 +1263,36 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
               points: s.points.map((p: any) => ({ x: p.x + offset, y: p.y + offset })),
             })),
           };
+        } else {
+          // Fallback to paste text from OS clipboard as a new Text Shape
+          navigator.clipboard.readText().then(text => {
+            if (!text || text.trim() === '') return;
+            
+            const center = graphRef.current?.centerAt() || { x: 0, y: 0 };
+            
+            const payload = {
+              projectId: currentProject.id,
+              type: 'text',
+              points: [{ x: center.x, y: center.y }],
+              color: graphSettings.strokeColor || '#355ea1',
+              width: graphSettings.strokeWidth || 2,
+              style: graphSettings.strokeStyle || 'solid',
+              text: text.trim(),
+              fontSize: graphSettings.fontSize || 16,
+              fontFamily: graphSettings.fontFamily || 'Inter',
+              textDir: graphSettings.textDir || 'ltr',
+              direction: graphSettings.textDir || 'ltr',
+              groupId: activeGroupId ?? undefined
+            };
+
+            api.drawings.create(payload)
+              .then(newShape => {
+                addShape(newShape);
+                setSelectedShapeIds(new Set([newShape.id]));
+                setSelectedNodeIds(new Set());
+              })
+              .catch(() => {});
+          }).catch(() => {});
         }
       } else if (e.key === 'Escape') {
         setSelectedShapeIds(new Set());
