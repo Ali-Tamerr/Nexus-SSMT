@@ -17,17 +17,17 @@ interface GraphControlsProps {
   onSettingsChange: (settings: Partial<GraphSettings>) => void;
 }
 
-const drawingTools: { id: DrawingTool; icon: typeof Hand; label: string }[] = [
-  { id: 'pan', icon: Hand, label: 'Pan' },
-  { id: 'select', icon: MousePointer2, label: 'Select' },
-  { id: 'rectangle', icon: Square, label: 'Rectangle' },
-  { id: 'diamond', icon: Diamond, label: 'Diamond' },
-  { id: 'circle', icon: Circle, label: 'Circle' },
-  { id: 'arrow', icon: ArrowRight, label: 'Arrow' },
-  { id: 'line', icon: Minus, label: 'Line' },
-  { id: 'pen', icon: Pencil, label: 'Draw' },
-  { id: 'text', icon: Type, label: 'Text' },
-  { id: 'eraser', icon: Eraser, label: 'Eraser' },
+const drawingTools: { id: DrawingTool; icon: typeof Hand; label: string; keyBind?: string }[] = [
+  { id: 'pan', icon: Hand, label: 'Pan', keyBind: 'H' },
+  { id: 'select', icon: MousePointer2, label: 'Select', keyBind: 'V' },
+  { id: 'rectangle', icon: Square, label: 'Rectangle', keyBind: 'M' },
+  { id: 'diamond', icon: Diamond, label: 'Diamond', keyBind: 'M' },
+  { id: 'circle', icon: Circle, label: 'Circle', keyBind: 'M' },
+  { id: 'arrow', icon: ArrowRight, label: 'Arrow', keyBind: 'A' },
+  { id: 'line', icon: Minus, label: 'Line', keyBind: 'L' },
+  { id: 'pen', icon: Pencil, label: 'Draw', keyBind: 'P' },
+  { id: 'text', icon: Type, label: 'Text', keyBind: 'T' },
+  { id: 'eraser', icon: Eraser, label: 'Eraser', keyBind: 'E' },
 ];
 
 export function GraphControls({ settings, onSettingsChange }: GraphControlsProps) {
@@ -65,6 +65,79 @@ export function GraphControls({ settings, onSettingsChange }: GraphControlsProps
     onSettingsChange({ activeTool: tool });
   };
 
+  const mPressCountRef = useRef<number>(0);
+  const mPressTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    if (settings.isPreviewMode) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't trigger if user is typing in an input or textarea
+      const activeEl = document.activeElement;
+      if (activeEl instanceof HTMLInputElement || activeEl instanceof HTMLTextAreaElement || activeEl?.getAttribute('contenteditable') === 'true') {
+        return;
+      }
+
+      // Prevent triggering if modifiers are pressed (except Shift which might be used intentionally, though usually not)
+      if (e.ctrlKey || e.altKey || e.metaKey) return;
+
+      const key = e.key.toLowerCase();
+
+      if (key !== 'm') {
+        mPressCountRef.current = 0;
+      }
+
+      switch (key) {
+        case 'h':
+          setActiveTool('pan');
+          break;
+        case 'v':
+          setActiveTool('select');
+          break;
+        case 'a':
+          setActiveTool('arrow');
+          break;
+        case 'l':
+          setActiveTool('line');
+          break;
+        case 'p':
+          setActiveTool('pen');
+          break;
+        case 't':
+          setActiveTool('text');
+          break;
+        case 'e':
+          setActiveTool('eraser');
+          break;
+        case 'm':
+          // Increment press count
+          mPressCountRef.current += 1;
+
+          if (mPressCountRef.current === 1) {
+            setActiveTool('rectangle');
+          } else if (mPressCountRef.current === 2) {
+            setActiveTool('diamond');
+          } else if (mPressCountRef.current >= 3) {
+            setActiveTool('circle');
+            mPressCountRef.current = 0; // Reset after circle
+          }
+
+          // Reset count if not pressed again within 1 second
+          if (mPressTimerRef.current) clearTimeout(mPressTimerRef.current);
+          mPressTimerRef.current = setTimeout(() => {
+            mPressCountRef.current = 0;
+          }, 1000);
+          break;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      if (mPressTimerRef.current) clearTimeout(mPressTimerRef.current);
+    };
+  }, [settings.isPreviewMode, setActiveTool]);
+
   return (
     <>
       {!settings.isPreviewMode && (
@@ -75,22 +148,84 @@ export function GraphControls({ settings, onSettingsChange }: GraphControlsProps
             <div
               ref={scrollContainerRef}
               onScroll={checkScroll}
-              className="flex items-center gap-1 overflow-x-auto scrollbar-none max-w-full"
+              className="flex items-center gap-1 overflow-x-auto scrollbar-none  max-w-full"
             >
-              {drawingTools.map((tool) => {
+              {/* Group 1: Pan, Select */}
+              {drawingTools.slice(0, 2).map((tool) => {
                 const Icon = tool.icon;
                 const isActive = settings.activeTool === tool.id;
                 return (
                   <button
                     key={tool.id}
                     onClick={() => setActiveTool(tool.id)}
-                    className={`p-2 rounded-lg transition-all flex-shrink-0 ${isActive
+                    className={`p-2 rounded-lg transition-all flex-shrink-0 flex flex-col items-center justify-center gap-2.5 ${isActive
                       ? 'bg-[#355ea1] text-white'
                       : 'text-zinc-400 hover:bg-zinc-800 hover:text-white'
                       }`}
-                    title={tool.label}
+                    title={`${tool.label} (${tool.keyBind})`}
                   >
                     <Icon className="h-4 w-4" />
+                    {tool.keyBind && (
+                      <span className="text-[10px] leading-none font-medium opacity-60 hidden md:block">
+                        {tool.keyBind}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+
+              {/* Group 2: Shape shortcuts (Rectangle, Diamond, Circle) combining 'M' */}
+              <div className="relative flex items-center gap-1 z-0">
+                {/* Visual Pill Background for M keys */}
+                <div className="absolute left-[4px] right-[4px] bottom-1 h-[18px] bg-zinc-900/95 backdrop-blur-sm rounded-full pointer-events-none hidden md:block z-10 shadow-[0_-1px_3px_rgba(0,0,0,0.1)] border border-zinc-700/30" />
+
+                {drawingTools.slice(2, 5).map((tool, index) => {
+                  const Icon = tool.icon;
+                  const isActive = settings.activeTool === tool.id;
+                  return (
+                    <button
+                      key={tool.id}
+                      onClick={() => setActiveTool(tool.id)}
+                      className={`relative p-2 rounded-lg flex-shrink-0 flex flex-col items-center justify-center gap-2.5 transition-colors duration-200 ${isActive
+                        ? 'text-white'
+                        : 'text-zinc-400 hover:bg-zinc-800 hover:text-white bg-transparent'
+                        }`}
+                      title={`${tool.label} (${tool.keyBind})`}
+                    >
+                      {/* Active Background Layer separated to allow precise z-layering with the pill */}
+                      {isActive && (
+                        <div className="absolute inset-0 bg-[#355ea1] shadow-sm rounded-lg -z-10" />
+                      )}
+
+                      <Icon className="h-4 w-4 relative z-20 pointer-events-none" />
+                      <span className={`text-[10px] leading-none font-medium hidden md:block relative z-[30] pointer-events-none ${index === 1 ? 'visible text-zinc-500' : 'opacity-0'}`} aria-hidden="true">
+                        {tool.keyBind}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Group 3: Remaining tools */}
+              {drawingTools.slice(5).map((tool) => {
+                const Icon = tool.icon;
+                const isActive = settings.activeTool === tool.id;
+                return (
+                  <button
+                    key={tool.id}
+                    onClick={() => setActiveTool(tool.id)}
+                    className={`p-2 rounded-lg transition-all flex-shrink-0 flex flex-col items-center justify-center gap-2.5 ${isActive
+                      ? 'bg-[#355ea1] text-white'
+                      : 'text-zinc-400 hover:bg-zinc-800 hover:text-white'
+                      }`}
+                    title={`${tool.label} (${tool.keyBind})`}
+                  >
+                    <Icon className="h-4 w-4" />
+                    {tool.keyBind && (
+                      <span className="text-[10px] leading-none font-medium opacity-60 hidden md:block">
+                        {tool.keyBind}
+                      </span>
+                    )}
                   </button>
                 );
               })}
