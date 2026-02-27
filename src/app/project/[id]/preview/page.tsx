@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 
 import { api, ApiDrawing } from '@/lib/api';
+import { useAuthStore } from '@/store/useAuthStore';
 import { NODE_COLORS } from '@/lib/constants';
 import { LoadingScreen } from '@/components/ui';
 import { Node, Link as LinkType, DrawnShape, Group } from '@/types/knowledge';
@@ -30,6 +31,7 @@ function adjustBrightness(hex: string, percent: number): string {
 export default function PreviewPage({ params }: { params: Promise<{ id: string }> }) {
     const { id: idParam } = use(params);
     const id = Number(idParam);
+    const { user } = useAuthStore();
     const [isMounted, setIsMounted] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -122,7 +124,18 @@ export default function PreviewPage({ params }: { params: Promise<{ id: string }
                 });
                 setNodes(projectNodes);
 
-                const allLinks = await api.links.getAll();
+                let allLinks: LinkType[] = [];
+                try {
+                    if (user?.id) {
+                        allLinks = await api.links.getByUser(user.id);
+                    } else {
+                        allLinks = await api.links.getAll();
+                    }
+                } catch (linkErr) {
+                    console.warn('[Preview] Failed to fetch links by user, falling back to global fetch:', linkErr);
+                    allLinks = await api.links.getAll().catch(() => []);
+                }
+
                 const nodeIds = new Set(projectNodes.map(n => n.id));
                 const projectLinks = allLinks.filter(
                     l => nodeIds.has(l.sourceId) || nodeIds.has(l.targetId)

@@ -893,13 +893,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
     }
   }, [shapes]);
 
-  // Clear text input when switching tools
-  useEffect(() => {
-    if (!isTextTool && textInputPos) {
-      setTextInputPos(null);
-      setTextInputValue('');
-    }
-  }, [graphSettings.activeTool, isTextTool, textInputPos]);
+
 
   useEffect(() => {
     if (!isResizing || !graphRef.current) return;
@@ -2817,7 +2811,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
                   }}
                   onBlur={(e) => {
                     const related = e.relatedTarget as HTMLElement;
-                    if (related && related.closest('.graph-ui-hide')) {
+                    if (related && (related.closest('.drawing-properties-panel') || related.closest('.color-picker-container'))) {
                       return;
                     }
                     const fallbackPos = textInputPos;

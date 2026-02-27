@@ -102,9 +102,14 @@ export default function EditorPage() {
                 };
                 setCurrentProject(mergedProject);
                 setLoadingProgress(35);
+            } catch (err: any) {
+                console.error('[Editor] Failed to fetch project:', projectId, err);
+                setError(`Failed to load project details: ${err.message}`);
+                // Don't return, try to load nodes anyway
+            }
 
-                const GROUP_COLORS = ['#8B5CF6', '#355ea1', '#10B981', '#F59E0B', '#EF4444', '#EC4899', '#06B6D4', '#84CC16'];
-
+            try {
+                let projectNodes = await api.nodes.getByProject(projectId);
                 const hashString = (numId: number) => {
                     const str = String(numId);
                     let hash = 0;
@@ -116,7 +121,8 @@ export default function EditorPage() {
                     return Math.abs(hash);
                 };
 
-                let projectNodes = await api.nodes.getByProject(projectId);
+                const GROUP_COLORS = ['#8B5CF6', '#355ea1', '#10B981', '#F59E0B', '#EF4444', '#EC4899', '#06B6D4', '#84CC16'];
+
                 projectNodes = projectNodes.map((n) => {
                     const isValid = (c: any) => typeof c === 'string' && c.trim() && c !== 'null' && c !== 'undefined';
                     if (!isValid(n.customColor)) {
@@ -127,7 +133,19 @@ export default function EditorPage() {
                 setNodes(projectNodes);
                 setLoadingProgress(75);
 
-                const allLinks = await api.links.getAll();
+                // Fetch links - attempt to fetch by user first as it's more efficient
+                let allLinks: any[] = [];
+                try {
+                    if (user?.id) {
+                        allLinks = await api.links.getByUser(user.id);
+                    } else {
+                        allLinks = await api.links.getAll();
+                    }
+                } catch (linkErr) {
+                    console.warn('[Editor] Failed to fetch links by user, falling back to global fetch:', linkErr);
+                    allLinks = await api.links.getAll().catch(() => []);
+                }
+
                 const nodeIds = new Set(projectNodes.map(n => n.id));
                 const projectLinks = allLinks.filter(
                     l => nodeIds.has(l.sourceId) || nodeIds.has(l.targetId)
@@ -135,8 +153,9 @@ export default function EditorPage() {
                 setLinks(projectLinks);
                 setLoadingProgress(100);
             } catch (err: any) {
-                console.warn('Failed to load project data:', err.message);
-                setNodes([]);
+                console.warn('Failed to load project nodes/links:', err.message);
+                // Only clear if nodes fetch failed
+                if (nodes.length === 0) setNodes([]);
                 setLinks([]);
             } finally {
                 setLoading(false);
