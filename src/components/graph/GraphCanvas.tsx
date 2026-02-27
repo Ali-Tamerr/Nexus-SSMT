@@ -1311,6 +1311,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
   const dragGroupRef = useRef<{
     active: boolean;
     startMouse: { x: number; y: number };
+    startNodePos: { x: number; y: number };
     nodeId: string;
     initialNodes: Map<string, { x: number; y: number; fx?: number; fy?: number }>;
     initialShapes: Map<string, DrawnShape['points']>;
@@ -1413,6 +1414,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
           }
           return s;
         });
+        setShapes(shapesRef.current); // Trigger render
       }
       return;
     }
@@ -1686,6 +1688,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
     const nodeHitRadius = 15 / scale;
     let clickedNodeId: number | null = null;
     let closestDist = Infinity;
+    let draggedNodePos = { x: 0, y: 0 };
 
     graphDataRef.current.nodes.forEach((n: any) => {
       const dx = (n.x ?? 0) - worldPoint.x;
@@ -1694,6 +1697,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
       if (dist <= nodeHitRadius && dist < closestDist) {
         closestDist = dist;
         clickedNodeId = Number(n.id);
+        draggedNodePos = { x: n.x ?? 0, y: n.y ?? 0 };
       }
     });
 
@@ -1724,6 +1728,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
       dragGroupRef.current = {
         active: true,
         startMouse: worldPoint,
+        startNodePos: draggedNodePos,
         nodeId: clickedNodeId,
         initialNodes,
         initialShapes
@@ -1885,10 +1890,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
     const startMouse = dragGroupRef.current.startMouse;
 
     // The dragged node's new position gives us the delta
-    const draggedNodeInitial = {
-      x: startMouse.x,
-      y: startMouse.y
-    };
+    const draggedNodeInitial = dragGroupRef.current.startNodePos;
     const dx = (node.x ?? 0) - draggedNodeInitial.x;
     const dy = (node.y ?? 0) - draggedNodeInitial.y;
 
@@ -1920,6 +1922,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
         }
         return s;
       });
+      setShapes(shapesRef.current); // Trigger render
     }
   }, []);
 
