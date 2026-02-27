@@ -23,10 +23,10 @@ export function ClassroomIntegration({ isOpen, onClose }: ClassroomIntegrationPr
 
   const { hasAccess } = useHasClassroomAccess();
   const { user } = useAuthStore();
-  const { 
-    addNode, 
-    setActiveNode, 
-    currentProject, 
+  const {
+    addNode,
+    setActiveNode,
+    currentProject,
     currentUserId,
     toggleEditor,
     activeGroupId
@@ -78,9 +78,8 @@ export function ClassroomIntegration({ isOpen, onClose }: ClassroomIntegrationPr
     setModalState('course-selection');
   };
 
-  const handleItemSelect = async (
-    item: CourseWork | CourseWorkMaterial, 
-    type: 'assignment' | 'material'
+  const handleItemsSelect = async (
+    items: { item: CourseWork | CourseWorkMaterial, type: 'assignment' | 'material' }[]
   ) => {
     if (!currentProject || !effectiveUserId) {
       console.error('Missing data:', { currentProject, effectiveUserId, currentUserId, userId: user?.id });
@@ -92,7 +91,7 @@ export function ClassroomIntegration({ isOpen, onClose }: ClassroomIntegrationPr
       // Get or create a valid group for the node
       // Prefer the activeGroupId (currently selected tab) if available
       let groupId = activeGroupId || 0;
-      
+
       // If no active group, fetch existing groups
       if (!groupId) {
         try {
@@ -125,77 +124,55 @@ export function ClassroomIntegration({ isOpen, onClose }: ClassroomIntegrationPr
         return;
       }
 
-      // Helper function to safely get title and content
-      const getItemData = (item: CourseWork | CourseWorkMaterial) => {
-        if (type === 'assignment') {
-          const courseWork = item as CourseWork;
-          return {
-            title: courseWork.title || 'Untitled Assignment',
-            content: courseWork.description || ''
-          };
-        } else {
-          const material = item as CourseWorkMaterial;
-          return {
-            title: material.title || 'Untitled Material',
-            content: material.description || ''
-          };
-        }
-      };
-
-      const { title: nodeTitle, content: nodeContent } = getItemData(item);
-      
-      // Generate random position for the node
-      const randomX = (Math.random() - 0.5) * 150;
-      const randomY = (Math.random() - 0.5) * 150;
-      
-      // Generate a random color
-      const GROUP_COLORS = ['#8B5CF6', '#355ea1', '#10B981', '#F59E0B', '#EF4444', '#EC4899', '#06B6D4', '#84CC16'];
-      const randomColor = GROUP_COLORS[Math.floor(Math.random() * GROUP_COLORS.length)];
-      
-      // Create the node
-      const newNode = await api.nodes.create({
-        title: nodeTitle,
-        content: nodeContent,
-        projectId: currentProject.id,
-        groupId: groupId,
-        userId: effectiveUserId,
-        x: randomX,
-        y: randomY,
-        customColor: randomColor,
-      });
-
-      // Add attachments if the item has materials
-      if (item.materials && item.materials.length > 0) {
-        const attachments = item.materials.map(material => {
-          const materialInfo = extractMaterialInfo(material);
-          return {
-            fileName: materialInfo.title,
-            fileUrl: materialInfo.url || '',
-          };
-        });
-
-        // Add each attachment
-        for (const attachment of attachments) {
-          if (attachment.fileUrl) {
-            try {
-              await api.attachments.create({
-                nodeId: newNode.id,
-                fileName: attachment.fileName,
-                fileUrl: attachment.fileUrl,
-              });
-            } catch (error) {
-              console.error('Failed to add attachment:', error);
-            }
+      // Prepare payload for batch creation
+      const batchPayload = items.map(({ item, type }) => {
+        // Helper function to safely get title and content
+        const getItemData = (i: CourseWork | CourseWorkMaterial) => {
+          if (type === 'assignment') {
+            const courseWork = i as CourseWork;
+            return {
+              title: courseWork.title || 'Untitled Assignment',
+              content: courseWork.description || ''
+            };
+          } else {
+            const material = i as CourseWorkMaterial;
+            return {
+              title: material.title || 'Untitled Material',
+              content: material.description || ''
+            };
           }
-        }
-      }
+        };
 
-      // Add Classroom source link as attachment
-      if (item.alternateLink) {
-        try {
+        const { title: nodeTitle, content: nodeContent } = getItemData(item);
+
+        // Generate random position for the node
+        const randomX = (Math.random() - 0.5) * 150;
+        const randomY = (Math.random() - 0.5) * 150;
+
+        // Generate a random color
+        const GROUP_COLORS = ['#8B5CF6', '#355ea1', '#10B981', '#F59E0B', '#EF4444', '#EC4899', '#06B6D4', '#84CC16'];
+        const randomColor = GROUP_COLORS[Math.floor(Math.random() * GROUP_COLORS.length)];
+
+        // Handle attachments
+        const nodeAttachments: any[] = [];
+
+        if (item.materials && item.materials.length > 0) {
+          item.materials.forEach(material => {
+            const materialInfo = extractMaterialInfo(material);
+            if (materialInfo.url) {
+              nodeAttachments.push({
+                fileName: materialInfo.title || 'Untitled',
+                fileUrl: materialInfo.url,
+              });
+            }
+          });
+        }
+
+        // Add Classroom source link as attachment
+        if (item.alternateLink) {
           let itemTitle: string;
           let typeLabel: string;
-          
+
           if (type === 'assignment') {
             itemTitle = (item as CourseWork).title;
             typeLabel = 'Assignment';
@@ -203,45 +180,42 @@ export function ClassroomIntegration({ isOpen, onClose }: ClassroomIntegrationPr
             itemTitle = (item as CourseWorkMaterial).title;
             typeLabel = 'Material';
           }
-          
-          await api.attachments.create({
-            nodeId: newNode.id,
+
+          nodeAttachments.push({
             fileName: `${typeLabel}: ${itemTitle || 'Untitled'}`,
             fileUrl: item.alternateLink,
           });
-        } catch (error) {
-          console.error('Failed to add Classroom source link:', error);
         }
-      }
 
-      // Fetch the complete node with attachments
-      const completeNode = await api.nodes.getById(newNode.id);
-      
-      // Explicitly fetch attachments since the node endpoint may not include them
-      const nodeAttachments = await api.attachments.getByNode(newNode.id);
-      completeNode.attachments = nodeAttachments;
-      
+        return {
+          title: nodeTitle,
+          content: nodeContent,
+          projectId: currentProject.id,
+          groupId: groupId,
+          userId: effectiveUserId,
+          x: randomX,
+          y: randomY,
+          customColor: randomColor,
+          attachments: nodeAttachments
+        };
+      });
+
+      // Call batch endpoint
+      const newNodes = await api.nodes.batchCreate(batchPayload);
+
       // Add to store and set as active
-      addNode(completeNode);
-      setActiveNode(completeNode);
-      toggleEditor(true);
-
-      let displayTitle: string;
-      if (type === 'assignment') {
-        displayTitle = (item as CourseWork).title;
-      } else {
-        displayTitle = (item as CourseWorkMaterial).title;
+      if (newNodes && newNodes.length > 0) {
+        newNodes.forEach(node => addNode(node));
+        setActiveNode(newNodes[newNodes.length - 1]);
+        toggleEditor(true);
       }
 
-      showToast(
-        `Node created from ${type}: ${displayTitle || 'content'}`, 
-        'info'
-      );
+      showToast(`Successfully added ${items.length} node(s) from Classroom`, 'success');
 
       handleClose();
     } catch (error) {
-      console.error('Failed to create node from Classroom item:', error);
-      showToast('Failed to create node from Classroom item', 'error');
+      console.error('Failed to create nodes from Classroom items:', error);
+      showToast('Failed to create nodes from Classroom items', 'error');
     }
   };
 
@@ -252,19 +226,19 @@ export function ClassroomIntegration({ isOpen, onClose }: ClassroomIntegrationPr
         onClose={handleClose}
         onSuccess={handleAuthSuccess}
       />
-      
+
       <ClassroomSelectionModal
         isOpen={isOpen && modalState === 'course-selection'}
         onClose={handleClose}
         onCourseSelect={handleCourseSelect}
       />
-      
+
       <SectionMaterialModal
         isOpen={isOpen && modalState === 'section-material'}
         onClose={handleClose}
         course={selectedCourse}
         onBack={handleBackToCourses}
-        onItemSelect={handleItemSelect}
+        onItemsSelect={handleItemsSelect}
       />
     </>
   );

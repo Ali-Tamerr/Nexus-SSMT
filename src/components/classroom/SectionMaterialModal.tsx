@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { ArrowLeft, FileText, Video, Link2, FormInput, Loader2, Calendar, Clock, BookOpen } from 'lucide-react';
+import { ArrowLeft, FileText, Video, Link2, FormInput, Loader2, Calendar, BookOpen, CheckSquare, Square, Plus } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 import { useCourseWork, useCourseMaterials } from '@/hooks/useClassroomApi';
@@ -10,18 +10,17 @@ interface SectionMaterialModalProps {
   onClose: () => void;
   course: ClassroomCourse | null;
   onBack: () => void;
-  onItemSelect: (item: CourseWork | CourseWorkMaterial, type: 'assignment' | 'material') => void;
+  onItemsSelect: (items: { item: CourseWork | CourseWorkMaterial, type: 'assignment' | 'material' }[]) => void;
 }
 
 interface MaterialItemProps {
   item: CourseWork | CourseWorkMaterial;
   type: 'assignment' | 'material';
-  onSelect: () => void;
-  isLoading?: boolean;
-  disabled?: boolean;
+  isSelected: boolean;
+  onToggle: () => void;
 }
 
-function MaterialItem({ item, type, onSelect, isLoading = false, disabled = false }: MaterialItemProps) {
+function MaterialItem({ item, type, isSelected, onToggle }: MaterialItemProps) {
   const getIcon = () => {
     if (type === 'assignment') {
       return <FileText className="h-4 w-4 text-blue-400" />;
@@ -34,8 +33,8 @@ function MaterialItem({ item, type, onSelect, isLoading = false, disabled = fals
   };
 
   const getTypeBadgeColor = () => {
-    return type === 'assignment' 
-      ? 'bg-blue-900/50 text-blue-300' 
+    return type === 'assignment'
+      ? 'bg-blue-900/50 text-blue-300'
       : 'bg-purple-900/50 text-purple-300';
   };
 
@@ -45,68 +44,57 @@ function MaterialItem({ item, type, onSelect, isLoading = false, disabled = fals
 
   const formatDueDate = (courseWork: CourseWork) => {
     if (!courseWork.dueDate) return null;
-    
+
     const { year, month, day } = courseWork.dueDate;
     const dueDate = new Date(year, month - 1, day);
-    
+
     if (courseWork.dueTime) {
       const { hours, minutes } = courseWork.dueTime;
       dueDate.setHours(hours, minutes);
     }
-    
+
     return dueDate.toLocaleString();
   };
 
   return (
     <div
-      onClick={disabled ? undefined : onSelect}
-      className={`relative border border-zinc-700 rounded-lg p-4 transition-colors ${
-        disabled 
-          ? 'cursor-not-allowed opacity-60' 
-          : 'cursor-pointer hover:bg-zinc-800 hover:border-zinc-600'
-      }`}
+      onClick={onToggle}
+      className={`relative border rounded-lg p-4 transition-colors cursor-pointer ${isSelected
+          ? 'bg-zinc-800/80 border-blue-500/50'
+          : 'border-zinc-700 hover:bg-zinc-800 hover:border-zinc-600'
+        }`}
     >
-      {/* Loading overlay */}
-      {isLoading && (
-        <div className="absolute inset-0 bg-zinc-900/80 rounded-lg flex items-center justify-center z-10">
-          <div className="flex items-center gap-2 text-zinc-300">
-            <Loader2 className="h-5 w-5 animate-spin" />
-            <span className="text-sm">Loading...</span>
-          </div>
-        </div>
-      )}
-      
       <div className="flex items-start gap-3">
         {getIcon()}
         <div className="flex-1 min-w-0">
           <h3 className="font-medium text-white mb-1 line-clamp-2">
             {item.title}
           </h3>
-          
+
           {item.description && (
             <p className="text-sm text-zinc-400 mb-2 line-clamp-2">
               {item.description}
             </p>
           )}
-          
+
           <div className="flex items-center gap-4 text-xs text-zinc-500">
             <span className="flex items-center gap-1">
               <Calendar className="h-3 w-3" />
               {formatDate(item.creationTime)}
             </span>
-            
+
             {/* {type === 'assignment' && (item as CourseWork).dueDate && (
               <span className="flex items-center gap-1 text-orange-400">
                 <Clock className="h-3 w-3" />
                 Due: {formatDueDate(item as CourseWork)}
               </span>
             )} */}
-            
+
             {/* <span className={`px-2 py-0.5 rounded text-xs ${getTypeBadgeColor()}`}>
               {getTypeLabel()}
             </span> */}
           </div>
-          
+
           {/* Show materials if any */}
           {item.materials && item.materials.length > 0 && (
             <div className="mt-2 flex flex-wrap gap-1">
@@ -120,7 +108,7 @@ function MaterialItem({ item, type, onSelect, isLoading = false, disabled = fals
                     default: return <FileText className="h-3 w-3" />;
                   }
                 };
-                
+
                 return (
                   <span key={index} className="flex items-center gap-1 px-2 py-0.5 bg-zinc-800 text-zinc-400 rounded text-xs">
                     {getTypeIcon()}
@@ -136,6 +124,13 @@ function MaterialItem({ item, type, onSelect, isLoading = false, disabled = fals
             </div>
           )}
         </div>
+        <div className="flex-shrink-0 ml-4 flex items-center self-center">
+          {isSelected ? (
+            <CheckSquare className="h-5 w-5 text-blue-500" />
+          ) : (
+            <Square className="h-5 w-5 text-zinc-500" />
+          )}
+        </div>
       </div>
     </div>
   );
@@ -146,16 +141,18 @@ export function SectionMaterialModal({
   onClose,
   course,
   onBack,
-  onItemSelect
+  onItemsSelect
 }: SectionMaterialModalProps) {
   const [activeTab, setActiveTab] = useState<'all' | 'assignments' | 'materials'>('all');
-  const [loadingItemId, setLoadingItemId] = useState<string | null>(null);
-  
-  // Reset loading state when modal opens/closes or course changes
+  const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set());
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Reset selection state when modal opens/closes or course changes
   useEffect(() => {
-    setLoadingItemId(null);
+    setSelectedItemIds(new Set());
+    setIsSubmitting(false);
   }, [isOpen, course?.id]);
-  
+
   const {
     data: courseWork = [],
     isLoading: isLoadingWork,
@@ -175,8 +172,8 @@ export function SectionMaterialModal({
   const allItems = useMemo(() => {
     const workItems = courseWork.map(item => ({ item, type: 'assignment' as const }));
     const materialItems = materials.map(item => ({ item, type: 'material' as const }));
-    
-    return [...workItems, ...materialItems].sort((a, b) => 
+
+    return [...workItems, ...materialItems].sort((a, b) =>
       new Date(b.item.creationTime).getTime() - new Date(a.item.creationTime).getTime()
     );
   }, [courseWork, materials]);
@@ -192,31 +189,62 @@ export function SectionMaterialModal({
     }
   }, [allItems, activeTab]);
 
-  const handleItemSelect = (item: CourseWork | CourseWorkMaterial, type: 'assignment' | 'material') => {
-    // Prevent double-clicks
-    if (loadingItemId) return;
-    
-    setLoadingItemId(item.id);
-    onItemSelect(item, type);
+  const isAllSelected = filteredItems.length > 0 && filteredItems.every(({ item }) => selectedItemIds.has(item.id));
+
+  const handleSelectAll = () => {
+    if (isAllSelected) {
+      // Deselect all in current view
+      const newSelected = new Set(selectedItemIds);
+      filteredItems.forEach(({ item }) => newSelected.delete(item.id));
+      setSelectedItemIds(newSelected);
+    } else {
+      // Select all in current view
+      const newSelected = new Set(selectedItemIds);
+      filteredItems.forEach(({ item }) => newSelected.add(item.id));
+      setSelectedItemIds(newSelected);
+    }
   };
 
-  // Reset loading state when modal closes
+  const handleItemToggle = (itemId: string) => {
+    setSelectedItemIds(prev => {
+      const next = new Set(prev);
+      if (next.has(itemId)) {
+        next.delete(itemId);
+      } else {
+        next.add(itemId);
+      }
+      return next;
+    });
+  };
+
+  const handleSubmit = async () => {
+    if (selectedItemIds.size === 0 || isSubmitting) return;
+
+    setIsSubmitting(true);
+    const selectedItemsList = allItems.filter(({ item }) => selectedItemIds.has(item.id));
+
+    // We pass the selection up; the parent will handle the creation and close the modal.
+    onItemsSelect(selectedItemsList);
+  };
+
   const handleClose = () => {
-    setLoadingItemId(null);
+    setSelectedItemIds(new Set());
+    setIsSubmitting(false);
     onClose();
   };
 
   const handleBack = () => {
-    setLoadingItemId(null);
+    setSelectedItemIds(new Set());
+    setIsSubmitting(false);
     onBack();
   };
 
   if (!course) return null;
 
   return (
-    <Modal 
-      isOpen={isOpen} 
-      onClose={handleClose} 
+    <Modal
+      isOpen={isOpen}
+      onClose={handleClose}
       title=""
       size="2xl"
     >
@@ -235,36 +263,59 @@ export function SectionMaterialModal({
               <p className="text-xs sm:text-sm text-zinc-400 truncate">{course.name}</p>
             </div>
           </div>
-          
+
+          {/* Select All & Action Button */}
+          <div className="flex items-center justify-between mb-4 mt-2">
+            <button
+              onClick={handleSelectAll}
+              className="flex items-center gap-3 text-zinc-300 hover:text-white transition-colors"
+            >
+              {isAllSelected ? (
+                <CheckSquare className="h-6 w-6 text-blue-500" />
+              ) : (
+                <Square className="h-6 w-6 text-zinc-400" />
+              )}
+              <span className="font-semibold text-lg text-white">Select all</span>
+            </button>
+
+            <Button
+              variant="primary"
+              onClick={handleSubmit}
+              loading={isSubmitting}
+              disabled={selectedItemIds.size === 0}
+              icon={<Plus className="h-4 w-4" />}
+              className="px-4"
+            >
+              Add Node/s
+            </Button>
+          </div>
+
           {/* Tabs - scrollable on mobile */}
           <div className="flex gap-2 overflow-x-auto pb-1 -mb-1">
             <button
               onClick={() => setActiveTab('all')}
-              className={`px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-colors whitespace-nowrap ${
-                activeTab === 'all'
+              className={`px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-colors whitespace-nowrap ${activeTab === 'all'
                   ? 'bg-zinc-700 text-white'
                   : 'text-zinc-400 hover:bg-zinc-800 hover:text-white'
-              }`}
+                }`}
             >
               All Sections
             </button>
             <button
               onClick={() => setActiveTab('assignments')}
-              className={`px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-colors whitespace-nowrap ${
-                activeTab === 'assignments'
+              className={`px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-colors whitespace-nowrap ${activeTab === 'assignments'
                   ? 'bg-zinc-700 text-white'
                   : 'text-zinc-400 hover:bg-zinc-800 hover:text-white'
-              }`}
+                }`}
             >
               Assignments ({courseWork.length})
             </button>
             <button
               onClick={() => setActiveTab('materials')}
-              className={`px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-colors whitespace-nowrap ${
-                activeTab === 'materials'
+              className={`px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-colors whitespace-nowrap ${activeTab === 'materials'
                   ? 'bg-zinc-700 text-white'
                   : 'text-zinc-400 hover:bg-zinc-800 hover:text-white'
-              }`}
+                }`}
             >
               Materials ({materials.length})
             </button>
@@ -302,9 +353,8 @@ export function SectionMaterialModal({
                   key={`${type}-${item.id}`}
                   item={item}
                   type={type}
-                  onSelect={() => handleItemSelect(item, type)}
-                  isLoading={loadingItemId === item.id}
-                  disabled={loadingItemId !== null}
+                  isSelected={selectedItemIds.has(item.id)}
+                  onToggle={() => handleItemToggle(item.id)}
                 />
               ))}
             </div>

@@ -213,6 +213,19 @@ export const api = {
       return fetchApiWithBody<Node>("/api/nodes", "POST", payload);
     },
 
+    batchCreate: (
+      data: (Omit<Node, "id" | "createdAt" | "updatedAt"> & {
+        attachments?: { fileName: string; fileUrl: string }[];
+      })[],
+    ) => {
+      // Convert to API format by converting keys
+      const convertedPayload = data.map((item) => toApi(item));
+      return fetchApi<Node[]>("/api/nodes/batch", {
+        method: "POST",
+        body: JSON.stringify(convertedPayload),
+      });
+    },
+
     update: (id: number, data: Partial<Node>) => {
       const payload = pick(
         data,

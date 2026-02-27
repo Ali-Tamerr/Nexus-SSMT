@@ -1,6 +1,6 @@
-import { useQuery } from '@tanstack/react-query';
-import { useSession } from 'next-auth/react';
-import { useState, useEffect, useCallback } from 'react';
+import { useQuery } from "@tanstack/react-query";
+import { useSession } from "next-auth/react";
+import { useState, useEffect, useCallback } from "react";
 import {
   fetchClassroomCourses,
   fetchCourseWork,
@@ -11,8 +11,11 @@ import {
   type CourseWork,
   type CourseAnnouncement,
   type CourseWorkMaterial,
-} from '@/lib/classroomApi';
-import { getClassroomToken, hasValidClassroomToken } from '@/lib/classroomToken';
+} from "@/lib/classroomApi";
+import {
+  getClassroomToken,
+  hasValidClassroomToken,
+} from "@/lib/classroomToken";
 
 /**
  * Hook to get the effective access token for Classroom API
@@ -22,51 +25,56 @@ import { getClassroomToken, hasValidClassroomToken } from '@/lib/classroomToken'
 function useClassroomAccessToken() {
   const { data: session } = useSession();
   const sessionToken = (session?.user as any)?.accessToken;
-  const isGoogleUser = (session?.user as any)?.provider === 'google';
-  
+  const isGoogleUser = (session?.user as any)?.provider === "google";
+
   // Check localStorage for a connected Classroom token (overrides session token)
-  const [storedToken, setStoredToken] = useState<string | null>(null);
+  const [storedToken, setStoredToken] = useState<string | null>(() => {
+    if (typeof window !== "undefined") {
+      return getClassroomToken();
+    }
+    return null;
+  });
   const [refreshKey, setRefreshKey] = useState(0);
-  
+
   // Function to refresh the token check
   const refreshToken = useCallback(() => {
     const token = getClassroomToken();
-    console.log('Refreshing classroom token, found:', token ? 'yes' : 'no');
+    console.log("Refreshing classroom token, found:", token ? "yes" : "no");
     setStoredToken(token);
-    setRefreshKey(prev => prev + 1);
+    setRefreshKey((prev) => prev + 1);
   }, []);
-  
+
   useEffect(() => {
     // Check for stored token on mount
     refreshToken();
-    
+
     // Listen for storage events (in case token is set in another tab/popup)
     const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === 'classroom_access_token') {
+      if (e.key === "classroom_access_token") {
         refreshToken();
       }
     };
-    
+
     // Listen for custom event from popup
     const handleClassroomAuth = () => {
-      console.log('classroom-auth-success event received');
+      console.log("classroom-auth-success event received");
       refreshToken();
     };
-    
-    window.addEventListener('storage', handleStorageChange);
-    window.addEventListener('classroom-auth-success', handleClassroomAuth);
-    
+
+    window.addEventListener("storage", handleStorageChange);
+    window.addEventListener("classroom-auth-success", handleClassroomAuth);
+
     return () => {
-      window.removeEventListener('storage', handleStorageChange);
-      window.removeEventListener('classroom-auth-success', handleClassroomAuth);
+      window.removeEventListener("storage", handleStorageChange);
+      window.removeEventListener("classroom-auth-success", handleClassroomAuth);
     };
   }, [session, refreshToken]);
-  
+
   // Priority: stored token (user-selected Classroom account) > session token (main Google account)
   // This allows Google users to connect a DIFFERENT Google account just for Classroom
   const accessToken = storedToken || sessionToken;
   const hasAccess = !!accessToken;
-  
+
   return { accessToken, hasAccess, isGoogleUser, refreshToken };
 }
 
@@ -77,13 +85,13 @@ export function useClassroomCourses(enabled = true) {
   const { accessToken, hasAccess } = useClassroomAccessToken();
 
   return useQuery({
-    queryKey: ['classroom', 'courses', accessToken?.slice(-10)], // Include token suffix for cache invalidation
+    queryKey: ["classroom", "courses", accessToken?.slice(-10)], // Include token suffix for cache invalidation
     queryFn: () => fetchClassroomCourses(accessToken!),
     enabled: enabled && hasAccess,
     staleTime: 5 * 60 * 1000, // 5 minutes
     retry: (failureCount, error: any) => {
       // Don't retry on auth errors
-      if (error?.message?.includes('401') || error?.message?.includes('403')) {
+      if (error?.message?.includes("401") || error?.message?.includes("403")) {
         return false;
       }
       return failureCount < 2;
@@ -98,12 +106,12 @@ export function useCourseWork(courseId: string, enabled = true) {
   const { accessToken, hasAccess } = useClassroomAccessToken();
 
   return useQuery({
-    queryKey: ['classroom', 'coursework', courseId, accessToken?.slice(-10)],
+    queryKey: ["classroom", "coursework", courseId, accessToken?.slice(-10)],
     queryFn: () => fetchCourseWork(courseId, accessToken!),
     enabled: enabled && !!courseId && hasAccess,
     staleTime: 5 * 60 * 1000,
     retry: (failureCount, error: any) => {
-      if (error?.message?.includes('401') || error?.message?.includes('403')) {
+      if (error?.message?.includes("401") || error?.message?.includes("403")) {
         return false;
       }
       return failureCount < 2;
@@ -118,12 +126,12 @@ export function useCourseAnnouncements(courseId: string, enabled = true) {
   const { accessToken, hasAccess } = useClassroomAccessToken();
 
   return useQuery({
-    queryKey: ['classroom', 'announcements', courseId, accessToken?.slice(-10)],
+    queryKey: ["classroom", "announcements", courseId, accessToken?.slice(-10)],
     queryFn: () => fetchCourseAnnouncements(courseId, accessToken!),
     enabled: enabled && !!courseId && hasAccess,
     staleTime: 5 * 60 * 1000,
     retry: (failureCount, error: any) => {
-      if (error?.message?.includes('401') || error?.message?.includes('403')) {
+      if (error?.message?.includes("401") || error?.message?.includes("403")) {
         return false;
       }
       return failureCount < 2;
@@ -138,12 +146,12 @@ export function useCourseMaterials(courseId: string, enabled = true) {
   const { accessToken, hasAccess } = useClassroomAccessToken();
 
   return useQuery({
-    queryKey: ['classroom', 'materials', courseId, accessToken?.slice(-10)],
+    queryKey: ["classroom", "materials", courseId, accessToken?.slice(-10)],
     queryFn: () => fetchCourseMaterials(courseId, accessToken!),
     enabled: enabled && !!courseId && hasAccess,
     staleTime: 5 * 60 * 1000,
     retry: (failureCount, error: any) => {
-      if (error?.message?.includes('401') || error?.message?.includes('403')) {
+      if (error?.message?.includes("401") || error?.message?.includes("403")) {
         return false;
       }
       return failureCount < 2;
@@ -157,7 +165,9 @@ export function useCourseMaterials(courseId: string, enabled = true) {
 export function useFilteredCourses(searchTerm: string) {
   const { data: courses, ...rest } = useClassroomCourses();
 
-  const filteredCourses = courses ? filterCoursesByName(courses, searchTerm) : undefined;
+  const filteredCourses = courses
+    ? filterCoursesByName(courses, searchTerm)
+    : undefined;
 
   return {
     data: filteredCourses,
@@ -171,44 +181,49 @@ export function useFilteredCourses(searchTerm: string) {
  */
 export function useHasClassroomAccess() {
   const { data: session, status } = useSession();
-  const isGoogleUser = (session?.user as any)?.provider === 'google';
+  const isGoogleUser = (session?.user as any)?.provider === "google";
   const sessionAccessToken = !!(session?.user as any)?.accessToken;
-  
+
   // Check for stored Classroom token (for non-Google users who connected their Classroom)
-  const [hasStoredToken, setHasStoredToken] = useState(false);
-  
+  const [hasStoredToken, setHasStoredToken] = useState<boolean>(() => {
+    if (typeof window !== "undefined") {
+      return hasValidClassroomToken();
+    }
+    return false;
+  });
+
   const checkStoredToken = useCallback(() => {
     const hasToken = hasValidClassroomToken();
-    console.log('Checking stored token:', hasToken);
+    console.log("Checking stored token:", hasToken);
     setHasStoredToken(hasToken);
   }, []);
-  
+
   useEffect(() => {
     // Check on mount
     checkStoredToken();
-    
+
     // Listen for storage events
     const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === 'classroom_access_token') {
+      if (e.key === "classroom_access_token") {
         checkStoredToken();
       }
     };
-    
+
     // Listen for custom event from popup
     const handleClassroomAuth = () => {
-      console.log('Classroom auth success event received');
+      console.log("Classroom auth success event received");
       checkStoredToken();
     };
-    
-    window.addEventListener('storage', handleStorageChange);
-    window.addEventListener('classroom-auth-success', handleClassroomAuth);
-    
+
+    window.addEventListener("storage", handleStorageChange);
+    window.addEventListener("classroom-auth-success", handleClassroomAuth);
+
     return () => {
-      window.removeEventListener('storage', handleStorageChange);
-      window.removeEventListener('classroom-auth-success', handleClassroomAuth);
+      window.removeEventListener("storage", handleStorageChange);
+      window.removeEventListener("classroom-auth-success", handleClassroomAuth);
     };
   }, [session, checkStoredToken]);
-  
+
   const hasAccess = (isGoogleUser && sessionAccessToken) || hasStoredToken;
 
   return {
@@ -216,7 +231,7 @@ export function useHasClassroomAccess() {
     isGoogleUser,
     hasAccessToken: sessionAccessToken || hasStoredToken,
     hasStoredToken,
-    isLoading: status === 'loading',
+    isLoading: status === "loading",
     session,
   };
 }

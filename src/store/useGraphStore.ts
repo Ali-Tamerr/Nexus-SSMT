@@ -279,9 +279,17 @@ export const useGraphStore = create<AppState>()(
       setGraphData: (data) => set({ nodes: data.nodes, links: data.links }),
 
       addNode: (node) =>
-        set((state) => ({
-          nodes: [...state.nodes, node],
-        })),
+        set((state) => {
+          const exists = state.nodes.some((n) => n.id === node.id);
+          if (exists) {
+            return {
+              nodes: state.nodes.map((n) => (n.id === node.id ? node : n)),
+            };
+          }
+          return {
+            nodes: [...state.nodes, node],
+          };
+        }),
 
       updateNode: (id, updates) =>
         set((state) => ({

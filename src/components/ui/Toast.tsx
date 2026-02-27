@@ -3,7 +3,7 @@
 import { X, AlertCircle, CheckCircle, Info, AlertTriangle } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
-export type ToastType = | 'error' | 'warning' | 'info' | 'confirmation';
+export type ToastType = 'success' | 'error' | 'warning' | 'info' | 'confirmation';
 
 interface ToastProps {
     id: string;
