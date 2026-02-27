@@ -13,50 +13,55 @@ interface ClassroomSelectionModalProps {
   onCourseSelect: (course: ClassroomCourse) => void;
 }
 
-export function ClassroomSelectionModal({ 
-  isOpen, 
-  onClose, 
-  onCourseSelect 
+export function ClassroomSelectionModal({
+  isOpen,
+  onClose,
+  onCourseSelect
 }: ClassroomSelectionModalProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
   const [isChangingAccount, setIsChangingAccount] = useState(false);
-  
+  const [isConnecting, setIsConnecting] = useState(false);
+
   const { user } = useAuthStore();
   const isGoogleUser = (user as any)?.provider === 'google';
-  
-  const { 
-    data: courses = [], 
-    isLoading, 
+
+  const {
+    data: courses = [],
+    isLoading,
     error,
-    refetch 
+    refetch
   } = useClassroomCourses(isOpen);
 
   // Filter courses based on search term
   const filteredCourses = useMemo(() => {
     if (!searchTerm.trim()) return courses;
-    
+
     const term = searchTerm.toLowerCase();
-    return courses.filter(course => 
+    return courses.filter(course =>
       course.name.toLowerCase().includes(term) ||
       course.description?.toLowerCase().includes(term) ||
       course.descriptionHeading?.toLowerCase().includes(term)
     );
   }, [courses, searchTerm]);
 
-  const handleChangeAccount = async () => {
+  const handleConnect = async (forceAccountSelection: boolean = false) => {
     try {
-      setIsChangingAccount(true);
-      
+      if (forceAccountSelection) {
+        setIsChangingAccount(true);
+      } else {
+        setIsConnecting(true); // Need a new state for this
+      }
+
       // Clear the existing token
       clearClassroomToken();
-      
-      // Open the Classroom OAuth with prompt to select account
-      const oauthUrl = getClassroomOAuthUrl(true); // true = force account selection
+
+      // Open the Classroom OAuth with or without prompt to select account
+      const oauthUrl = getClassroomOAuthUrl(forceAccountSelection);
       const popup = window.open(
         oauthUrl,
         'classroom-oauth-popup',
-        'width=500,height=600,scrollbars=yes,resizable=yes,left=' + 
+        'width=500,height=600,scrollbars=yes,resizable=yes,left=' +
         (window.screen.width / 2 - 250) + ',top=' + (window.screen.height / 2 - 300)
       );
 
@@ -67,15 +72,16 @@ export function ClassroomSelectionModal({
       // Listen for messages from the popup
       const handleMessage = (event: MessageEvent) => {
         if (event.origin !== window.location.origin) return;
-        
+
         if (event.data.type === 'CLASSROOM_AUTH_SUCCESS') {
           popup.close();
           window.removeEventListener('message', handleMessage);
           setIsChangingAccount(false);
-          
+          setIsConnecting(false);
+
           // Dispatch event to refresh token state
           window.dispatchEvent(new Event('classroom-auth-success'));
-          
+
           // Small delay to ensure token state is updated before refetching
           setTimeout(() => {
             refetch();
@@ -84,6 +90,7 @@ export function ClassroomSelectionModal({
           popup.close();
           window.removeEventListener('message', handleMessage);
           setIsChangingAccount(false);
+          setIsConnecting(false);
         }
       };
 
@@ -95,12 +102,14 @@ export function ClassroomSelectionModal({
           clearInterval(checkClosed);
           window.removeEventListener('message', handleMessage);
           setIsChangingAccount(false);
+          setIsConnecting(false);
         }
       }, 1000);
 
     } catch (error) {
-      console.error('Error changing Google account:', error);
+      console.error('Error connecting Google account:', error);
       setIsChangingAccount(false);
+      setIsConnecting(false);
     }
   };
 
@@ -108,14 +117,14 @@ export function ClassroomSelectionModal({
     // Clear the existing token
     clearClassroomToken();
     window.dispatchEvent(new Event('classroom-auth-success')); // Trigger re-check
-    
+
     // Immediately open OAuth to connect a different account
     try {
       const oauthUrl = getClassroomOAuthUrl(true); // force account selection
       const popup = window.open(
         oauthUrl,
         'classroom-oauth-popup',
-        'width=500,height=600,scrollbars=yes,resizable=yes,left=' + 
+        'width=500,height=600,scrollbars=yes,resizable=yes,left=' +
         (window.screen.width / 2 - 250) + ',top=' + (window.screen.height / 2 - 300)
       );
 
@@ -128,14 +137,14 @@ export function ClassroomSelectionModal({
       // Listen for messages from the popup
       const handleMessage = (event: MessageEvent) => {
         if (event.origin !== window.location.origin) return;
-        
+
         if (event.data.type === 'CLASSROOM_AUTH_SUCCESS') {
           popup.close();
           window.removeEventListener('message', handleMessage);
-          
+
           // Dispatch event to refresh token state
           window.dispatchEvent(new Event('classroom-auth-success'));
-          
+
           // Small delay to ensure token state is updated before refetching
           setTimeout(() => {
             refetch();
@@ -177,13 +186,13 @@ export function ClassroomSelectionModal({
         <div className="p-4 sm:p-6 text-center">
           <p className="text-red-400 mb-4">Failed to load Google Classroom courses.</p>
           <p className="text-sm text-zinc-400 mb-6">
-            Please check your Google account permissions and try again.
+            You might need to grant Nexus access to your Google Classroom.
           </p>
           <div className="flex flex-col sm:flex-row gap-2 justify-center">
-            <Button onClick={() => refetch()} variant="secondary">
-              Retry
+            <Button onClick={() => handleConnect(false)} variant="secondary" loading={isConnecting}>
+              Grant Permissions
             </Button>
-            <Button onClick={handleChangeAccount} variant="brand" loading={isChangingAccount}>
+            <Button onClick={() => handleConnect(true)} variant="brand" loading={isChangingAccount}>
               Change Account
             </Button>
           </div>
@@ -208,17 +217,17 @@ export function ClassroomSelectionModal({
                 className="w-full pl-10 pr-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white placeholder-zinc-400 focus:outline-none text-sm sm:text-base"
               />
             </div>
-            
+
             <div className="flex items-center gap-2">
               <Button
                 variant="secondary"
-                onClick={handleChangeAccount}
+                onClick={() => handleConnect(true)}
                 loading={isChangingAccount}
                 className="whitespace-nowrap text-sm"
               >
                 Change account
               </Button>
-              
+
               {/* Only show disconnect button if user is NOT signed in with Google */}
               {!isGoogleUser && (
                 <button
@@ -231,25 +240,23 @@ export function ClassroomSelectionModal({
               )}
             </div>
           </div>
-          
+
           <div className="flex items-center gap-2">
             <button
               onClick={() => setViewMode('grid')}
-              className={`p-2 rounded-lg transition-colors ${
-                viewMode === 'grid' 
-                  ? 'bg-zinc-700 text-white' 
-                  : 'text-zinc-400 hover:bg-zinc-800 hover:text-white'
-              }`}
+              className={`p-2 rounded-lg transition-colors ${viewMode === 'grid'
+                ? 'bg-zinc-700 text-white'
+                : 'text-zinc-400 hover:bg-zinc-800 hover:text-white'
+                }`}
             >
               <Grid className="h-4 w-4" />
             </button>
             <button
               onClick={() => setViewMode('list')}
-              className={`p-2 rounded-lg transition-colors ${
-                viewMode === 'list' 
-                  ? 'bg-zinc-700 text-white' 
-                  : 'text-zinc-400 hover:bg-zinc-800 hover:text-white'
-              }`}
+              className={`p-2 rounded-lg transition-colors ${viewMode === 'list'
+                ? 'bg-zinc-700 text-white'
+                : 'text-zinc-400 hover:bg-zinc-800 hover:text-white'
+                }`}
             >
               <List className="h-4 w-4" />
             </button>
@@ -284,7 +291,7 @@ export function ClassroomSelectionModal({
             </div>
           ) : (
             <div className={
-              viewMode === 'grid' 
+              viewMode === 'grid'
                 ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4'
                 : 'space-y-3'
             }>
@@ -313,7 +320,7 @@ export function ClassroomSelectionModal({
                       </p>
                     )} */}
                   </div>
-                  
+
                   {/* {course.enrollmentCode && (
                     <div className="mt-2 text-xs">
                       <span className="px-2 py-1 bg-zinc-700 text-zinc-300 rounded">
