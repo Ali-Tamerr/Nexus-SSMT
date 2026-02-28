@@ -68,7 +68,7 @@ export function GroupList({ groups, onDelete, onEdit, viewMode }: GroupListProps
                         <div className="flex max-sm:flex-col h-24 gap-4 sm:flex-col justify-between">
                             <div className="flex flex-col items-start gap-3">
                                 <div className="flex items-center gap-3">
-                                    <div className="h-3 w-3 rounded-full flex-shrink-0 bg-[#355ea1]" />
+                                    
                                     <h3 className="font-semibold text-white group-hover:text-[#355ea1] transition-colors">
                                         {group.name}
                                     </h3>
