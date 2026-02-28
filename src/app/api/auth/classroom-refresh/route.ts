@@ -1,16 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 
 /**
- * API route to exchange Google OAuth code for access token
- * This is used for Classroom access without replacing the main session
+ * API route to refresh an access token using a refresh token
  */
 export async function POST(request: NextRequest) {
   try {
-    const { code, redirectUri } = await request.json();
+    const { refreshToken } = await request.json();
 
-    if (!code) {
+    if (!refreshToken) {
       return NextResponse.json(
-        { error: "Missing authorization code" },
+        { error: "Missing refresh token" },
         { status: 400 },
       );
     }
@@ -29,41 +28,38 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Exchange the authorization code for tokens
+    // Exchange the refresh token for a new access token
     const tokenResponse = await fetch("https://oauth2.googleapis.com/token", {
       method: "POST",
       headers: {
         "Content-Type": "application/x-www-form-urlencoded",
       },
       body: new URLSearchParams({
-        code,
         client_id: clientId,
         client_secret: clientSecret,
-        redirect_uri: redirectUri,
-        grant_type: "authorization_code",
+        refresh_token: refreshToken,
+        grant_type: "refresh_token",
       }),
     });
 
     if (!tokenResponse.ok) {
       const errorData = await tokenResponse.text();
-      console.error("Token exchange failed:", errorData);
+      console.error("Token refresh failed:", errorData);
       return NextResponse.json(
-        { error: "Failed to exchange code for token" },
+        { error: "Failed to refresh access token" },
         { status: 400 },
       );
     }
 
     const tokens = await tokenResponse.json();
 
-    // Return the access token, refresh token and expiry
     return NextResponse.json({
       accessToken: tokens.access_token,
-      refreshToken: tokens.refresh_token,
       expiresIn: tokens.expires_in,
       expiresAt: Date.now() + tokens.expires_in * 1000,
     });
   } catch (error) {
-    console.error("Classroom token exchange error:", error);
+    console.error("Classroom refresh error:", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 },

@@ -37,8 +37,25 @@ function useClassroomAccessToken() {
   const [refreshKey, setRefreshKey] = useState(0);
 
   // Function to refresh the token check
-  const refreshToken = useCallback(() => {
-    const token = getClassroomToken();
+  const refreshTokenAction = useCallback(async () => {
+    let token = getClassroomToken();
+
+    // If no access token but we have a refresh token, try to get a new one
+    if (!token && typeof window !== "undefined") {
+      const refreshToken = localStorage.getItem("classroom_refresh_token");
+      if (refreshToken) {
+        console.log(
+          "[useClassroomAccessToken] Access token missing/expired, attempting refresh...",
+        );
+        const { refreshClassroomToken } = await import("@/lib/classroomToken");
+        const newToken = await refreshClassroomToken();
+        if (newToken) {
+          token = newToken;
+          console.log("[useClassroomAccessToken] Token refreshed successfully");
+        }
+      }
+    }
+
     console.log("Refreshing classroom token, found:", token ? "yes" : "no");
     setStoredToken(token);
     setRefreshKey((prev) => prev + 1);
@@ -46,19 +63,22 @@ function useClassroomAccessToken() {
 
   useEffect(() => {
     // Check for stored token on mount
-    refreshToken();
+    refreshTokenAction();
 
     // Listen for storage events (in case token is set in another tab/popup)
     const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === "classroom_access_token") {
-        refreshToken();
+      if (
+        e.key === "classroom_access_token" ||
+        e.key === "classroom_refresh_token"
+      ) {
+        refreshTokenAction();
       }
     };
 
     // Listen for custom event from popup
     const handleClassroomAuth = () => {
       console.log("classroom-auth-success event received");
-      refreshToken();
+      refreshTokenAction();
     };
 
     window.addEventListener("storage", handleStorageChange);
@@ -68,7 +88,7 @@ function useClassroomAccessToken() {
       window.removeEventListener("storage", handleStorageChange);
       window.removeEventListener("classroom-auth-success", handleClassroomAuth);
     };
-  }, [session, refreshToken]);
+  }, [session, refreshTokenAction]);
 
   // Priority: stored token (user-selected Classroom account) > session token (main Google account)
   // This allows Google users to connect a DIFFERENT Google account just for Classroom

@@ -31,7 +31,7 @@ function ClassroomCallbackContent() {
 
       try {
         console.log('Exchanging code for token...');
-        
+
         // Exchange the code for an access token
         const response = await fetch('/api/auth/classroom-token', {
           method: 'POST',
@@ -50,34 +50,37 @@ function ClassroomCallbackContent() {
           throw new Error(data.error || 'Failed to get access token');
         }
 
-        const { accessToken, expiresAt } = await response.json();
-        
-        console.log('Token received, storing in localStorage...');
-        console.log('Access token (first 20 chars):', accessToken?.substring(0, 20));
+        const { accessToken, refreshToken, expiresAt } = await response.json();
 
-        // Store the token in localStorage
+        console.log('Token received, storing in localStorage...');
+
+        // Store the tokens in localStorage
         localStorage.setItem('classroom_access_token', accessToken);
         localStorage.setItem('classroom_token_expires_at', expiresAt.toString());
-        
-        console.log('Token stored successfully');
+        if (refreshToken) {
+          localStorage.setItem('classroom_refresh_token', refreshToken);
+        }
+
+        console.log('Tokens stored successfully');
 
         setStatus('success');
 
         // Notify parent window
         if (window.opener) {
-          window.opener.postMessage({ 
-            type: 'CLASSROOM_AUTH_SUCCESS', 
+          window.opener.postMessage({
+            type: 'CLASSROOM_AUTH_SUCCESS',
             accessToken,
+            refreshToken,
             expiresAt,
           }, window.location.origin);
-          
+
           // Close the popup after a short delay
           setTimeout(() => window.close(), 1000);
         }
       } catch (err: any) {
         setStatus('error');
         setError(err.message || 'Authentication failed');
-        
+
         if (window.opener) {
           window.opener.postMessage({ type: 'CLASSROOM_AUTH_ERROR', error: err.message }, window.location.origin);
         }
@@ -96,7 +99,7 @@ function ClassroomCallbackContent() {
             <p className="text-white">Connecting to Google Classroom...</p>
           </>
         )}
-        
+
         {status === 'success' && (
           <>
             <div className="w-12 h-12 bg-green-500/20 text-green-400 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -108,7 +111,7 @@ function ClassroomCallbackContent() {
             <p className="text-zinc-400 text-sm">This window will close automatically...</p>
           </>
         )}
-        
+
         {status === 'error' && (
           <>
             <div className="w-12 h-12 bg-red-500/20 text-red-400 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -118,8 +121,8 @@ function ClassroomCallbackContent() {
             </div>
             <p className="text-white font-medium mb-2">Connection Failed</p>
             <p className="text-red-400 text-sm">{error}</p>
-            <button 
-              onClick={() => window.close()} 
+            <button
+              onClick={() => window.close()}
               className="mt-4 px-4 py-2 bg-zinc-700 text-white rounded hover:bg-zinc-600"
             >
               Close
