@@ -95,7 +95,7 @@ function useClassroomAccessToken() {
   const accessToken = storedToken || sessionToken;
   const hasAccess = !!accessToken;
 
-  return { accessToken, hasAccess, isGoogleUser, refreshToken };
+  return { accessToken, hasAccess, isGoogleUser, refreshToken: refreshTokenAction };
 }
 
 /**
