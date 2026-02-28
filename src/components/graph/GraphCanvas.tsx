@@ -992,48 +992,9 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
     return editingShapeId ? shapes.find(s => s.id === editingShapeId) : null;
   }, [shapes, editingShapeId]);
 
-  useEffect(() => {
-    if (!groups || groups.length === 0) return;
-    const validGroupIds = new Set(groups.map(g => g.id));
-    const firstGroupId = groups[0]?.id;
-
-    const validNodes = nodes.filter(n => n.groupId === undefined || validGroupIds.has(n.groupId));
-    if (validNodes.length !== nodes.length) {
-      const toDelete = nodes.filter(n => n.groupId !== undefined && !validGroupIds.has(n.groupId));
-      toDelete.forEach(n => {
-        api.nodes.delete(n.id).catch(() => { });
-      });
-      useGraphStore.getState().setNodes(validNodes);
-    }
-
-    const orphanedShapes = shapes.filter(s => s.groupId === undefined || s.groupId === null);
-    const invalidShapes = shapes.filter(s => s.groupId !== undefined && s.groupId !== null && !validGroupIds.has(s.groupId));
-
-    if (invalidShapes.length > 0) {
-      invalidShapes.forEach(s => {
-        api.drawings.delete(s.id).catch(() => { });
-      });
-    }
-
-    if (orphanedShapes.length > 0 && firstGroupId !== undefined) {
-      orphanedShapes.forEach(s => {
-        api.drawings.update(s.id, shapeToApiDrawing({ ...s, groupId: firstGroupId }, currentProject?.id || 0, firstGroupId)).catch(() => { });
-      });
-      const updatedShapes = shapes.map(s => {
-        if (s.groupId === undefined || s.groupId === null) {
-          return { ...s, groupId: firstGroupId };
-        }
-        if (!validGroupIds.has(s.groupId)) {
-          return null;
-        }
-        return s;
-      }).filter((s): s is DrawnShape => s !== null);
-      useGraphStore.getState().setShapes(updatedShapes);
-    } else if (invalidShapes.length > 0) {
-      const validShapes = shapes.filter(s => s.groupId !== undefined && s.groupId !== null && validGroupIds.has(s.groupId));
-      useGraphStore.getState().setShapes(validShapes);
-    }
-  }, [groups, nodes, shapes]);
+  // Removed aggressive data cleanup block that caused node deletions
+  // due to race conditions during page hydration and component mounting.
+  // Group-related node & shape deletions are now strictly handled by GroupsTabs.tsx
 
   const shapesRef = useRef(filteredShapes);
   const selectedShapeIdsRef = useRef(selectedShapeIds);
@@ -1187,7 +1148,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
       } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'v') {
         const activeElement = document.activeElement;
         if (activeElement && (activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA')) return;
-        
+
         const { currentProject, currentUserId, graphSettings, addShape, activeGroupId } = useGraphStore.getState();
         if (!currentProject) return;
 
@@ -1267,9 +1228,9 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
           // Fallback to paste text from OS clipboard as a new Text Shape
           navigator.clipboard.readText().then(text => {
             if (!text || text.trim() === '') return;
-            
+
             const center = graphRef.current?.centerAt() || { x: 0, y: 0 };
-            
+
             const payload = {
               projectId: currentProject.id,
               type: 'text',
@@ -1291,8 +1252,8 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
                 setSelectedShapeIds(new Set([newShape.id]));
                 setSelectedNodeIds(new Set());
               })
-              .catch(() => {});
-          }).catch(() => {});
+              .catch(() => { });
+          }).catch(() => { });
         }
       } else if (e.key === 'Escape') {
         setSelectedShapeIds(new Set());
