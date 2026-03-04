@@ -210,7 +210,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
   const updateGroup = useGraphStore(state => state.updateGroup);
   const deleteGroup = useGraphStore(state => state.deleteGroup);
 
-  const [selectedNodeIds, setSelectedNodeIds] = useState<Set<number>>(new Set());
+  const [selectedNodeIds, _setSelectedNodeIds] = useState<Set<number>>(new Set());
   const [selectedLink, setSelectedLink] = useState<any | null>(null);
   const [hoveredLink, setHoveredLink] = useState<any | null>(null);
   const [isOutsideContent, setIsOutsideContent] = useState(false);
@@ -222,7 +222,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
   const [textInputPos, setTextInputPos] = useState<{ x: number; y: number; worldX: number; worldY: number } | null>(null);
   const [textInputValue, setTextInputValue] = useState('');
 
-  const [selectedShapeIds, setSelectedShapeIds] = useState<Set<number>>(new Set());
+  const [selectedShapeIds, _setSelectedShapeIds] = useState<Set<number>>(new Set());
   const [isDraggingSelection, setIsDraggingSelection] = useState(false);
   const [isHoveringShape, setIsHoveringShape] = useState(false);
   const [isHoveringNode, setIsHoveringNode] = useState(false);
@@ -1000,19 +1000,37 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
   const selectedShapeIdsRef = useRef(selectedShapeIds);
   const selectedNodeIdsRefForDelete = useRef(selectedNodeIds);
 
-  // Always keep shapesRef in sync with filteredShapes
+  const setSelectedNodeIds = useCallback((value: Set<number> | ((prev: Set<number>) => Set<number>)) => {
+    if (typeof value === 'function') {
+      _setSelectedNodeIds(prev => {
+        const next = value(prev);
+        selectedNodeIdsRef.current = next;
+        selectedNodeIdsRefForDelete.current = next;
+        return next;
+      });
+    } else {
+      selectedNodeIdsRef.current = value;
+      selectedNodeIdsRefForDelete.current = value;
+      _setSelectedNodeIds(value);
+    }
+  }, []);
+
+  const setSelectedShapeIds = useCallback((value: Set<number> | ((prev: Set<number>) => Set<number>)) => {
+    if (typeof value === 'function') {
+      _setSelectedShapeIds(prev => {
+        const next = value(prev);
+        selectedShapeIdsRef.current = next;
+        return next;
+      });
+    } else {
+      selectedShapeIdsRef.current = value;
+      _setSelectedShapeIds(value);
+    }
+  }, []);
+
   useEffect(() => {
     shapesRef.current = filteredShapes;
   }, [filteredShapes]);
-
-  // Also sync during render if not dragging/resizing (for immediate updates)
-  // DISABLED: This overwrites manual mutations in handleKeyDown before state catches up, causing lag.
-  // We rely on useEffect below to sync when state actually changes.
-  /* if (!dragNodePrevRef.current && !isResizing) {
-    shapesRef.current = filteredShapes;
-  } */
-  selectedShapeIdsRef.current = selectedShapeIds;
-  selectedNodeIdsRefForDelete.current = selectedNodeIds;
 
   // Force redraw when activeGroupId or text edit mode changes
   useEffect(() => {
@@ -1280,7 +1298,6 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
 
   /* Use refs for callback stability to prevent ForceGraph2D handler rebinding issues */
   const selectedNodeIdsRef = useRef(selectedNodeIds);
-  selectedNodeIdsRef.current = selectedNodeIds; // Update immediately in render body
 
   // Clipboard Ref for Copy/Paste
   const clipboardRef = useRef<{ nodes: any[]; shapes: any[] } | null>(null);
@@ -1418,13 +1435,16 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
       const dy = worldPoint.y - dragStartWorld.y;
 
       if (Math.abs(dx) > 0.1 || Math.abs(dy) > 0.1) {
-        const updatedShapes = shapes.map(s => {
+        shapesRef.current = shapesRef.current.map(s => {
           if (selectedShapeIds.has(s.id)) {
             return { ...s, points: s.points.map(p => ({ x: p.x + dx, y: p.y + dy })) };
           }
           return s;
         });
-        setShapes(updatedShapes);
+        if (graphRef.current) {
+          // @ts-ignore
+          if (graphRef.current.d3ReheatSimulation) graphRef.current.d3ReheatSimulation();
+        }
 
         if (selectedNodeIds.size > 0) {
           const currentGraphNodes = graphData.nodes as Array<{ id: string | number; x?: number; y?: number; fx?: number; fy?: number }>;
@@ -1771,32 +1791,51 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
     }
 
     if (isDraggingSelection) {
-      // Save Shapes
-      if (selectedShapeIds.size > 0) {
-        filteredShapes.forEach(s => {
-          if (selectedShapeIds.has(s.id) && s.synced !== false) {
-            api.drawings.update(s.id, shapeToApiDrawing(s, currentProject?.id || 0, activeGroupId ?? undefined))
-              .catch(() => { });
-          }
-        });
-      }
+      // Process sequentially with a small delay to avoid overwhelming the database connection pool
+      const finalShapes = shapesRef.current;
+      setShapes(finalShapes);
 
-      // Save Nodes
-      if (selectedNodeIds.size > 0) {
-        const currentGraphNodes = (graphDataRef.current?.nodes || []) as any[];
-        currentGraphNodes.forEach(n => {
-          if (selectedNodeIds.has(Number(n.id))) {
-            const fullNode = nodes.find(sn => sn.id === n.id);
-            if (fullNode) {
-              api.nodes.update(n.id, {
+      (async () => {
+        // Save Shapes
+        if (selectedShapeIds.size > 0) {
+          for (const s of finalShapes) {
+            if (selectedShapeIds.has(s.id) && s.synced !== false) {
+              try {
+                await api.drawings.update(s.id, shapeToApiDrawing(s, currentProject?.id || 0, activeGroupId ?? undefined));
+                await new Promise(r => setTimeout(r, 20));
+              } catch { }
+            }
+          }
+        }
+
+        // Save Nodes
+        if (selectedNodeIds.size > 0) {
+          const currentGraphNodes = (graphDataRef.current?.nodes || []) as any[];
+          const nodeUpdates: any[] = [];
+          const updateNode = useGraphStore.getState().updateNode;
+          for (const n of currentGraphNodes) {
+            if (selectedNodeIds.has(Number(n.id))) {
+              // Vital: Apply local state update synchronously so they don't bounce back
+              updateNode(n.id, { x: n.x, y: n.y });
+              const fullNode = nodes.find(sn => sn.id === n.id);
+              if (fullNode) {
+                nodeUpdates.push({ n, fullNode });
+              }
+            }
+          }
+
+          for (const { n, fullNode } of nodeUpdates) {
+            try {
+              await api.nodes.update(n.id, {
                 ...fullNode,
                 x: n.x,
                 y: n.y
-              }).catch(() => { });
-            }
+              });
+              await new Promise(r => setTimeout(r, 20));
+            } catch { }
           }
-        });
-      }
+        }
+      })();
 
       setIsDraggingSelection(false);
       setDragStartWorld(null);
@@ -1814,21 +1853,13 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
     }
     dragStartPosRef.current = null;
 
-    // Finalize group drag
+    // Finalize group drag (only if a drag actually happened but wasn't a node drag... wait, node dragging handles its own finalize)
     if (dragGroupRef.current?.active) {
-      const selectedShapeIds = selectedShapeIdsRef.current;
-      if (selectedShapeIds.size > 0) {
-        const finalShapes = shapesRef.current;
-        setShapes(finalShapes);
-        finalShapes.forEach(s => {
-          if (selectedShapeIds.has(s.id) && s.synced !== false) {
-            api.drawings.update(s.id, shapeToApiDrawing(s, currentProject?.id || 0, activeGroupId ?? undefined))
-              .catch(() => { });
-          }
-        });
+      // If we are actively dragging a node, do NOT terminate the group yet! handleNodeDragEnd is about to run and needs this!
+      if (!isNodeDraggingRef.current) {
+        // Was just a click, cleanup
+        dragGroupRef.current = null;
       }
-
-      dragGroupRef.current = null;
     }
 
     // Finalize marquee selection
@@ -1913,11 +1944,18 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
         }
         return s;
       });
-      setShapes(shapesRef.current); // Trigger render
+      if (graphRef.current) {
+        // @ts-ignore
+        if (graphRef.current.d3ReheatSimulation) graphRef.current.d3ReheatSimulation();
+      }
     }
   }, []);
 
   const handleNodeDragEnd = useCallback((node: any) => {
+    // Prevent force layout from assigning random coordinates to nodes upon drag release
+    node.fx = node.x;
+    node.fy = node.y;
+
     // Small delay to ensure click handler sees the drag state
     setTimeout(() => {
       isNodeDraggingRef.current = false;
@@ -1930,18 +1968,26 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
     if (dragGroupRef.current?.active) {
       const selectedNodeIds = selectedNodeIdsRef.current;
 
-      // Persist node positions for all selected nodes
-      graphDataRef.current.nodes.forEach((n: any) => {
-        if (selectedNodeIds.has(Number(n.id))) {
-          updateNode(n.id, { x: n.x, y: n.y });
+      (async () => {
+        // Persist node positions for all selected nodes locally first
+        const nodeUpdates: any[] = [];
+        for (const n of graphDataRef.current.nodes) {
+          if (selectedNodeIds.has(Number(n.id))) {
+            updateNode(n.id, { x: n.x, y: n.y });
 
-          const fullNode = storeNodes.find(sn => sn.id === n.id);
-          if (fullNode) {
-            api.nodes.update(n.id, {
+            const fullNode = storeNodes.find(sn => sn.id === n.id);
+            if (fullNode) {
+              nodeUpdates.push({ n, fullNode });
+            }
+          }
+        }
+
+        for (const { n, fullNode } of nodeUpdates) {
+          try {
+            await api.nodes.update(n.id, {
               id: fullNode.id,
               title: fullNode.title,
               content: fullNode.content || '',
-
               groupId: fullNode.groupId,
               projectId: fullNode.projectId,
               userId: fullNode.userId,
@@ -1949,23 +1995,26 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
               group: fullNode.group ? { id: fullNode.group.id, name: fullNode.group.name, color: fullNode.group.color, order: fullNode.group.order } : { id: fullNode.groupId ?? 0, name: 'Default', color: '#808080', order: 0 },
               x: n.x,
               y: n.y
-            }).catch(() => { });
+            });
+            await new Promise(r => setTimeout(r, 20));
+          } catch { }
+        }
+
+        // Sync shapes to state and persist
+        const selectedShapeIds = selectedShapeIdsRef.current;
+        if (selectedShapeIds.size > 0) {
+          const finalShapes = shapesRef.current;
+          setShapes(finalShapes);
+          for (const s of finalShapes) {
+            if (selectedShapeIds.has(s.id)) {
+              try {
+                await api.drawings.update(s.id, shapeToApiDrawing(s, currentProject?.id || 0, activeGroupId ?? undefined));
+                await new Promise(r => setTimeout(r, 20));
+              } catch { }
+            }
           }
         }
-      });
-
-      // Sync shapes to state and persist
-      const selectedShapeIds = selectedShapeIdsRef.current;
-      if (selectedShapeIds.size > 0) {
-        const finalShapes = shapesRef.current;
-        setShapes(finalShapes);
-        finalShapes.forEach(s => {
-          if (selectedShapeIds.has(s.id)) {
-            api.drawings.update(s.id, shapeToApiDrawing(s, currentProject?.id || 0, activeGroupId ?? undefined))
-              .catch(() => { });
-          }
-        });
-      }
+      })();
 
       dragGroupRef.current = null;
     } else if (node) {
@@ -2633,11 +2682,14 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
               onLinkHover={handleLinkHover}
               onBackgroundClick={() => {
                 if (useGraphStore.getState().isConnectionPickerActive) return;
+                if (wasGlobalDragRef.current) return;
                 const timeSinceNodeClick = Date.now() - lastNodeClickTimeRef.current;
                 if (timeSinceNodeClick < 300) {
                   return;
                 }
                 setActiveNode(null);
+                setSelectedNodeIds(new Set());
+                setSelectedShapeIds(new Set());
               }}
               onZoom={handleZoom}
               onRenderFramePost={onRenderFramePost}
