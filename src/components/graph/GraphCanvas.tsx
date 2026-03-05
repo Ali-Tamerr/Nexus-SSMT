@@ -1798,13 +1798,14 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
       (async () => {
         // Save Shapes
         if (selectedShapeIds.size > 0) {
-          for (const s of finalShapes) {
-            if (selectedShapeIds.has(s.id) && s.synced !== false) {
-              try {
-                await api.drawings.update(s.id, shapeToApiDrawing(s, currentProject?.id || 0, activeGroupId ?? undefined));
-                await new Promise(r => setTimeout(r, 20));
-              } catch { }
-            }
+          const shapeUpdates = finalShapes
+            .filter(s => selectedShapeIds.has(s.id) && s.synced !== false)
+            .map(s => ({ ...shapeToApiDrawing(s, currentProject?.id || 0, activeGroupId ?? undefined), id: s.id }));
+
+          if (shapeUpdates.length > 0) {
+            try {
+              await api.drawings.batchUpdate(shapeUpdates as any);
+            } catch { }
           }
         }
 
@@ -1824,14 +1825,16 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
             }
           }
 
-          for (const { n, fullNode } of nodeUpdates) {
+          const updatesToPush = nodeUpdates.map(({ n, fullNode }) => ({
+            ...fullNode,
+            id: n.id,
+            x: n.x,
+            y: n.y
+          }));
+
+          if (updatesToPush.length > 0) {
             try {
-              await api.nodes.update(n.id, {
-                ...fullNode,
-                x: n.x,
-                y: n.y
-              });
-              await new Promise(r => setTimeout(r, 20));
+              await api.nodes.batchUpdate(updatesToPush);
             } catch { }
           }
         }
@@ -1982,21 +1985,22 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
           }
         }
 
-        for (const { n, fullNode } of nodeUpdates) {
+        const updatesToPush = nodeUpdates.map(({ n, fullNode }) => ({
+          id: fullNode.id,
+          title: fullNode.title,
+          content: fullNode.content || '',
+          groupId: fullNode.groupId,
+          projectId: fullNode.projectId,
+          userId: fullNode.userId,
+          customColor: fullNode.customColor,
+          group: fullNode.group ? { id: fullNode.group.id, name: fullNode.group.name, color: fullNode.group.color, order: fullNode.group.order } : { id: fullNode.groupId ?? 0, name: 'Default', color: '#808080', order: 0 },
+          x: n.x,
+          y: n.y
+        }));
+
+        if (updatesToPush.length > 0) {
           try {
-            await api.nodes.update(n.id, {
-              id: fullNode.id,
-              title: fullNode.title,
-              content: fullNode.content || '',
-              groupId: fullNode.groupId,
-              projectId: fullNode.projectId,
-              userId: fullNode.userId,
-              customColor: fullNode.customColor,
-              group: fullNode.group ? { id: fullNode.group.id, name: fullNode.group.name, color: fullNode.group.color, order: fullNode.group.order } : { id: fullNode.groupId ?? 0, name: 'Default', color: '#808080', order: 0 },
-              x: n.x,
-              y: n.y
-            });
-            await new Promise(r => setTimeout(r, 20));
+            await api.nodes.batchUpdate(updatesToPush);
           } catch { }
         }
 
@@ -2005,13 +2009,15 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
         if (selectedShapeIds.size > 0) {
           const finalShapes = shapesRef.current;
           setShapes(finalShapes);
-          for (const s of finalShapes) {
-            if (selectedShapeIds.has(s.id)) {
-              try {
-                await api.drawings.update(s.id, shapeToApiDrawing(s, currentProject?.id || 0, activeGroupId ?? undefined));
-                await new Promise(r => setTimeout(r, 20));
-              } catch { }
-            }
+
+          const shapeUpdates = finalShapes
+            .filter(s => selectedShapeIds.has(s.id))
+            .map(s => ({ ...shapeToApiDrawing(s, currentProject?.id || 0, activeGroupId ?? undefined), id: s.id }));
+
+          if (shapeUpdates.length > 0) {
+            try {
+              await api.drawings.batchUpdate(shapeUpdates as any);
+            } catch { }
           }
         }
       })();

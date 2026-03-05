@@ -52,7 +52,6 @@ export default function ProjectPreviewClient({ params }: { params: Promise<{ id:
     const [activeGroupId, setActiveGroupId] = useState<number | null>(null);
     const [showSelectionPane, setShowSelectionPane] = useState(false);
     const [isOutsideContent, setIsOutsideContent] = useState(false);
-    const [graphTransform, setGraphTransform] = useState({ x: 0, y: 0, k: 1 });
 
     const { exportToPNG, exportToJPG } = useGraphExport(
         containerRef,
@@ -160,7 +159,20 @@ export default function ProjectPreviewClient({ params }: { params: Promise<{ id:
                 const projectGroups = await api.groups.getByProject(id);
                 const sortedGroups = projectGroups.sort((a: Group, b: Group) => (a.order ?? 0) - (b.order ?? 0));
                 setGroups(sortedGroups);
-                if (sortedGroups.length > 0) {
+                if (typeof window !== 'undefined') {
+                    const params = new URLSearchParams(window.location.search);
+                    const groupIdVar = params.get('group') || params.get('groupId');
+                    if (groupIdVar) {
+                        const parsed = parseInt(groupIdVar, 10);
+                        if (!isNaN(parsed) && sortedGroups.some(g => g.id === parsed)) {
+                            setActiveGroupId(parsed);
+                        } else if (sortedGroups.length > 0) {
+                            setActiveGroupId(sortedGroups[0].id);
+                        }
+                    } else if (sortedGroups.length > 0) {
+                        setActiveGroupId(sortedGroups[0].id);
+                    }
+                } else if (sortedGroups.length > 0) {
                     setActiveGroupId(sortedGroups[0].id);
                 }
             } catch (err) {
@@ -191,42 +203,60 @@ export default function ProjectPreviewClient({ params }: { params: Promise<{ id:
         return shapes.filter(s => s.groupId === activeGroupId);
     }, [shapes, activeGroupId]);
 
-    const checkIfOutsideContent = useCallback(() => {
-        if (!graphRef.current) return;
-        const allPoints = [
-            ...filteredNodes.map(n => ({ x: n.x ?? 0, y: n.y ?? 0 })),
-            ...filteredShapes.flatMap(s => s.points)
-        ];
-        if (allPoints.length === 0) {
-            setIsOutsideContent(false);
-            return;
-        }
-        const minX = Math.min(...allPoints.map(p => p.x));
-        const maxX = Math.max(...allPoints.map(p => p.x));
-        const minY = Math.min(...allPoints.map(p => p.y));
-        const maxY = Math.max(...allPoints.map(p => p.y));
-        const centerX = graphTransform.x;
-        const centerY = graphTransform.y;
-        const scale = graphTransform.k;
-        const viewWidth = dimensions.width / scale;
-        const viewHeight = dimensions.height / scale;
-        const left = centerX - viewWidth / 2;
-        const right = centerX + viewWidth / 2;
-        const top = centerY - viewHeight / 2;
-        const bottom = centerY + viewHeight / 2;
-        const outside = maxX < left || minX > right || maxY < top || minY > bottom;
-        setIsOutsideContent(outside);
-    }, [filteredNodes, filteredShapes, graphTransform, dimensions]);
-
     useEffect(() => {
-        checkIfOutsideContent();
-    }, [checkIfOutsideContent]);
+        const checkIfOutsideContent = () => {
+            if (!graphRef.current) return;
+            const allPoints = [
+                ...filteredNodes.map(n => ({ x: n.x ?? 0, y: n.y ?? 0 })),
+                ...filteredShapes.flatMap(s => s.points)
+            ];
 
-    const handleZoom = useCallback((transform: { x: number; y: number; k: number }) => {
-        setTimeout(() => {
-            setGraphTransform(transform);
-        }, 0);
-    }, []);
+            if (allPoints.length === 0) {
+                setIsOutsideContent(false);
+                return;
+            }
+
+            const minX = Math.min(...allPoints.map(p => p.x));
+            const maxX = Math.max(...allPoints.map(p => p.x));
+            const minY = Math.min(...allPoints.map(p => p.y));
+            const maxY = Math.max(...allPoints.map(p => p.y));
+            const padding = 200;
+            const contentBounds = {
+                minX: minX - padding,
+                maxX: maxX + padding,
+                minY: minY - padding,
+                maxY: maxY + padding,
+            };
+
+            try {
+                const center = graphRef.current.centerAt();
+                const zoom = graphRef.current.zoom();
+                const viewWidth = dimensions.width / zoom;
+                const viewHeight = dimensions.height / zoom;
+
+                const viewBounds = {
+                    minX: center.x - viewWidth / 2,
+                    maxX: center.x + viewWidth / 2,
+                    minY: center.y - viewHeight / 2,
+                    maxY: center.y + viewHeight / 2,
+                };
+
+                const isIntersecting = !(
+                    viewBounds.maxX < contentBounds.minX ||
+                    viewBounds.minX > contentBounds.maxX ||
+                    viewBounds.maxY < contentBounds.minY ||
+                    viewBounds.minY > contentBounds.maxY
+                );
+
+                setIsOutsideContent(!isIntersecting);
+            } catch (e) {
+                setIsOutsideContent(false);
+            }
+        };
+
+        const interval = setInterval(checkIfOutsideContent, 500);
+        return () => clearInterval(interval);
+    }, [filteredNodes, filteredShapes, dimensions]);
 
     const graphData = useMemo(() => {
         const nodeIds = new Set(filteredNodes.map(n => n.id));
@@ -397,7 +427,6 @@ export default function ProjectPreviewClient({ params }: { params: Promise<{ id:
                     onNodeHover={handleNodeHover}
                     onNodeClick={handleNodeClick}
                     onBackgroundClick={() => setActiveNode(null)}
-                    onZoom={handleZoom}
                 />
             </div>
 

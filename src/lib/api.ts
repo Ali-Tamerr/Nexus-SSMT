@@ -213,6 +213,24 @@ export const api = {
       return fetchApiWithBody<Node>("/api/nodes", "POST", payload);
     },
 
+    batchCreate: (data: Omit<Node, "id" | "createdAt" | "updatedAt">[]) => {
+      const payload = data.map((d) =>
+        pick(
+          d,
+          "title",
+          "content",
+          "attachments",
+          "groupId",
+          "projectId",
+          "userId",
+          "x",
+          "y",
+          "customColor",
+        ),
+      );
+      return fetchApiWithBody<Node[]>("/api/nodes/batch", "POST", payload);
+    },
+
     update: (id: number, data: Partial<Node>) => {
       const payload = pick(
         data,
@@ -227,6 +245,24 @@ export const api = {
         "customColor",
       );
       return fetchApiWithBody<Node>(`/api/nodes/${id}`, "PUT", payload);
+    },
+
+    batchUpdate: (updates: (Partial<Node> & { id: number })[]) => {
+      const payload = updates.map((data) =>
+        pick(
+          data,
+          "id",
+          "title",
+          "content",
+          "groupId",
+          "projectId",
+          "userId",
+          "x",
+          "y",
+          "customColor",
+        ),
+      );
+      return fetchApiWithBody<void>("/api/nodes/batch", "PUT", payload);
     },
 
     updatePosition: (id: number, x: number, y: number) =>
@@ -485,6 +521,31 @@ export const api = {
             typeof d.points === "string" ? JSON.parse(d.points) : d.points,
         }),
       ) as Promise<DrawnShape>;
+    },
+
+    batchUpdate: (
+      updates: (Partial<{
+        type: string;
+        points: { x: number; y: number }[];
+        color: string;
+        width: number;
+        style: string;
+        text: string;
+        fontSize: number;
+        fontFamily: string;
+        textDir: string;
+        direction: string;
+        groupId: number;
+      }> & { id: number })[],
+    ) => {
+      const payload = updates.map((data) => {
+        const item: any = { ...data };
+        if (data.points) {
+          item.points = JSON.stringify(data.points);
+        }
+        return item;
+      });
+      return fetchApiWithBody<void>("/api/drawings/batch", "PUT", payload);
     },
 
     delete: (id: number) =>

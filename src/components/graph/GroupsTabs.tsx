@@ -13,7 +13,7 @@ export interface Group {
 interface GroupsTabsProps {
     groups: Group[];
     activeGroupId: number | null;
-    onSelectGroup: (groupId: number) => void;
+    onSelectGroup: (groupId: number | null) => void;
     onAddGroup: () => void;
     onRenameGroup: (groupId: number, newName: string) => void;
     onDeleteGroup: (groupId: number) => void;
@@ -210,6 +210,7 @@ export function GroupsTabs({
                     element.scrollLeft += e.deltaY;
                 }
             }}>
+               
                 {sortedGroups.map((group) => (
                     <div
                         key={group.id}
