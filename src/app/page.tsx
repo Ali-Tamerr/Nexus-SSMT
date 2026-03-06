@@ -313,7 +313,7 @@ export default function HomePage() {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-950">
+    <div className="h-screen overflow-y-auto bg-zinc-950">
       <Suspense fallback={null}>
         <AuthErrorHandler onSetTab={setActiveTab} />
       </Suspense>

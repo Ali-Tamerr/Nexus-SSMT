@@ -392,7 +392,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
 
 
       const nodeId = Number(nodeObj.id);
-      if (event.shiftKey) {
+      if (event.shiftKey || event.ctrlKey || event.metaKey) {
         setSelectedNodeIds(prev => {
           const next = new Set(prev);
           if (next.has(nodeId)) {
@@ -2381,10 +2381,27 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
       }
     }
 
+    let clickedNodeId: number | null = null;
+    let closestDist = Infinity;
+    const nodeHitRadius = 15 / scale;
+    const currentNodes = (graphDataRef.current?.nodes || []) as any[];
+    currentNodes.forEach((n: any) => {
+      const dx = (n.x ?? 0) - worldPoint.x;
+      const dy = (n.y ?? 0) - worldPoint.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist <= nodeHitRadius && dist < closestDist) {
+        closestDist = dist;
+        clickedNodeId = Number(n.id);
+      }
+    });
+
+    if (clickedNodeId) return;
+
     const clickedShape = filteredShapes.find(s => isPointNearShape(worldPoint, s, scale, 10));
 
     if (clickedShape) {
-      if (e.shiftKey) {
+      lastNodeClickTimeRef.current = Date.now();
+      if (e.shiftKey || e.ctrlKey || e.metaKey) {
         setSelectedShapeIds(prev => {
           const next = new Set(prev);
           if (next.has(clickedShape.id)) {
@@ -2404,7 +2421,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
       setDragStartWorld(worldPoint);
       pushToUndoStack(shapes);
     } else {
-      if (!e.shiftKey) {
+      if (!e.shiftKey && !e.ctrlKey && !e.metaKey) {
         setSelectedShapeIds(new Set());
         setSelectedNodeIds(new Set());
       }

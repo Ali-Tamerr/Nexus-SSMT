@@ -214,12 +214,11 @@ export const api = {
     },
 
     batchCreate: (data: Omit<Node, "id" | "createdAt" | "updatedAt">[]) => {
-      const payload = data.map((d) =>
+      const payload = data.map((item) =>
         pick(
-          d,
+          item,
           "title",
           "content",
-          "attachments",
           "groupId",
           "projectId",
           "userId",
