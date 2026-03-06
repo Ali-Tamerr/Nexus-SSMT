@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { ChevronRight, FolderOpen, Loader2, Trash2, Pencil, Info } from 'lucide-react';
+import { ChevronRight, FolderOpen, Loader2, Trash2, Pencil, Info, Pin } from 'lucide-react';
 
 import { Project } from '@/types/knowledge';
 
@@ -15,6 +15,8 @@ interface ProjectCardProps {
   selectable?: boolean;
   isSelected?: boolean;
   onToggleSelect?: (project: Project) => void;
+  isPinned?: boolean;
+  onPinToggle?: (project: Project) => void;
 }
 
 export function ProjectCard({
@@ -25,8 +27,9 @@ export function ProjectCard({
   onInfoClick,
   viewMode = 'grid',
   selectable = false,
-  isSelected = false,
-  onToggleSelect
+  onToggleSelect,
+  isPinned = false,
+  onPinToggle
 }: ProjectCardProps) {
   const [isLoading, setIsLoading] = useState(false);
   const isListView = viewMode === 'list';
@@ -105,6 +108,25 @@ export function ProjectCard({
               {new Date(project.updatedAt).toLocaleDateString()}
             </span>
           )}
+          {onPinToggle ? (
+            <button
+              className={`p-1 rounded hover:bg-zinc-800 transition-colors ${isPinned ? 'text-blue-500 hover:text-blue-400' : 'text-zinc-400 hover:text-white'
+                }`}
+              title={isPinned ? 'Unpin project' : 'Pin project'}
+              onClick={(e) => {
+                e.stopPropagation();
+                onPinToggle(project);
+              }}
+              tabIndex={-1}
+              type="button"
+            >
+              <Pin className={`w-4 h-4 ${isPinned ? 'fill-current' : ''}`} />
+            </button>
+          ) : isPinned ? (
+            <div className="p-1 text-blue-500" title="Pinned project">
+              <Pin className="w-4 h-4 fill-current" />
+            </div>
+          ) : null}
           {onInfoClick && (
             <button
               className="p-1 rounded hover:bg-zinc-800 text-zinc-400 hover:text-white transition-colors"

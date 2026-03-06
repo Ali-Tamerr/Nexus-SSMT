@@ -213,7 +213,7 @@ export default function HomePage() {
 
 
 
-  const handleCreateGroup = async (data: { name: string; description?: string; projectIds: number[] }) => {
+  const handleCreateGroup = async (data: { name: string; description?: string; projectIds: number[]; pinnedProjectIds: number[] }) => {
     if (!user?.id) return;
 
     try {
@@ -221,7 +221,8 @@ export default function HomePage() {
         name: data.name,
         description: data.description,
         userId: user.id,
-        projectIds: data.projectIds
+        projectIds: data.projectIds,
+        pinnedProjectIds: data.pinnedProjectIds
       });
       setIsCreateGroupOpen(false);
       setActiveTab('groups');
@@ -238,7 +239,7 @@ export default function HomePage() {
     setEditingGroupId(group.id);
   };
 
-  const handleUpdateGroup = async (data: { name: string; description?: string; projectIds: number[] }) => {
+  const handleUpdateGroup = async (data: { name: string; description?: string; projectIds: number[]; pinnedProjectIds: number[] }) => {
     if (!editingGroup || !user?.id) return;
 
     // We already have fresh data in editingGroup because it is derived from store collections
@@ -248,7 +249,7 @@ export default function HomePage() {
         name: data.name,
         description: data.description || "",
         projectIds: data.projectIds,
-        userId: user.id
+        pinnedProjectIds: data.pinnedProjectIds
       });
       setEditingGroupId(null);
       showToast('Collection updated successfully');
@@ -417,7 +418,8 @@ export default function HomePage() {
           initialData={{
             name: editingGroup.name,
             description: editingGroup.description,
-            projectIds: getGroupProjectIds(editingGroup)
+            projectIds: getGroupProjectIds(editingGroup),
+            pinnedProjectIds: editingGroup.items?.filter(i => i.isPinned).map(i => i.projectId) || []
           }}
         />
       )}

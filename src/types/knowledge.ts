@@ -165,6 +165,7 @@ export interface ProjectCollectionItem {
   collectionId: number;
   projectId: number;
   order: number;
+  isPinned: boolean;
   project?: Project;
 }
 

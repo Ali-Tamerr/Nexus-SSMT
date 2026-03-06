@@ -1,20 +1,21 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { X, Loader2 } from 'lucide-react';
+import { X, Loader2, Pin } from 'lucide-react';
 
 import { Project } from '@/types/knowledge';
 
 interface CreateGroupModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onSubmit: (data: { name: string; description?: string; projectIds: number[] }) => Promise<void>;
+    onSubmit: (data: { name: string; description?: string; projectIds: number[]; pinnedProjectIds: number[] }) => Promise<void>;
     loading?: boolean;
     availableProjects: Project[];
     initialData?: {
         name: string;
         description?: string;
         projectIds: number[];
+        pinnedProjectIds: number[];
     };
 }
 
@@ -22,6 +23,7 @@ export function CreateGroupModal({ isOpen, onClose, onSubmit, loading, available
     const [name, setName] = useState(initialData?.name || '');
     const [description, setDescription] = useState(initialData?.description || '');
     const [selectedProjects, setSelectedProjects] = useState<Set<number>>(new Set(initialData?.projectIds || []));
+    const [pinnedProjects, setPinnedProjects] = useState<Set<number>>(new Set(initialData?.pinnedProjectIds || []));
 
     // Reset state when opening/closing or changing mode
     useEffect(() => {
@@ -29,6 +31,7 @@ export function CreateGroupModal({ isOpen, onClose, onSubmit, loading, available
             setName(initialData?.name || '');
             setDescription(initialData?.description || '');
             setSelectedProjects(new Set(initialData?.projectIds || []));
+            setPinnedProjects(new Set(initialData?.pinnedProjectIds || []));
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isOpen]);
@@ -39,7 +42,12 @@ export function CreateGroupModal({ isOpen, onClose, onSubmit, loading, available
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!name.trim()) return;
-        await onSubmit({ name, description, projectIds: Array.from(selectedProjects) });
+        await onSubmit({ 
+            name, 
+            description, 
+            projectIds: Array.from(selectedProjects),
+            pinnedProjectIds: Array.from(pinnedProjects).filter(id => selectedProjects.has(id))
+        });
         // Don't reset here as it might be used for editing, let onClose handle it or unmount
     };
 
@@ -47,10 +55,27 @@ export function CreateGroupModal({ isOpen, onClose, onSubmit, loading, available
         const newSelected = new Set(selectedProjects);
         if (newSelected.has(id)) {
             newSelected.delete(id);
+            // Also unpin if unselected
+            const newPinned = new Set(pinnedProjects);
+            newPinned.delete(id);
+            setPinnedProjects(newPinned);
         } else {
             newSelected.add(id);
         }
         setSelectedProjects(newSelected);
+    };
+
+    const togglePin = (e: React.MouseEvent, id: number) => {
+        e.stopPropagation();
+        if (!selectedProjects.has(id)) return;
+        
+        const newPinned = new Set(pinnedProjects);
+        if (newPinned.has(id)) {
+            newPinned.delete(id);
+        } else {
+            newPinned.add(id);
+        }
+        setPinnedProjects(newPinned);
     };
 
     return (
@@ -129,7 +154,19 @@ export function CreateGroupModal({ isOpen, onClose, onSubmit, loading, available
                                                 {selectedProjects.has(project.id) && <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
                                             </div>
                                             <div>
-                                                <h4 className="text-sm font-medium text-white line-clamp-1">{project.name}</h4>
+                                                <div className="flex items-center gap-2">
+                                                    <h4 className="text-sm font-medium text-white line-clamp-1">{project.name}</h4>
+                                                    {selectedProjects.has(project.id) && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={(e) => togglePin(e, project.id)}
+                                                            className={`p-0.5 rounded transition-colors ${pinnedProjects.has(project.id) ? 'text-blue-500 fill-current' : 'text-zinc-600 hover:text-zinc-400'}`}
+                                                            title={pinnedProjects.has(project.id) ? "Unpin" : "Pin at top"}
+                                                        >
+                                                            <Pin className="w-3 h-3" />
+                                                        </button>
+                                                    )}
+                                                </div>
                                                 {project.description && (
                                                     <p className="text-xs text-zinc-500 line-clamp-1 mt-0.5">{project.description}</p>
                                                 )}

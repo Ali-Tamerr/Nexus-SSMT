@@ -58,6 +58,43 @@ export default function CollectionPreviewClient() {
         router.push(`/project/${project.id}/preview`);
     };
 
+    const handlePinToggle = async (project: Project) => {
+        if (!collection || !owner) return;
+        const { user } = useAuthStore.getState();
+        if (user?.id !== collection.userId) return;
+
+        const currentPinnedIds = collection.items?.filter(i => i.isPinned).map(i => i.projectId) || [];
+        const isCurrentlyPinned = currentPinnedIds.includes(project.id);
+
+        let newPinnedIds: number[];
+        if (isCurrentlyPinned) {
+            newPinnedIds = currentPinnedIds.filter(id => id !== project.id);
+        } else {
+            newPinnedIds = [...currentPinnedIds, project.id];
+        }
+
+        try {
+            await api.projectCollections.update(collection.id, {
+                pinnedProjectIds: newPinnedIds,
+                userId: user.id
+            });
+
+            // Optimistic Update
+            setCollection(prev => {
+                if (!prev) return null;
+                return {
+                    ...prev,
+                    items: prev.items?.map(item => ({
+                        ...item,
+                        isPinned: newPinnedIds.includes(item.projectId)
+                    }))
+                };
+            });
+        } catch (err) {
+            console.error('Failed to toggle pin:', err);
+        }
+    };
+
     const resolveOwnerDisplayName = (profile: Profile | null): string => {
         if (!profile) return 'Unknown User';
 
@@ -139,7 +176,7 @@ export default function CollectionPreviewClient() {
                         <h1 className="text-3xl font-bold text-white max-w-2xl truncate" title={collection.name}>
                             {collection.name}
                         </h1>
-                        
+
                     </div>
 
                     {owner && (
@@ -170,15 +207,30 @@ export default function CollectionPreviewClient() {
                 </div>
 
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                    {projects.map((project) => (
-                        <ProjectCard
-                            key={project.id}
-                            project={project}
-                            onClick={handleProjectClick}
-                            onInfoClick={setProjectInfo}
-                            viewMode="grid"
-                        />
-                    ))}
+                    {projects
+                        .sort((a, b) => {
+                            const itemA = collection?.items?.find(i => i.projectId === a.id);
+                            const itemB = collection?.items?.find(i => i.projectId === b.id);
+                            if (itemA?.isPinned && !itemB?.isPinned) return -1;
+                            if (!itemA?.isPinned && itemB?.isPinned) return 1;
+                            return (itemA?.order || 0) - (itemB?.order || 0);
+                        })
+                        .map((project) => {
+                            const isPinned = collection?.items?.find(item => item.projectId === project.id)?.isPinned || false;
+                            const isOwner = useAuthStore.getState().user?.id === collection?.userId;
+
+                            return (
+                                <ProjectCard
+                                    key={project.id}
+                                    project={project}
+                                    onClick={handleProjectClick}
+                                    onInfoClick={setProjectInfo}
+                                    viewMode="grid"
+                                    isPinned={isPinned}
+                                    onPinToggle={isOwner ? handlePinToggle : undefined}
+                                />
+                            );
+                        })}
                 </div>
 
                 {projects.length === 0 && (

@@ -14,6 +14,7 @@ interface ProjectCollectionState {
     description?: string;
     userId: string;
     projectIds: number[];
+    pinnedProjectIds?: number[];
   }) => Promise<void>;
   updateCollection: (
     id: number,
@@ -22,6 +23,7 @@ interface ProjectCollectionState {
       name?: string;
       description?: string;
       projectIds?: number[];
+      pinnedProjectIds?: number[];
       userId?: string;
     },
   ) => Promise<void>;
@@ -44,6 +46,12 @@ export const useProjectCollectionStore = create<ProjectCollectionState>(
           ...c,
           projectIds:
             c.projectIds || c.items?.map((i: any) => i.projectId) || [],
+          pinnedProjectIds:
+            c.pinnedProjectIds ||
+            c.items
+              ?.filter((i: any) => i.isPinned)
+              .map((i: any) => i.projectId) ||
+            [],
         }));
         set({ collections, isLoading: false });
       } catch (err) {
@@ -89,6 +97,10 @@ export const useProjectCollectionStore = create<ProjectCollectionState>(
               collectionId: id,
               projectId: pid,
               order: 0,
+              isPinned:
+                data.pinnedProjectIds?.includes(pid) ??
+                existing.items?.find((i) => i.projectId === pid)?.isPinned ??
+                false,
             })) || existing.items;
 
           const updatedCollection = {

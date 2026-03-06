@@ -563,6 +563,7 @@ export const api = {
       description?: string;
       userId: string;
       projectIds: number[];
+      pinnedProjectIds?: number[];
     }) =>
       fetchApiWithBody<ProjectCollection>(
         "/api/ProjectCollections",
@@ -577,13 +578,14 @@ export const api = {
         name?: string;
         description?: string;
         projectIds?: number[];
+        pinnedProjectIds?: number[];
         userId?: string;
       },
     ) =>
       fetchApiWithBody<ProjectCollection>(
         `/api/ProjectCollections/${id}`,
         "PUT",
-        data,
+        { ...data, id },
       ),
 
     delete: (id: number) =>

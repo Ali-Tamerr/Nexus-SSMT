@@ -60,11 +60,43 @@ export default function CollectionPreviewPage() {
     }, [id]);
 
     const handleProjectClick = (project: Project) => {
-        // Open project in preview mode or editor
-        // Since this is a public view, maybe open in a read-only preview? 
-        // For now, redirect to project preview if possible, or editor.
-        // Ideally: /project/[id]/preview
         router.push(`/project/${project.id}/preview`);
+    };
+
+    const handlePinToggle = async (project: Project) => {
+        if (!collection || !owner) return;
+        const { user } = useAuthStore.getState();
+        if (user?.id !== collection.userId) return;
+
+        const currentPinnedIds = collection.items?.filter(i => i.isPinned).map(i => i.projectId) || [];
+        const isCurrentlyPinned = currentPinnedIds.includes(project.id);
+
+        let newPinnedIds: number[];
+        if (isCurrentlyPinned) {
+            newPinnedIds = currentPinnedIds.filter(id => id !== project.id);
+        } else {
+            newPinnedIds = [...currentPinnedIds, project.id];
+        }
+
+        try {
+            await api.projectCollections.update(collection.id, {
+                pinnedProjectIds: newPinnedIds
+            });
+
+            // Optimistic Update
+            setCollection(prev => {
+                if (!prev) return null;
+                return {
+                    ...prev,
+                    items: prev.items?.map(item => ({
+                        ...item,
+                        isPinned: newPinnedIds.includes(item.projectId)
+                    }))
+                };
+            });
+        } catch (err) {
+            console.error('Failed to toggle pin:', err);
+        }
     };
 
     const resolveOwnerDisplayName = (profile: Profile | null): string => {
@@ -130,7 +162,7 @@ export default function CollectionPreviewPage() {
         <div className="h-dvh overflow-y-auto bg-zinc-950 touch-pan-y">
             <Navbar showSearch={false} />
             <main className="mx-auto max-w-6xl px-6 py-8">
-                <div className="mb-8 space-y-4"> 
+                <div className="mb-8 space-y-4">
                     <button
                         onClick={() => router.push('/')}
                         className="text-sm text-zinc-400 flex gap-2 items-center border-b border-transparent hover:border-white/60 hover:text-white transition-colors"
@@ -138,7 +170,7 @@ export default function CollectionPreviewPage() {
                         <ArrowLeft className="h-4 w-4" /> Back to Dashboard
                     </button>
                     <div className="flex items-center gap-3">
-                        
+
                         <button
                             onClick={() => setShowGroupInfo(true)}
                             className="p-1 rounded-full hover:bg-zinc-800 text-zinc-400 hover:text-white transition-colors"
@@ -179,16 +211,30 @@ export default function CollectionPreviewPage() {
                 </div>
 
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                    {projects.map((project) => (
-                        <ProjectCard
-                            key={project.id}
-                            project={project}
-                            onClick={handleProjectClick}
-                            onInfoClick={setProjectInfo}
-                            viewMode="grid"
-                        // Read only view, no delete/edit
-                        />
-                    ))}
+                    {projects
+                        .sort((a, b) => {
+                            const itemA = collection?.items?.find(i => i.projectId === a.id);
+                            const itemB = collection?.items?.find(i => i.projectId === b.id);
+                            if (itemA?.isPinned && !itemB?.isPinned) return -1;
+                            if (!itemA?.isPinned && itemB?.isPinned) return 1;
+                            return (itemA?.order || 0) - (itemB?.order || 0);
+                        })
+                        .map((project) => {
+                            const isPinned = collection?.items?.find(item => item.projectId === project.id)?.isPinned || false;
+                            const isOwner = useAuthStore.getState().user?.id === collection?.userId;
+
+                            return (
+                                <ProjectCard
+                                    key={project.id}
+                                    project={project}
+                                    onClick={handleProjectClick}
+                                    onInfoClick={setProjectInfo}
+                                    viewMode="grid"
+                                    isPinned={isPinned}
+                                    onPinToggle={isOwner ? handlePinToggle : undefined}
+                                />
+                            );
+                        })}
                 </div>
 
                 {projects.length === 0 && (
