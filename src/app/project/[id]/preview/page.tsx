@@ -44,7 +44,7 @@ export async function generateMetadata(
                 title,
                 description,
                 type: 'website',
-                siteName: 'Nexus Graph',
+                siteName: 'Nexus',
                 url: `/project/${id}/preview`,
                 images: [{
                     url: imageUrl,
@@ -65,10 +65,10 @@ export async function generateMetadata(
         console.error(`[Metadata Error] Project ${id} fetch failed:`, error);
 
         return {
-            title: 'Nexus Graph',
+            title: 'Nexus',
             description: 'Intelligent Social Study Mapping platform to visualize complex relationships.',
             openGraph: {
-                title: 'Nexus Graph',
+                title: 'Nexus',
                 description: 'Intelligent Social Study Mapping platform to visualize complex relationships.',
                 type: 'website',
                 images: ['/favicon.ico']

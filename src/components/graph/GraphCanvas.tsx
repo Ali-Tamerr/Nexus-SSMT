@@ -311,8 +311,11 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
 
       // Update properties on stable object
       cached.title = n.title;
+      cached.content = n.content;
       cached.groupId = n.groupId;
       cached.customColor = n.customColor;
+      cached.attachments = n.attachments;
+      cached.tags = n.tags;
 
       // Update positions
       // We update fx/fy to control position (ForceGraph treats fx/fy as fixed/pinned)
@@ -388,7 +391,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
       }
 
       const node = nodes.find((n) => n.id === nodeObj.id);
-      if (node) {
+      if (node && !event.shiftKey && !event.ctrlKey && !event.metaKey) {
         setActiveNode(node);
       }
 
@@ -1169,51 +1172,161 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
           navigator.clipboard.writeText(selectedShapes[0].text).catch(() => { });
         }
 
+
         if (selectedNodes.length > 0 || selectedShapes.length > 0) {
-          e.preventDefault(); // Block default browser copy
-          clipboardRef.current = {
-            nodes: selectedNodes.map((n: any) => ({ ...n })),
-            shapes: selectedShapes.map(s => ({ ...s, points: [...s.points] }))
+          e.preventDefault();
+          const data = {
+            nodes: selectedNodes.map((n: any) => ({
+              title: n.title,
+              content: n.content,
+              customColor: n.customColor,
+              x: n.x,
+              y: n.y,
+              groupId: n.groupId,
+              attachments: n.attachments?.map((a: any) => ({
+                fileName: a.fileName,
+                fileUrl: a.fileUrl
+              })) || [],
+              tags: n.tags?.map((t: any) => ({
+                name: t.name,
+                color: t.color
+              })) || []
+            })),
+            shapes: selectedShapes.map(s => ({
+              type: s.type,
+              points: [...s.points],
+              color: s.color,
+              width: s.width,
+              style: s.style,
+              text: s.text,
+              fontSize: s.fontSize,
+              fontFamily: s.fontFamily,
+              textDir: s.textDir,
+              groupId: s.groupId
+            }))
           };
+          clipboardRef.current = data;
+          localStorage.setItem('nexus-graph-clipboard', JSON.stringify(data));
+          showToast(`Copied ${data.nodes.length} nodes and ${data.shapes.length} drawings`, 'success');
         }
         return;
       }
 
       if (mod && e.key.toLowerCase() === 'v') {
-        const { currentProject, currentUserId, graphSettings, addShape, activeGroupId } = useGraphStore.getState();
+        const { currentProject, currentUserId, graphSettings, addShape, activeGroupId, tags: allProjectTags } = useGraphStore.getState();
         if (!currentProject) return;
 
-        e.preventDefault(); // Block default browser paste
+        e.preventDefault();
 
+        let cpNodes = [];
+        let cpShapes = [];
+
+        // Try clipboardRef first (in-memory, faster), then localStorage (cross-project)
         if (clipboardRef.current && (clipboardRef.current.nodes.length > 0 || clipboardRef.current.shapes.length > 0)) {
-          const { nodes: cpNodes, shapes: cpShapes } = clipboardRef.current;
+          cpNodes = clipboardRef.current.nodes;
+          cpShapes = clipboardRef.current.shapes;
+        } else {
+          const raw = localStorage.getItem('nexus-graph-clipboard');
+          if (raw) {
+            try {
+              const parsed = JSON.parse(raw);
+              cpNodes = parsed.nodes || [];
+              cpShapes = parsed.shapes || [];
+            } catch (err) { }
+          }
+        }
+
+        if (cpNodes.length > 0 || cpShapes.length > 0) {
           setSelectedNodeIds(new Set());
           setSelectedShapeIds(new Set());
           const offset = 50;
 
-          // Sequential Creation
           (async () => {
-            const nodePromises = cpNodes.map(async (n: any) => {
-              try {
-                const payload = {
-                  title: n.title,
-                  content: n.content || '',
-                  projectId: currentProject.id,
-                  groupId: n.groupId,
-                  userId: currentUserId || n.userId,
-                  customColor: n.customColor,
-                  x: (n.x || 0) + offset,
-                  y: (n.y || 0) + offset,
-                };
-                const newNode = await api.nodes.create(payload);
-                useGraphStore.getState().addNode(newNode);
-                return newNode.id;
-              } catch (err) { return null; }
-            });
+            // Paste Nodes
+            const nodeIds: number[] = [];
+            if (cpNodes.length > 0) {
+              const payloads = cpNodes.map((n: any) => ({
+                title: n.title,
+                content: n.content || '',
+                projectId: currentProject.id,
+                groupId: activeGroupId !== null ? activeGroupId : (n.groupId || 0),
+                userId: currentUserId || n.userId,
+                customColor: n.customColor,
+                x: (n.x || 0) + offset,
+                y: (n.y || 0) + offset,
+              }));
 
-            const shapePromises = cpShapes.map(async (s: any) => {
+              let createdNodes: any[] = [];
               try {
-                const newPoints = s.points.map((p: any) => ({ x: p.x + offset, y: p.y + offset }));
+                createdNodes = await api.nodes.batchCreate(payloads);
+              } catch (err) {
+                // Fallback to sequential
+                for (const p of payloads) {
+                  try {
+                    const node = await api.nodes.create(p);
+                    createdNodes.push(node);
+                  } catch (e) { }
+                }
+              }
+
+              // Post-process nodes (add to store, handle attachments, handle tags)
+              for (let i = 0; i < createdNodes.length; i++) {
+                const node = createdNodes[i];
+                const originalNodeData = cpNodes[i];
+
+                // Add to store
+                useGraphStore.getState().addNode(node);
+                nodeIds.push(node.id);
+
+                // Create attachments if any
+                if (originalNodeData.attachments && originalNodeData.attachments.length > 0) {
+                  for (const att of originalNodeData.attachments) {
+                    try {
+                      await api.attachments.create({
+                        nodeId: node.id,
+                        fileName: att.fileName,
+                        fileUrl: att.fileUrl
+                      });
+                    } catch (err) { }
+                  }
+                }
+
+                // Handle tags
+                if (originalNodeData.tags && originalNodeData.tags.length > 0) {
+                  for (const tagData of originalNodeData.tags) {
+                    try {
+                      // Find if tag already exists in current project or globally for user
+                      let tag = allProjectTags.find(t => t.name.toLowerCase() === tagData.name.toLowerCase());
+                      if (!tag) {
+                        // Create tag
+                        tag = await api.tags.create({
+                          name: tagData.name,
+                          color: tagData.color,
+                          userId: currentUserId || undefined
+                        });
+                        useGraphStore.getState().setTags([...allProjectTags, tag]);
+                      }
+                      // Add tag to node
+                      await api.nodes.addTag(node.id, tag.id);
+                    } catch (err) { }
+                  }
+                }
+
+                // Refresh node if needed to show attachments/tags
+                if ((originalNodeData.attachments?.length > 0) || (originalNodeData.tags?.length > 0)) {
+                  try {
+                    const updatedNode = await api.nodes.getById(node.id);
+                    useGraphStore.getState().updateNode(node.id, updatedNode);
+                  } catch (err) { }
+                }
+              }
+            }
+
+            // Paste Shapes
+            const shapeIds: number[] = [];
+            for (const s of cpShapes) {
+              try {
+                const newPoints = (s.points || []).map((p: any) => ({ x: (p.x || 0) + offset, y: (p.y || 0) + offset }));
                 const payload = {
                   projectId: currentProject.id,
                   type: s.type,
@@ -1226,27 +1339,29 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
                   fontFamily: s.fontFamily,
                   textDir: s.textDir,
                   direction: s.textDir,
-                  groupId: s.groupId
+                  groupId: activeGroupId !== null ? activeGroupId : s.groupId
                 };
                 const newShape = await api.drawings.create(payload);
                 useGraphStore.getState().addShape(newShape);
-                return newShape.id;
-              } catch (err) { return null; }
-            });
+                shapeIds.push(newShape.id);
+              } catch (err) { }
+            }
 
-            const ids = await Promise.all([...nodePromises, ...shapePromises]);
-            const nodeIds = ids.slice(0, cpNodes.length).filter((id): id is number => id !== null);
-            const shapeIds = ids.slice(cpNodes.length).filter((id): id is number => id !== null);
             setSelectedNodeIds(new Set(nodeIds));
             setSelectedShapeIds(new Set(shapeIds));
 
-            clipboardRef.current = {
+            // Update clipboard for next paste (cumulative offset)
+            const nextClipboard = {
               nodes: cpNodes.map((n: any) => ({ ...n, x: (n.x || 0) + offset, y: (n.y || 0) + offset })),
               shapes: cpShapes.map((s: any) => ({
-                ...s, id: undefined,
-                points: s.points.map((p: any) => ({ x: p.x + offset, y: p.y + offset }))
+                ...s,
+                points: (s.points || []).map((p: any) => ({ x: (p.x || 0) + offset, y: (p.y || 0) + offset }))
               })),
             };
+            clipboardRef.current = nextClipboard;
+            localStorage.setItem('nexus-graph-clipboard', JSON.stringify(nextClipboard));
+
+            showToast(`Pasted ${nodeIds.length} nodes and ${shapeIds.length} drawings`, 'info');
           })();
         } else {
           navigator.clipboard.readText().then(text => {
@@ -1702,6 +1817,10 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
     // If we clicked on a node that is NOT in selection, select it
     // NOTE: Do NOT open editor here - wait for click handler to determine if it was a drag or click
     if (clickedNodeId && !selectedNodeIds.has(clickedNodeId)) {
+      if (e.shiftKey || e.ctrlKey || e.metaKey) {
+        // Let handleNodeClick handle multi-selection to avoid double-selection issues
+        return;
+      }
       lastHoveredNodeIdRef.current = String(clickedNodeId);
       lastNodeClickTimeRef.current = Date.now();
 
@@ -1712,7 +1831,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
     }
 
     // Do nothing - let bubble phase handle marquee start (handleSelectMouseDown)
-  }, [screenToWorld, graphTransform, graphSettings.activeTool, shapes, nodes, setActiveNode]);
+  }, [screenToWorld, graphTransform, graphSettings.activeTool, shapes, nodes, setActiveNode, setSelectedNodeIds, setSelectedShapeIds]);
 
   const handleContainerMouseUpCapture = useCallback((e: React.MouseEvent) => {
     // 1. Pan End
