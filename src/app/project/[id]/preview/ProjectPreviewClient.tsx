@@ -396,6 +396,7 @@ export default function ProjectPreviewClient({ params }: { params: Promise<{ id:
                 onWallpaperChange={handleWallpaperChange}
                 projectUpdatedAt={projectUpdatedAt}
                 collectionId={collectionId}
+                projectId={id}
             />
 
             <div

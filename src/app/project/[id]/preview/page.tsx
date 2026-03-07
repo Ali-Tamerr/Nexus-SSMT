@@ -22,12 +22,20 @@ export async function generateMetadata(
         if (!project) {
             return {
                 title: 'Project Not Found | Nexus',
+                description: 'The requested project could not be found.',
             };
         }
 
         const title = `${project.name} | Nexus Graph`;
-        const description = project.description || `Explore the ${project.name} knowledge graph on Nexus.`;
-        const imageUrl = project.wallpaper || undefined;
+        const description = (project.description || `Explore the ${project.name} knowledge graph on Nexus.`).slice(0, 200);
+
+        // WhatsApp and other platforms don't support base64 images as preview images
+        // and large base64 strings can break the meta tag parsing
+        const wallpaper = project.wallpaper || '';
+        const isUrl = typeof wallpaper === 'string' && (wallpaper.startsWith('http') || wallpaper.startsWith('/'));
+
+        // Use favicon as a fallback - WhatsApp prefers one image to be present
+        const imageUrl = isUrl ? wallpaper : '/favicon.ico';
 
         return {
             title,
@@ -36,20 +44,35 @@ export async function generateMetadata(
                 title,
                 description,
                 type: 'website',
-                siteName: 'Nexus',
-                images: imageUrl ? [{ url: imageUrl }] : undefined,
+                siteName: 'Nexus Graph',
+                url: `/project/${id}/preview`,
+                images: [{
+                    url: imageUrl,
+                    width: isUrl ? 1200 : 512,
+                    height: isUrl ? 630 : 512,
+                    alt: project.name
+                }]
             },
             twitter: {
                 card: 'summary_large_image',
                 title,
                 description,
-                images: imageUrl ? [imageUrl] : undefined,
+                images: [imageUrl],
             },
         };
     } catch (error) {
-        console.error('Metadata generation error:', error);
+        // Log the error so it shows up in Vercel function logs
+        console.error(`[Metadata Error] Project ${id} fetch failed:`, error);
+
         return {
             title: 'Nexus Graph',
+            description: 'Intelligent Social Study Mapping platform to visualize complex relationships.',
+            openGraph: {
+                title: 'Nexus Graph',
+                description: 'Intelligent Social Study Mapping platform to visualize complex relationships.',
+                type: 'website',
+                images: ['/favicon.ico']
+            }
         };
     }
 }

@@ -3,10 +3,11 @@
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import NextImage from 'next/image';
-import { Info, Search, ChevronDown, Save, ChevronRight, LayoutGrid, X } from 'lucide-react';
+import { Info, Search, ChevronDown, Save, ChevronRight, LayoutGrid, X, Share2 } from 'lucide-react';
 import NexusLogo from '@/assets/Logo/Logo with no circle.svg';
 import { SearchInput } from '@/components/ui/Input';
 import { createColorImage } from '@/lib/imageUtils';
+import { ShareModal } from '@/components/ui/ShareModal';
 
 interface PreviewNavbarProps {
     projectName: string;
@@ -19,6 +20,7 @@ interface PreviewNavbarProps {
     onWallpaperChange?: (wallpaper: string) => void;
     projectUpdatedAt?: string;
     collectionId?: string | number | null;
+    projectId?: number;
 }
 
 const WALLPAPER_COLORS = [
@@ -44,13 +46,19 @@ export function PreviewNavbar({
     currentWallpaper,
     onWallpaperChange,
     projectUpdatedAt,
-    collectionId
+    collectionId,
+    projectId
 }: PreviewNavbarProps) {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [isSaveAsMenuOpen, setIsSaveAsMenuOpen] = useState(false);
     const [showDescription, setShowDescription] = useState(false);
+    const [isShareModalOpen, setIsShareModalOpen] = useState(false);
     const menuRef = useRef<HTMLDivElement>(null);
     const descriptionRef = useRef<HTMLDivElement>(null);
+
+    const shareUrl = projectId
+        ? `${typeof window !== 'undefined' ? window.location.origin : ''}/project/${projectId}/preview`
+        : '';
 
     useEffect(() => {
         function handleClickOutside(event: MouseEvent) {
@@ -99,6 +107,17 @@ export function PreviewNavbar({
                                 >
                                     <Info className="w-4 h-4" />
                                     <span>Description</span>
+                                </button>
+
+                                <button
+                                    onClick={() => {
+                                        setIsShareModalOpen(true);
+                                        setIsMenuOpen(false);
+                                    }}
+                                    className="sm:hidden flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-zinc-300 hover:bg-zinc-800 hover:text-white transition-colors cursor-pointer"
+                                >
+                                    <Share2 className="w-4 h-4" />
+                                    <span>Share</span>
                                 </button>
 
                                 <div className="sm:hidden my-1 border-t border-zinc-800" />
@@ -201,6 +220,19 @@ export function PreviewNavbar({
                             </div>
                         )}
                     </div>
+
+                    <div className="hidden sm:block h-6 w-px bg-zinc-800/50" />
+
+                    <div className="hidden sm:block">
+                        <button
+                            onClick={() => setIsShareModalOpen(true)}
+                            className="flex items-center gap-2 rounded-lg bg-[#355ea1] px-3 py-1.5 text-xs font-medium text-white transition-all hover:bg-[#2563EB]"
+                            title="Share project"
+                        >
+                            <Share2 className="h-3.5 w-3.5" />
+                            <span>Share</span>
+                        </button>
+                    </div>
                 </div>
 
                 <div className="flex items-center gap-2 sm:gap-4 flex-1 ml-3 pointer-events-auto min-w-0">
@@ -250,6 +282,12 @@ export function PreviewNavbar({
                     </div>
                 </div>
             )}
+
+            <ShareModal
+                isOpen={isShareModalOpen}
+                onClose={() => setIsShareModalOpen(false)}
+                shareUrl={shareUrl}
+            />
         </>
     );
 }
