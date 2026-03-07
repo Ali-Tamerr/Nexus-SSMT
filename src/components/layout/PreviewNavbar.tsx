@@ -18,6 +18,7 @@ interface PreviewNavbarProps {
     currentWallpaper?: string;
     onWallpaperChange?: (wallpaper: string) => void;
     projectUpdatedAt?: string;
+    collectionId?: string | number | null;
 }
 
 const WALLPAPER_COLORS = [
@@ -42,7 +43,8 @@ export function PreviewNavbar({
     onExportJPG,
     currentWallpaper,
     onWallpaperChange,
-    projectUpdatedAt
+    projectUpdatedAt,
+    collectionId
 }: PreviewNavbarProps) {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [isSaveAsMenuOpen, setIsSaveAsMenuOpen] = useState(false);
@@ -160,11 +162,11 @@ export function PreviewNavbar({
                                 <div className="my-1 border-t border-zinc-800" />
 
                                 <Link
-                                    href="/"
+                                    href={collectionId ? `/collections/${collectionId}/preview` : "/"}
                                     className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-zinc-300 hover:bg-zinc-800 hover:text-white transition-colors"
                                 >
                                     <LayoutGrid className="w-4 h-4" />
-                                    <span className="text-zinc-300">Home</span>
+                                    <span className="text-zinc-300">{collectionId ? "Back to Collection" : "Home"}</span>
                                 </Link>
                             </div>
                         )}

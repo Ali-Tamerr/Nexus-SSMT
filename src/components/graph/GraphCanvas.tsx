@@ -226,6 +226,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
   const [isDraggingSelection, setIsDraggingSelection] = useState(false);
   const [isHoveringShape, setIsHoveringShape] = useState(false);
   const [isHoveringNode, setIsHoveringNode] = useState(false);
+  const dragStartWorldRef = useRef<{ x: number; y: number } | null>(null);
   const [dragStartWorld, setDragStartWorld] = useState<{ x: number; y: number } | null>(null);
   const [isMarqueeSelecting, setIsMarqueeSelecting] = useState(false);
   const [marqueeStart, setMarqueeStart] = useState<{ x: number; y: number } | null>(null);
@@ -254,6 +255,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
   useEffect(() => {
     textInputPosRef.current = textInputPos;
   }, [textInputPos]);
+
   const [groupsReady, setGroupsReady] = useState(false);
 
   const filteredNodes = useMemo(
@@ -588,6 +590,11 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
   const undo = useGraphStore(state => state.undo);
   const redo = useGraphStore(state => state.redo);
   const pushToUndoStack = useGraphStore(state => state.pushToUndoStack);
+
+  // Sync shapesRef with shapes state
+  useEffect(() => {
+    shapesRef.current = shapes;
+  }, [shapes]);
 
   const apiDrawingToShape = useCallback((d: ApiDrawing): DrawnShape => {
     const rawDir = (d.textDir || (d as any).text_dir || (d as any).TextDir || (d as any).direction || (d as any).TextDirection || undefined) as "ltr" | "rtl";
@@ -1029,8 +1036,8 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
   }, []);
 
   useEffect(() => {
-    shapesRef.current = filteredShapes;
-  }, [filteredShapes]);
+    shapesRef.current = shapes;
+  }, [shapes]);
 
   // Force redraw when activeGroupId or text edit mode changes
   useEffect(() => {
@@ -1097,58 +1104,64 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
     }
   }, [undo, redo, setShapes]);
 
+  // Combined Keyboard Shortcut Handler
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+      // 0. Focus Check
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'INPUT' ||
+        target.tagName === 'TEXTAREA' ||
+        target.isContentEditable) {
+        return;
+      }
+
+      // Handle Modifier Keys (Ctrl/Meta)
+      const mod = e.ctrlKey || e.metaKey;
+
+      // 1. Undo/Redo
+      if (mod && e.key === 'z' && !e.shiftKey) {
         e.preventDefault();
         syncUndoRedo(true);
-      } else if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
+        return;
+      }
+      if (mod && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
         e.preventDefault();
         syncUndoRedo(false);
-      } else if ((e.key === 'Delete' || e.key === 'Backspace')) {
-        // Don't delete if typing in an input
-        const activeElement = document.activeElement;
-        if (activeElement && (activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA')) {
-          return;
-        }
+        return;
+      }
 
+      // 2. Delete / Backspace
+      if (e.key === 'Delete' || e.key === 'Backspace') {
         const hasSelectedShapes = selectedShapeIdsRef.current.size > 0;
         const hasSelectedNodes = selectedNodeIdsRefForDelete.current.size > 0;
 
         if (hasSelectedShapes || hasSelectedNodes) {
           e.preventDefault();
-
           // Delete selected shapes
           if (hasSelectedShapes) {
             pushToUndoStack(shapesRef.current);
             const toDelete = shapesRef.current.filter(s => selectedShapeIdsRef.current.has(s.id));
             const remaining = shapesRef.current.filter(s => !selectedShapeIdsRef.current.has(s.id));
             setShapes(remaining);
-            toDelete.forEach(s => {
-              api.drawings.delete(s.id).catch(
-                // err => console.error('Failed to delete drawing:', err)
-              );
-            });
+            toDelete.forEach(s => api.drawings.delete(s.id).catch(() => { }));
             setSelectedShapeIds(new Set());
           }
-
           // Delete selected nodes
           if (hasSelectedNodes) {
             const deleteNode = useGraphStore.getState().deleteNode;
             selectedNodeIdsRefForDelete.current.forEach(nodeId => {
               deleteNode(nodeId);
-              api.nodes.delete(nodeId).catch(
-                // err => console.error('Failed to delete node:', err)
-              );
+              api.nodes.delete(nodeId).catch(() => { });
             });
             setSelectedNodeIds(new Set());
             setActiveNode(null);
           }
         }
-      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'c') {
-        const activeElement = document.activeElement;
-        if (activeElement && (activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA')) return;
+        return;
+      }
 
+      // 3. Copy / Paste
+      if (mod && e.key.toLowerCase() === 'c') {
         const selectedNodes = graphDataRef.current.nodes.filter((n: any) => selectedNodeIdsRef.current.has(Number(n.id)));
         const selectedShapes = shapesRef.current.filter(s => selectedShapeIdsRef.current.has(s.id));
 
@@ -1157,98 +1170,88 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
         }
 
         if (selectedNodes.length > 0 || selectedShapes.length > 0) {
+          e.preventDefault(); // Block default browser copy
           clipboardRef.current = {
-            nodes: selectedNodes.map((n: any) => ({ ...n })), // Shallow copy properties
-            shapes: selectedShapes.map(s => ({ ...s, points: [...s.points] })) // Deep copy points
+            nodes: selectedNodes.map((n: any) => ({ ...n })),
+            shapes: selectedShapes.map(s => ({ ...s, points: [...s.points] }))
           };
-          // Optional: Display "Copied" toast
         }
-      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'v') {
-        const activeElement = document.activeElement;
-        if (activeElement && (activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA')) return;
+        return;
+      }
 
+      if (mod && e.key.toLowerCase() === 'v') {
         const { currentProject, currentUserId, graphSettings, addShape, activeGroupId } = useGraphStore.getState();
         if (!currentProject) return;
 
-        // Try pasting from clipboardRef first, otherwise read from OS clipboard
-        if (clipboardRef.current && (clipboardRef.current.nodes.length > 0 || clipboardRef.current.shapes.length > 0)) {
-          e.preventDefault();
-          const { nodes: cpNodes, shapes: cpShapes } = clipboardRef.current;
+        e.preventDefault(); // Block default browser paste
 
+        if (clipboardRef.current && (clipboardRef.current.nodes.length > 0 || clipboardRef.current.shapes.length > 0)) {
+          const { nodes: cpNodes, shapes: cpShapes } = clipboardRef.current;
           setSelectedNodeIds(new Set());
           setSelectedShapeIds(new Set());
-
           const offset = 50;
 
-          const nodePromises = cpNodes.map(async (n: any) => {
-            try {
-              const payload = {
-                title: n.title,
-                content: n.content || '',
-                projectId: currentProject.id,
-                groupId: n.groupId,
-                userId: currentUserId || n.userId,
-                customColor: n.customColor,
-                x: (n.x || 0) + offset,
-                y: (n.y || 0) + offset,
-              };
+          // Sequential Creation
+          (async () => {
+            const nodePromises = cpNodes.map(async (n: any) => {
+              try {
+                const payload = {
+                  title: n.title,
+                  content: n.content || '',
+                  projectId: currentProject.id,
+                  groupId: n.groupId,
+                  userId: currentUserId || n.userId,
+                  customColor: n.customColor,
+                  x: (n.x || 0) + offset,
+                  y: (n.y || 0) + offset,
+                };
+                const newNode = await api.nodes.create(payload);
+                useGraphStore.getState().addNode(newNode);
+                return newNode.id;
+              } catch (err) { return null; }
+            });
 
-              const newNode = await api.nodes.create(payload);
-              useGraphStore.getState().addNode(newNode);
-              return newNode.id;
-            } catch (err) { return null; }
-          });
+            const shapePromises = cpShapes.map(async (s: any) => {
+              try {
+                const newPoints = s.points.map((p: any) => ({ x: p.x + offset, y: p.y + offset }));
+                const payload = {
+                  projectId: currentProject.id,
+                  type: s.type,
+                  points: newPoints,
+                  color: s.color,
+                  width: s.width,
+                  style: s.style,
+                  text: s.text,
+                  fontSize: s.fontSize,
+                  fontFamily: s.fontFamily,
+                  textDir: s.textDir,
+                  direction: s.textDir,
+                  groupId: s.groupId
+                };
+                const newShape = await api.drawings.create(payload);
+                useGraphStore.getState().addShape(newShape);
+                return newShape.id;
+              } catch (err) { return null; }
+            });
 
-          const shapePromises = cpShapes.map(async (s: any) => {
-            try {
-              const newPoints = s.points.map((p: any) => ({ x: p.x + offset, y: p.y + offset }));
-              const payload = {
-                projectId: currentProject.id,
-                type: s.type,
-                points: newPoints,
-                color: s.color,
-                width: s.width,
-                style: s.style,
-                text: s.text,
-                fontSize: s.fontSize,
-                fontFamily: s.fontFamily,
-                textDir: s.textDir,
-                direction: s.textDir,
-                groupId: s.groupId
-              };
-
-              const newShape = await api.drawings.create(payload);
-              useGraphStore.getState().addShape(newShape);
-              return newShape.id;
-            } catch (err) { return null; }
-          });
-
-          Promise.all([...nodePromises, ...shapePromises]).then((ids) => {
+            const ids = await Promise.all([...nodePromises, ...shapePromises]);
             const nodeIds = ids.slice(0, cpNodes.length).filter((id): id is number => id !== null);
             const shapeIds = ids.slice(cpNodes.length).filter((id): id is number => id !== null);
             setSelectedNodeIds(new Set(nodeIds));
             setSelectedShapeIds(new Set(shapeIds));
-          });
 
-          clipboardRef.current = {
-            nodes: cpNodes.map((n: any) => ({
-              ...n,
-              x: (n.x || 0) + offset,
-              y: (n.y || 0) + offset,
-            })),
-            shapes: cpShapes.map((s: any) => ({
-              ...s,
-              id: undefined, // Clear old IDs to ensure uniqueness if logic depends on it
-              points: s.points.map((p: any) => ({ x: p.x + offset, y: p.y + offset })),
-            })),
-          };
+            clipboardRef.current = {
+              nodes: cpNodes.map((n: any) => ({ ...n, x: (n.x || 0) + offset, y: (n.y || 0) + offset })),
+              shapes: cpShapes.map((s: any) => ({
+                ...s, id: undefined,
+                points: s.points.map((p: any) => ({ x: p.x + offset, y: p.y + offset }))
+              })),
+            };
+          })();
         } else {
-          // Fallback to paste text from OS clipboard as a new Text Shape
           navigator.clipboard.readText().then(text => {
             if (!text || text.trim() === '') return;
-
             const center = graphRef.current?.centerAt() || { x: 0, y: 0 };
-
             const payload = {
               projectId: currentProject.id,
               type: 'text',
@@ -1263,25 +1266,93 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
               direction: graphSettings.textDir || 'ltr',
               groupId: activeGroupId ?? undefined
             };
-
-            api.drawings.create(payload)
-              .then(newShape => {
-                addShape(newShape);
-                setSelectedShapeIds(new Set([newShape.id]));
-                setSelectedNodeIds(new Set());
-              })
-              .catch(() => { });
+            api.drawings.create(payload).then(newShape => {
+              addShape(newShape);
+              setSelectedShapeIds(new Set([newShape.id]));
+              setSelectedNodeIds(new Set());
+            }).catch(() => { });
           }).catch(() => { });
         }
-      } else if (e.key === 'Escape') {
+        return;
+      }
+
+      // 4. Arrow Key Movement
+      const isArrowKey = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key);
+      if (isArrowKey && !graphSettings.isPreviewMode) {
+        const scale = graphTransform.k || 1;
+        const step = (e.shiftKey ? 2 : 1) / scale;
+        let dx = 0, dy = 0;
+        if (e.key === 'ArrowUp') dy = -step;
+        if (e.key === 'ArrowDown') dy = step;
+        if (e.key === 'ArrowLeft') dx = -step;
+        if (e.key === 'ArrowRight') dx = step;
+
+        if (dx !== 0 || dy !== 0) {
+          e.preventDefault();
+          const selectedNodeIds = selectedNodeIdsRef.current;
+          const selectedShapeIds = selectedShapeIdsRef.current;
+
+          // Move Nodes
+          if (selectedNodeIds.size > 0) {
+            const cache = nodeCacheRef.current;
+            selectedNodeIds.forEach(id => {
+              const cachedNode = cache.get(id);
+              if (cachedNode) {
+                cachedNode.fx = (cachedNode.fx ?? cachedNode.x ?? 0) + dx;
+                cachedNode.fy = (cachedNode.fy ?? cachedNode.y ?? 0) + dy;
+                const timeouts = nodeSaveTimeoutsRef.current;
+                if (timeouts.has(id)) clearTimeout(timeouts.get(id));
+                timeouts.set(id, setTimeout(() => {
+                  const fullNode = useGraphStore.getState().nodes.find(n => n.id === id);
+                  if (fullNode) api.nodes.update(id, { ...fullNode, x: cachedNode.fx, y: cachedNode.fy }).catch(() => { });
+                  timeouts.delete(id);
+                }, 300));
+              }
+            });
+            if (graphRef.current?.d3ReheatSimulation) graphRef.current.d3ReheatSimulation();
+          }
+
+          // Move Shapes
+          if (selectedShapeIds.size > 0 && shapesRef.current) {
+            let updated = false;
+            const { currentProject, activeGroupId } = useGraphStore.getState();
+            const newShapes = shapesRef.current.map(s => {
+              if (selectedShapeIds.has(s.id)) {
+                updated = true;
+                const newPoints = s.points.map(p => ({ x: p.x + dx, y: p.y + dy }));
+                const timeouts = shapeSaveTimeoutsRef.current;
+                if (timeouts.has(s.id)) clearTimeout(timeouts.get(s.id));
+                timeouts.set(s.id, setTimeout(() => {
+                  const dto = shapeToApiDrawing({ ...s, points: newPoints }, currentProject?.id || 0, activeGroupId ?? undefined);
+                  api.drawings.update(s.id, dto).catch(() => { });
+                  timeouts.delete(s.id);
+                }, 300));
+                return { ...s, points: newPoints };
+              }
+              return s;
+            });
+            if (updated) {
+              shapesRef.current = newShapes;
+              if (shapeStateSaveTimeoutRef.current) clearTimeout(shapeStateSaveTimeoutRef.current);
+              shapeStateSaveTimeoutRef.current = setTimeout(() => setShapes(newShapes), 300);
+              if (graphRef.current?.d3ReheatSimulation) graphRef.current.d3ReheatSimulation();
+            }
+          }
+        }
+        return;
+      }
+
+      // 5. General Controls
+      if (e.key === 'Escape') {
         setSelectedShapeIds(new Set());
         setSelectedNodeIds(new Set());
+        return;
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [undo, redo, pushToUndoStack, setShapes, setActiveNode]);
+  }, [undo, redo, pushToUndoStack, setShapes, setActiveNode, graphTransform, graphSettings.isPreviewMode]);
 
 
 
@@ -1428,13 +1499,13 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
     }
 
     // 4. Shape Selection Drag (Select Tool)
-    if (isDraggingSelection && dragStartWorld && selectedShapeIds.size > 0) {
+    if (isDraggingSelection && dragStartWorldRef.current && selectedShapeIds.size > 0) {
       const rect = e.currentTarget.getBoundingClientRect();
       const worldPoint = screenToWorld(e.clientX - rect.left, e.clientY - rect.top);
-      const dx = worldPoint.x - dragStartWorld.x;
-      const dy = worldPoint.y - dragStartWorld.y;
+      const dx = worldPoint.x - dragStartWorldRef.current.x;
+      const dy = worldPoint.y - dragStartWorldRef.current.y;
 
-      if (Math.abs(dx) > 0.1 || Math.abs(dy) > 0.1) {
+      if (Math.abs(dx) > 0.01 || Math.abs(dy) > 0.01) {
         shapesRef.current = shapesRef.current.map(s => {
           if (selectedShapeIds.has(s.id)) {
             return { ...s, points: s.points.map(p => ({ x: p.x + dx, y: p.y + dy })) };
@@ -1456,6 +1527,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
             }
           });
         }
+        dragStartWorldRef.current = worldPoint;
         setDragStartWorld(worldPoint);
       }
       return;
@@ -1526,128 +1598,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
 
 
 
-  // Handle Keyboard Navigation (Arrow Keys)
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Ignore if typing in an input
-      const target = e.target as HTMLElement;
-      if (target.tagName === 'INPUT' ||
-        target.tagName === 'TEXTAREA' ||
-        target.isContentEditable) {
-        return;
-      }
 
-      const isArrowKey = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key);
-      if (!isArrowKey) return;
-
-      if (graphSettings.isPreviewMode) return;
-
-      const scale = graphTransform.k || 1;
-      // User requested 1px (no shift) and 2px (shift).
-      // We divide by scale to make it visual pixels.
-      const step = (e.shiftKey ? 2 : 1) / scale;
-
-      let dx = 0;
-      let dy = 0;
-
-      if (e.key === 'ArrowUp') dy = -step;
-      if (e.key === 'ArrowDown') dy = step;
-      if (e.key === 'ArrowLeft') dx = -step;
-      if (e.key === 'ArrowRight') dx = step;
-
-      if (dx === 0 && dy === 0) return;
-
-      e.preventDefault(); // Prevent scrolling
-
-      const selectedNodeIds = selectedNodeIdsRef.current;
-      const selectedShapeIds = selectedShapeIdsRef.current;
-
-      // Move Nodes
-      if (selectedNodeIds.size > 0) {
-        const cache = nodeCacheRef.current;
-        selectedNodeIds.forEach(id => {
-          const cachedNode = cache.get(id);
-          if (cachedNode) {
-            const newX = (cachedNode.x || 0) + dx;
-            const newY = (cachedNode.y || 0) + dy;
-
-            // Direct Mutation for Visual Update (Bypass React Render Loop)
-            cachedNode.fx = newX;
-            cachedNode.fy = newY;
-            cachedNode.x = newX;
-            cachedNode.y = newY;
-
-            // Debounced Persist
-            const timeouts = nodeSaveTimeoutsRef.current;
-            if (timeouts.has(id)) clearTimeout(timeouts.get(id));
-
-            const timeoutId = setTimeout(() => {
-              const fullNode = useGraphStore.getState().nodes.find(n => n.id === id);
-              if (fullNode) {
-                api.nodes.update(id, { ...fullNode, x: newX, y: newY }).catch(() => { });
-              }
-              timeouts.delete(id);
-            }, 300);
-
-            timeouts.set(id, timeoutId);
-          }
-        });
-
-        // Trigger visual update
-        if (graphRef.current) {
-          // @ts-ignore
-          if (graphRef.current.d3ReheatSimulation) graphRef.current.d3ReheatSimulation();
-        }
-      }
-
-      // Move Shapes
-      if (selectedShapeIds.size > 0 && shapesRef.current) {
-        const currentShapes = shapesRef.current;
-        let shapesUpdated = false;
-
-        const newShapes = currentShapes.map(s => {
-          if (selectedShapeIds.has(s.id)) {
-            shapesUpdated = true;
-            // Calculate new points
-            const newPoints = s.points.map(p => ({ x: p.x + dx, y: p.y + dy }));
-
-            // Debounced Persist
-            const timeouts = shapeSaveTimeoutsRef.current;
-            if (timeouts.has(s.id)) clearTimeout(timeouts.get(s.id));
-
-            const fullDto = shapeToApiDrawing({ ...s, points: newPoints }, currentProject?.id || 0, activeGroupId ?? undefined);
-            const timeoutId = setTimeout(() => {
-              api.drawings.update(s.id, fullDto).catch(() => { });
-              timeouts.delete(s.id);
-            }, 300);
-
-            timeouts.set(s.id, timeoutId);
-
-            return { ...s, points: newPoints };
-          }
-          return s;
-        });
-
-        if (shapesUpdated) {
-          shapesRef.current = newShapes;
-
-          if (shapeStateSaveTimeoutRef.current) clearTimeout(shapeStateSaveTimeoutRef.current);
-          shapeStateSaveTimeoutRef.current = setTimeout(() => {
-            setShapes(newShapes);
-          }, 300);
-
-          // Trigger visual update for Shapes
-          if (graphRef.current) {
-            // @ts-ignore
-            if (graphRef.current.d3ReheatSimulation) graphRef.current.d3ReheatSimulation();
-          }
-        }
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [graphTransform, setShapes, graphSettings.isPreviewMode]);
 
   const handleContainerMouseDownCapture = useCallback((e: React.MouseEvent) => {
     // Ignore clicks on UI elements
@@ -2418,6 +2369,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
         }
       }
       setIsDraggingSelection(true);
+      dragStartWorldRef.current = worldPoint;
       setDragStartWorld(worldPoint);
       pushToUndoStack(shapes);
     } else {

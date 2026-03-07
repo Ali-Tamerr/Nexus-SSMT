@@ -55,7 +55,7 @@ export default function CollectionPreviewClient() {
     }, [id]);
 
     const handleProjectClick = (project: Project) => {
-        router.push(`/project/${project.id}/preview`);
+        router.push(`/project/${project.id}/preview?collection=${id}`);
     };
 
     const handlePinToggle = async (project: Project) => {

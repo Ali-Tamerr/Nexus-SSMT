@@ -1,6 +1,8 @@
 import { Metadata, ResolvingMetadata } from 'next';
 import { api } from '@/lib/api';
 import ProjectPreviewClient from './ProjectPreviewClient';
+import { Suspense } from 'react';
+import { LoadingScreen } from '@/components/ui';
 
 type Props = {
     params: Promise<{ id: string }>;
@@ -53,5 +55,9 @@ export async function generateMetadata(
 }
 
 export default function Page({ params }: { params: Promise<{ id: string }> }) {
-    return <ProjectPreviewClient params={params} />;
+    return (
+        <Suspense fallback={<LoadingScreen />}>
+            <ProjectPreviewClient params={params} />
+        </Suspense>
+    );
 }

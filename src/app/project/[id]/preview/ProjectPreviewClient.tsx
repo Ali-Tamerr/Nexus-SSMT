@@ -3,6 +3,7 @@
 import { use, useEffect, useState, useRef, useMemo, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
 
 import { api, ApiDrawing } from '@/lib/api';
@@ -31,6 +32,8 @@ function adjustBrightness(hex: string, percent: number): string {
 export default function ProjectPreviewClient({ params }: { params: Promise<{ id: string }> }) {
     const { id: idParam } = use(params);
     const id = Number(idParam);
+    const searchParams = useSearchParams();
+    const collectionId = searchParams.get('collection');
     const { user } = useAuthStore();
     const [isMounted, setIsMounted] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
@@ -392,6 +395,7 @@ export default function ProjectPreviewClient({ params }: { params: Promise<{ id:
                 currentWallpaper={wallpaper}
                 onWallpaperChange={handleWallpaperChange}
                 projectUpdatedAt={projectUpdatedAt}
+                collectionId={collectionId}
             />
 
             <div
