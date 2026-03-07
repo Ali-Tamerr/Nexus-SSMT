@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { ChevronRight, FolderOpen, Loader2, Trash2, Pencil, Info, Pin } from 'lucide-react';
+import { ChevronRight, FolderOpen, Loader2, Trash2, Pencil, Info, Pin, Share2 } from 'lucide-react';
+import { ShareModal } from '@/components/ui/ShareModal';
 
 import { Project } from '@/types/knowledge';
 
@@ -17,6 +18,7 @@ interface ProjectCardProps {
   onToggleSelect?: (project: Project) => void;
   isPinned?: boolean;
   onPinToggle?: (project: Project) => void;
+  onShare?: (project: Project) => void;
 }
 
 export function ProjectCard({
@@ -30,7 +32,8 @@ export function ProjectCard({
   isSelected = false,
   onToggleSelect,
   isPinned = false,
-  onPinToggle
+  onPinToggle,
+  onShare
 }: ProjectCardProps) {
   const [isLoading, setIsLoading] = useState(false);
   const isListView = viewMode === 'list';
@@ -142,6 +145,20 @@ export function ProjectCard({
               <Info className="w-4 h-4" />
             </button>
           )}
+          {onShare && (
+            <button
+              className="p-1 rounded hover:bg-zinc-800 text-zinc-400 hover:text-blue-400 transition-colors"
+              title="Share project"
+              onClick={(e) => {
+                e.stopPropagation();
+                onShare(project);
+              }}
+              tabIndex={-1}
+              type="button"
+            >
+              <Share2 className="w-4 h-4" />
+            </button>
+          )}
           {onEdit && (
             <button
               className="p-1 rounded hover:bg-zinc-800 text-zinc-400 hover:text-blue-400 transition-colors"
@@ -191,30 +208,46 @@ export function ProjectGrid({
   selectedIds,
   onToggleSelect
 }: ProjectGridProps) {
+  const [shareUrl, setShareUrl] = useState<string | null>(null);
+
   if (projects.length === 0) {
     return <EmptyProjectsState />;
   }
 
+  const handleShare = (project: Project) => {
+    const url = `${window.location.origin}/project/${project.id}/preview`;
+    setShareUrl(url);
+  };
+
   return (
-    <div className={
-      viewMode === 'grid'
-        ? 'grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3'
-        : 'flex flex-col gap-3'
-    }>
-      {projects.map((project) => (
-        <ProjectCard
-          key={project.id}
-          project={project}
-          onClick={onProjectClick}
-          onDelete={onProjectDelete}
-          onEdit={onProjectEdit}
-          viewMode={viewMode}
-          selectable={selectable}
-          isSelected={selectedIds?.has(project.id)}
-          onToggleSelect={onToggleSelect}
-        />
-      ))}
-    </div>
+    <>
+      <div className={
+        viewMode === 'grid'
+          ? 'grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3'
+          : 'flex flex-col gap-3'
+      }>
+        {projects.map((project) => (
+          <ProjectCard
+            key={project.id}
+            project={project}
+            onClick={onProjectClick}
+            onDelete={onProjectDelete}
+            onEdit={onProjectEdit}
+            onShare={handleShare}
+            viewMode={viewMode}
+            selectable={selectable}
+            isSelected={selectedIds?.has(project.id)}
+            onToggleSelect={onToggleSelect}
+          />
+        ))}
+      </div>
+
+      <ShareModal
+        isOpen={!!shareUrl}
+        onClose={() => setShareUrl(null)}
+        shareUrl={shareUrl || ''}
+      />
+    </>
   );
 }
 
