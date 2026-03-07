@@ -26,8 +26,8 @@ export async function generateMetadata(
             };
         }
 
-        const title = `${project.name} | Nexus Graph`;
-        const description = (project.description || `Explore the ${project.name} knowledge graph on Nexus.`).slice(0, 200);
+        const title = `${project.name}`;
+        const description = (project.description || `Explore ${project.name} on Nexus.`).slice(0, 200);
 
         // WhatsApp and other platforms don't support base64 images as preview images
         // and large base64 strings can break the meta tag parsing
