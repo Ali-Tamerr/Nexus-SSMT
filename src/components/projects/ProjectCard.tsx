@@ -27,6 +27,7 @@ export function ProjectCard({
   onInfoClick,
   viewMode = 'grid',
   selectable = false,
+  isSelected = false,
   onToggleSelect,
   isPinned = false,
   onPinToggle
