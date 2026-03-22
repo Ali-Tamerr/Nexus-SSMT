@@ -88,6 +88,14 @@ export default function CollectionPreviewPage() {
         const fetchStatus = async () => {
              if (!isAuthenticated || !user?.id || !id) return;
              try {
+                 // Check unified access (owner or collaborator)
+                 const hasAccess = await collaborationApi.hasCollectionAccess(id, user.id);
+                 if (hasAccess) {
+                     setRequestStatus('accepted');
+                     return;
+                 }
+
+                 // Check for pending request
                  const requests = await collaborationApi.getMyRequests(user.id);
                  const req = requests.find(r => r.targetId === id && r.type === 'collection');
                  
@@ -103,7 +111,11 @@ export default function CollectionPreviewPage() {
     }, [isAuthenticated, user?.id, id]);
 
     const handleProjectClick = (project: Project) => {
-        router.push(`/project/${project.id}/preview`);
+        if (user?.id === collection?.userId || requestStatus === 'accepted') {
+            router.push(`/project/${project.id}`);
+        } else {
+            router.push(`/project/${project.id}/preview?collection=${id}`);
+        }
     };
 
     const handlePinToggle = async (project: Project) => {

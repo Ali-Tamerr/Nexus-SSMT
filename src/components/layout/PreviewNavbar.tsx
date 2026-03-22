@@ -86,8 +86,16 @@ export function PreviewNavbar({
 
     useEffect(() => {
         const fetchStatus = async () => {
-             if (!isAuthenticated || !user?.id || (!projectId && !collectionId)) return;
+             if (!isAuthenticated || !user?.id || !projectId) return;
              try {
+                 // Check if user has access to this project (owner or collaborator)
+                 const hasAccess = await collaborationApi.hasProjectAccess(projectId, user.id);
+                 if (hasAccess) {
+                     setRequestStatus('accepted');
+                     return;
+                 }
+
+                 // If no direct access, check if there's a pending/requested status for the resource
                  const requests = await collaborationApi.getMyRequests(user.id);
                  const targetId = Number(collectionId || projectId);
                  const type = collectionId ? 'collection' : 'project';
@@ -96,11 +104,6 @@ export function PreviewNavbar({
                  if (req) {
                      if (req.status === 'pending') setRequestStatus('requested');
                      else if (req.status === 'accepted') setRequestStatus('accepted');
-                     // if rejected, remain 'idle' so they can request again if needed
-                 } else {
-                     // Check if already a member? Actually if they are an accepted member they might not have a request,
-                     // but if the owner manually invited them (not available yet) it wouldn't be here.
-                     // The request API does return accepted requests though over time.
                  }
              } catch (err) {
                  console.error('Failed to fetch request status', err);
@@ -296,11 +299,11 @@ export function PreviewNavbar({
                     {isAuthenticated && user?.id ? (
                         requestStatus === 'accepted' ? (
                             <Link
-                                href={collectionId ? `/collections/${collectionId}/preview` : `/project/${projectId}`}
+                                href={`/project/${projectId}`}
                                 className="hidden sm:flex items-center gap-2 rounded-lg bg-emerald-500/20 px-3 py-1.5 text-xs font-medium text-emerald-400 transition-all hover:bg-emerald-500/30"
                             >
                                 <Check className="w-3.5 h-3.5" />
-                                Access Granted
+                                Go to Editor
                             </Link>
                         ) : (
                             <button

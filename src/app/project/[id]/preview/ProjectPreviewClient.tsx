@@ -3,10 +3,11 @@
 import { use, useEffect, useState, useRef, useMemo, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
-import { ArrowLeft } from 'lucide-react';
+import { useSearchParams, useRouter } from 'next/navigation';
+import { ArrowLeft, Edit3 } from 'lucide-react';
 
 import { api, ApiDrawing } from '@/lib/api';
+import { collaborationApi } from '@/lib/supabase/collaboration';
 import { useAuthStore } from '@/store/useAuthStore';
 import { NODE_COLORS } from '@/lib/constants';
 import { LoadingScreen } from '@/components/ui';
@@ -32,10 +33,22 @@ function adjustBrightness(hex: string, percent: number): string {
 export default function ProjectPreviewClient({ params }: { params: Promise<{ id: string }> }) {
     const { id: idParam } = use(params);
     const id = Number(idParam);
+    const router = useRouter();
     const searchParams = useSearchParams();
     const collectionId = searchParams.get('collection');
-    const { user } = useAuthStore();
+    const { user, isAuthenticated } = useAuthStore();
     const [isMounted, setIsMounted] = useState(false);
+
+    // Automatic redirect for owners/collaborators
+    useEffect(() => {
+        if (isMounted && isAuthenticated && user?.id) {
+            collaborationApi.hasProjectAccess(id, user.id).then(hasAccess => {
+                if (hasAccess) {
+                    router.replace(`/project/${id}`);
+                }
+            });
+        }
+    }, [id, isAuthenticated, user?.id, isMounted, router]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [projectName, setProjectName] = useState('');
