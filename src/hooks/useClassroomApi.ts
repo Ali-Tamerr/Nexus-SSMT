@@ -90,9 +90,10 @@ function useClassroomAccessToken() {
     };
   }, [session, refreshTokenAction]);
 
-  // Priority: stored token (user-selected Classroom account) > session token (main Google account)
-  // This allows Google users to connect a DIFFERENT Google account just for Classroom
-  const accessToken = storedToken || sessionToken;
+  // Priority: 
+  // 1. Session token (If user is signed in with Google, we use the managed session token which has auto-refresh)
+  // 2. Stored token (For users who connected a DIFFERENT Classroom account manually)
+  const accessToken = isGoogleUser ? (sessionToken || storedToken) : (storedToken || sessionToken);
   const hasAccess = !!accessToken;
 
   return { accessToken, hasAccess, isGoogleUser, refreshToken: refreshTokenAction };
