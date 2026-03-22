@@ -37,6 +37,10 @@ interface AppState {
   currentProjectId: number | null;
   setCurrentProjectId: (id: number | null) => void;
 
+  // Collaboration state
+  canEdit: boolean;
+  setCanEdit: (canEdit: boolean) => void;
+
   // Drawing state
   shapes: DrawnShape[];
   undoStack: DrawnShape[][];
@@ -146,6 +150,9 @@ export const useGraphStore = create<AppState>()(
       setCurrentUserId: (userId) => set({ currentUserId: userId }),
       setProjects: (projects) => set({ projects }),
       setCurrentProjectId: (id) => set({ currentProjectId: id }),
+      
+      canEdit: false,
+      setCanEdit: (canEdit) => set({ canEdit }),
 
       addProject: (project) =>
         set((state) => ({

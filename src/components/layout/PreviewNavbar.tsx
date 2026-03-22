@@ -3,11 +3,15 @@
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import NextImage from 'next/image';
-import { Info, Search, ChevronDown, Save, ChevronRight, LayoutGrid, X, Share2 } from 'lucide-react';
+import { Info, Search, ChevronDown, Save, ChevronRight, LayoutGrid, X, Share2, Check } from 'lucide-react';
 import NexusLogo from '@/assets/Logo/Logo with no circle.svg';
 import { SearchInput } from '@/components/ui/Input';
 import { createColorImage } from '@/lib/imageUtils';
 import { ShareModal } from '@/components/ui/ShareModal';
+import { useAuthStore } from '@/store/useAuthStore';
+import { AuthModal } from '@/components/auth/AuthModal';
+import { collaborationApi } from '@/lib/supabase/collaboration';
+import { useToast } from '@/context/ToastContext';
 
 interface PreviewNavbarProps {
     projectName: string;
@@ -53,8 +57,14 @@ export function PreviewNavbar({
     const [isSaveAsMenuOpen, setIsSaveAsMenuOpen] = useState(false);
     const [showDescription, setShowDescription] = useState(false);
     const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+    const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+    const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
+    const [requestStatus, setRequestStatus] = useState<'idle' | 'pending' | 'requested' | 'accepted'>('idle');
     const menuRef = useRef<HTMLDivElement>(null);
     const descriptionRef = useRef<HTMLDivElement>(null);
+
+    const { isAuthenticated, user, setReturnUrl } = useAuthStore();
+    const { showToast } = useToast();
 
     const shareUrl = projectId
         ? `${typeof window !== 'undefined' ? window.location.origin : ''}/project/${projectId}/preview`
@@ -74,10 +84,57 @@ export function PreviewNavbar({
         return () => document.removeEventListener('mousedown', handleClickOutside, true);
     }, []);
 
+    useEffect(() => {
+        const fetchStatus = async () => {
+             if (!isAuthenticated || !user?.id || (!projectId && !collectionId)) return;
+             try {
+                 const requests = await collaborationApi.getMyRequests(user.id);
+                 const targetId = Number(collectionId || projectId);
+                 const type = collectionId ? 'collection' : 'project';
+                 const req = requests.find(r => r.targetId === targetId && r.type === type);
+                 
+                 if (req) {
+                     if (req.status === 'pending') setRequestStatus('requested');
+                     else if (req.status === 'accepted') setRequestStatus('accepted');
+                     // if rejected, remain 'idle' so they can request again if needed
+                 } else {
+                     // Check if already a member? Actually if they are an accepted member they might not have a request,
+                     // but if the owner manually invited them (not available yet) it wouldn't be here.
+                     // The request API does return accepted requests though over time.
+                 }
+             } catch (err) {
+                 console.error('Failed to fetch request status', err);
+             }
+        };
+        fetchStatus();
+    }, [isAuthenticated, user?.id, projectId, collectionId]);
+
     const handleColorSelect = (color: string) => {
         if (onWallpaperChange) {
             const base64Image = createColorImage(color);
             onWallpaperChange(base64Image);
+        }
+    };
+
+    const handleRequestAccess = async () => {
+        if (!isAuthenticated) {
+            setReturnUrl(window.location.pathname);
+            setIsAuthModalOpen(true);
+            return;
+        }
+
+        if (!user || (!projectId && !collectionId)) return;
+
+        setRequestStatus('pending');
+        try {
+            const type = collectionId ? 'collection' : 'project';
+            const targetId = Number(collectionId || projectId);
+            await collaborationApi.requestAccess(type, targetId, user.id);
+            setRequestStatus('requested');
+            showToast('Access request sent successfully.', 'success');
+        } catch (error: any) {
+            showToast(error.message || 'Failed to request access.', 'error');
+            setRequestStatus('idle');
         }
     };
 
@@ -220,34 +277,73 @@ export function PreviewNavbar({
                             </div>
                         )}
                     </div>
-
-                    <div className="hidden sm:block h-6 w-px bg-zinc-800/50" />
-
-                    <div className="hidden sm:block">
-                        <button
-                            onClick={() => setIsShareModalOpen(true)}
-                            className="flex items-center gap-2 rounded-lg bg-[#355ea1] px-3 py-1.5 text-xs font-medium text-white transition-all hover:bg-[#2563EB]"
-                            title="Share project"
-                        >
-                            <Share2 className="h-3.5 w-3.5" />
-                            <span>Share</span>
-                        </button>
-                    </div>
                 </div>
 
-                <div className="flex items-center gap-2 sm:gap-4 flex-1 ml-3 pointer-events-auto min-w-0">
-                    <div className="flex-1 min-w-0">
-                        <h1 className="text-xs sm:text-sm font-semibold text-white truncate">{projectName || 'Project'}</h1>
-                        <p className="text-[10px] text-zinc-500">Preview Mode</p>
-                    </div>
+                <div className="flex-1 min-w-0 mx-4 pointer-events-auto">
+                    <h1 className="text-xs sm:text-sm font-semibold text-white truncate">{projectName || 'Project'}</h1>
+                    <p className="text-[10px] text-zinc-500">Preview Mode</p>
+                </div>
 
-                    <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 sm:gap-3 shrink-0 pointer-events-auto">
+                    <div className="hidden sm:block w-48 lg:w-64">
                         <SearchInput
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             placeholder="Search nodes..."
                         />
                     </div>
+
+                    {isAuthenticated && user?.id ? (
+                        requestStatus === 'accepted' ? (
+                            <Link
+                                href={collectionId ? `/collections/${collectionId}/preview` : `/project/${projectId}`}
+                                className="hidden sm:flex items-center gap-2 rounded-lg bg-emerald-500/20 px-3 py-1.5 text-xs font-medium text-emerald-400 transition-all hover:bg-emerald-500/30"
+                            >
+                                <Check className="w-3.5 h-3.5" />
+                                Access Granted
+                            </Link>
+                        ) : (
+                            <button
+                                onClick={handleRequestAccess}
+                                disabled={requestStatus !== 'idle'}
+                                className="hidden sm:flex items-center gap-2 rounded-lg bg-zinc-800 px-3 py-1.5 text-xs font-medium text-zinc-300 transition-all hover:bg-zinc-700 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                {requestStatus === 'requested' ? 'Requested' : 'Request Access'}
+                            </button>
+                        )
+                    ) : (
+                        <div className="flex items-center space-x-3">
+                           <button
+                               onClick={() => {
+                                   setReturnUrl(window.location.pathname);
+                                   setAuthMode('login');
+                                   setIsAuthModalOpen(true);
+                               }}
+                               className="text-xs sm:text-sm font-medium text-zinc-300 hover:text-white transition-colors"
+                           >
+                               Sign in
+                           </button>
+                           <button
+                               onClick={() => {
+                                   setReturnUrl(window.location.pathname);
+                                   setAuthMode('signup');
+                                   setIsAuthModalOpen(true);
+                               }}
+                               className="rounded-lg bg-[#355ea1] px-3 sm:px-4 py-1.5 text-xs sm:text-sm font-medium text-white transition-colors hover:bg-[#2563EB]"
+                           >
+                               Sign up
+                           </button>
+                        </div>
+                    )}
+
+                    <button
+                        onClick={() => setIsShareModalOpen(true)}
+                        className="hidden sm:flex items-center gap-2 rounded-lg bg-[#355ea1] px-3 py-1.5 text-xs font-medium text-white transition-all hover:bg-[#2563EB]"
+                        title="Share project"
+                    >
+                        <Share2 className="h-3.5 w-3.5" />
+                        <span>Share</span>
+                    </button>
                 </div>
             </header>
 
@@ -287,6 +383,12 @@ export function PreviewNavbar({
                 isOpen={isShareModalOpen}
                 onClose={() => setIsShareModalOpen(false)}
                 shareUrl={shareUrl}
+            />
+
+            <AuthModal
+                isOpen={isAuthModalOpen}
+                onClose={() => setIsAuthModalOpen(false)}
+                initialMode={authMode}
             />
         </>
     );

@@ -8,11 +8,13 @@ interface AuthState {
   isAuthLoading: boolean;
   authError: string | null;
   hasHydrated: boolean;
+  returnUrl: string | null;
   
   setUser: (user: Profile | null) => void;
   setAuthLoading: (loading: boolean) => void;
   setAuthError: (error: string | null) => void;
   setHasHydrated: (hydrated: boolean) => void;
+  setReturnUrl: (url: string | null) => void;
   login: (user: Profile) => void;
   logout: () => void;
 }
@@ -25,11 +27,13 @@ export const useAuthStore = create<AuthState>()(
       isAuthLoading: false,
       authError: null,
       hasHydrated: false,
+      returnUrl: null,
 
       setUser: (user) => set({ user, isAuthenticated: !!user }),
       setAuthLoading: (loading) => set({ isAuthLoading: loading }),
       setAuthError: (error) => set({ authError: error }),
       setHasHydrated: (hydrated) => set({ hasHydrated: hydrated }),
+      setReturnUrl: (url) => set({ returnUrl: url }),
       
       login: (user) => set({ 
         user, 
@@ -47,7 +51,8 @@ export const useAuthStore = create<AuthState>()(
       name: 'nexus-auth',
       partialize: (state) => ({ 
         user: state.user, 
-        isAuthenticated: state.isAuthenticated 
+        isAuthenticated: state.isAuthenticated,
+        returnUrl: state.returnUrl
       }),
       onRehydrateStorage: () => (state) => {
         state?.setHasHydrated(true);

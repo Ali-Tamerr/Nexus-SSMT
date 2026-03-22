@@ -48,7 +48,8 @@ export function AuthModal({ isOpen, onClose, initialMode = 'login' }: AuthModalP
     setIsGoogleLoading(true);
     setError(null);
     try {
-      await signIn('google', { callbackUrl: '/' });
+      const returnUrl = useAuthStore.getState().returnUrl || '/';
+      await signIn('google', { callbackUrl: returnUrl });
     } catch (err: any) {
       setError('Google login failed: ' + (err.message || String(err)));
       setIsGoogleLoading(false);

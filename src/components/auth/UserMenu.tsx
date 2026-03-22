@@ -2,7 +2,7 @@
 import { signOut } from 'next-auth/react';
 
 import { useState, useRef, useEffect } from 'react';
-import { LogOut, Settings, User, ChevronDown, UserPen, Lock } from 'lucide-react';
+import { LogOut, Settings, User, ChevronDown, UserPen, Lock, Github } from 'lucide-react';
 import { useAuthStore } from '@/store/useAuthStore';
 import { ProfileModal, ModalMode } from './ProfileModal';
 import { useToast } from '@/context/ToastContext';
@@ -102,6 +102,7 @@ export function UserMenu() {
               <Lock className="h-4 w-4" />
               Change Password
             </button>
+           
             {/* <button className="flex w-full items-center gap-3 px-4 py-2 text-sm text-zinc-300 transition-colors hover:bg-zinc-800">
               <Settings className="h-4 w-4" />
               Settings
@@ -116,12 +117,22 @@ export function UserMenu() {
                 setIsOpen(false);
                 window.location.reload();
               }}
-              className="flex w-full items-center gap-3 px-4 py-2 text-sm text-red-400 transition-colors hover:bg-zinc-800"
+              className="flex w-full py-4 items-center gap-3 px-4 py-2 text-sm text-red-400 transition-colors hover:bg-zinc-800"
             >
               <LogOut className="h-4 w-4" />
               Sign out
             </button>
           </div>
+          <a
+            href="https://github.com/Ali-Tamerr/nexus--social-study-mapping-tool"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="border-t border-zinc-800 pt-6 md:hidden flex w-full items-center gap-3 px-4 py-2 text-sm text-zinc-300 transition-colors hover:bg-zinc-800"
+            onClick={() => setIsOpen(false)}
+          >
+            <Github className="h-4 w-4" />
+            View Github Repository
+          </a>
         </div>
       )}
       <ProfileModal isOpen={showProfileModal} onClose={() => setShowProfileModal(false)} initialMode={modalMode} />

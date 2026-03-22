@@ -11,6 +11,7 @@ import { useGraphStore } from '@/store/useGraphStore';
 import { createColorImage } from '@/lib/imageUtils';
 import { SearchInput } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
+import { NotificationDropdown } from './NotificationDropdown';
 import { useHasClassroomAccess } from '@/hooks/useClassroomApi';
 import GoogleClassroomIcon from '@/assets/Icons/classroomLogo.png';
 
@@ -51,6 +52,7 @@ export function Navbar({ showSearch = true, onSearchClick, children }: NavbarPro
           </button>
         )}
 
+        {isAuthenticated && user && <NotificationDropdown />}
         {isAuthenticated && user && <UserMenu />}
       </div>
     </header>
@@ -352,6 +354,7 @@ export function ProjectNavbar({
           </div>
         )}
 
+        <NotificationDropdown />
         <UserMenu />
       </div>
     </header>

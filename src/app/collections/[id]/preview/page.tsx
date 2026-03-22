@@ -2,12 +2,14 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { ArrowLeft, Loader2, Link2, ExternalLink, Info, X } from 'lucide-react';
+import { ArrowLeft, Loader2, Link2, ExternalLink, Info, X, Check } from 'lucide-react';
 import { ProjectCollection, Project, ProjectCollectionItem, Profile } from '@/types/knowledge';
 import { api } from '@/lib/api';
 import { Navbar } from '@/components/layout';
 import { ProjectCard } from '@/components/projects/ProjectCard';
 import { useAuthStore } from '@/store/useAuthStore';
+import { collaborationApi } from '@/lib/supabase/collaboration';
+import { AuthModal } from '@/components/auth/AuthModal';
 
 export default function CollectionPreviewPage() {
     const params = useParams();
@@ -21,6 +23,29 @@ export default function CollectionPreviewPage() {
     const [owner, setOwner] = useState<Profile | null>(null);
     const [showGroupInfo, setShowGroupInfo] = useState(false);
     const [projectInfo, setProjectInfo] = useState<Project | null>(null);
+
+    const { user, isAuthenticated } = useAuthStore();
+    const [requestStatus, setRequestStatus] = useState<'idle' | 'loading' | 'sent' | 'error' | 'accepted'>('idle');
+    const [showAuthModal, setShowAuthModal] = useState(false);
+    const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
+
+    const handleRequestAccess = async () => {
+        if (!isAuthenticated || !user) {
+            useAuthStore.getState().setReturnUrl(window.location.pathname);
+            setAuthMode('login');
+            setShowAuthModal(true);
+            return;
+        }
+
+        try {
+            setRequestStatus('loading');
+            await collaborationApi.requestAccess('collection', id, user.id);
+            setRequestStatus('sent');
+        } catch (err: any) {
+            console.error('Failed to request access:', err);
+            setRequestStatus('error');
+        }
+    };
 
     useEffect(() => {
         const fetchCollection = async () => {
@@ -58,6 +83,24 @@ export default function CollectionPreviewPage() {
 
         fetchCollection();
     }, [id]);
+
+    useEffect(() => {
+        const fetchStatus = async () => {
+             if (!isAuthenticated || !user?.id || !id) return;
+             try {
+                 const requests = await collaborationApi.getMyRequests(user.id);
+                 const req = requests.find(r => r.targetId === id && r.type === 'collection');
+                 
+                 if (req) {
+                     if (req.status === 'pending') setRequestStatus('sent');
+                     else if (req.status === 'accepted') setRequestStatus('accepted');
+                 }
+             } catch (err) {
+                 console.error('Failed to fetch request status:', err);
+             }
+        };
+        fetchStatus();
+    }, [isAuthenticated, user?.id, id]);
 
     const handleProjectClick = (project: Project) => {
         router.push(`/project/${project.id}/preview`);
@@ -160,7 +203,32 @@ export default function CollectionPreviewPage() {
 
     return (
         <div className="h-dvh overflow-y-auto bg-zinc-950 touch-pan-y">
-            <Navbar showSearch={false} />
+            <Navbar showSearch={false}>
+                {!isAuthenticated && (
+                     <div className="flex items-center gap-2 sm:gap-4">
+                        <button
+                            onClick={() => {
+                                useAuthStore.getState().setReturnUrl(window.location.pathname);
+                                setAuthMode('login');
+                                setShowAuthModal(true);
+                            }}
+                            className="text-xs sm:text-sm font-medium text-zinc-300 hover:text-white transition-colors"
+                        >
+                            Sign in
+                        </button>
+                        <button
+                            onClick={() => {
+                                useAuthStore.getState().setReturnUrl(window.location.pathname);
+                                setAuthMode('signup');
+                                setShowAuthModal(true);
+                            }}
+                            className="rounded-lg bg-[#355ea1] px-3 sm:px-4 py-1.5 text-xs sm:text-sm font-medium text-white transition-colors hover:bg-[#2563EB]"
+                        >
+                            Sign up
+                        </button>
+                    </div>
+                )}
+            </Navbar>
             <main className="mx-auto max-w-6xl px-6 py-8">
                 <div className="mb-8 space-y-4">
                     <button
@@ -169,18 +237,39 @@ export default function CollectionPreviewPage() {
                     >
                         <ArrowLeft className="h-4 w-4" /> Back to Dashboard
                     </button>
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center justify-between gap-4 flex-wrap">
+                        <div className="flex items-center gap-3">
 
-                        <button
-                            onClick={() => setShowGroupInfo(true)}
-                            className="p-1 rounded-full hover:bg-zinc-800 text-zinc-400 hover:text-white transition-colors"
-                            title="View Description"
-                        >
-                            <Info className="h-5 w-5" />
-                        </button>
-                        <h1 className="text-3xl font-bold text-white max-w-2xl truncate" title={collection.name}>
-                            {collection.name}
-                        </h1>
+                            <button
+                                onClick={() => setShowGroupInfo(true)}
+                                className="p-1 rounded-full hover:bg-zinc-800 text-zinc-400 hover:text-white transition-colors"
+                                title="View Description"
+                            >
+                                <Info className="h-5 w-5" />
+                            </button>
+                            <h1 className="text-3xl font-bold text-white max-w-2xl truncate" title={collection.name}>
+                                {collection.name}
+                            </h1>
+                        </div>
+                        
+                        {user?.id !== owner?.id && (
+                            requestStatus === 'accepted' ? (
+                                <div className="flex items-center gap-2 rounded-lg bg-emerald-500/20 px-4 py-2 text-sm font-medium text-emerald-400 whitespace-nowrap">
+                                    <Check className="h-4 w-4" />
+                                    Access Granted
+                                </div>
+                            ) : (
+                                <button
+                                    onClick={handleRequestAccess}
+                                    disabled={requestStatus === 'loading' || requestStatus === 'sent'}
+                                    className="flex items-center gap-2 rounded-lg bg-zinc-800 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                                >
+                                    {requestStatus === 'loading' && <Loader2 className="h-4 w-4 animate-spin" />}
+                                    {requestStatus === 'sent' && <Check className="h-4 w-4 text-green-500" />}
+                                    {requestStatus === 'sent' ? 'Request Sent' : 'Send Request Access'}
+                                </button>
+                            )
+                        )}
                     </div>
 
                     {owner && (
@@ -288,6 +377,12 @@ export default function CollectionPreviewPage() {
                         </div>
                     </div>
                 )}
+                
+                <AuthModal
+                    isOpen={showAuthModal}
+                    onClose={() => setShowAuthModal(false)}
+                    initialMode={authMode}
+                />
             </main>
         </div>
     );

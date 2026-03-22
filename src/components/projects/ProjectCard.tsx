@@ -19,6 +19,7 @@ interface ProjectCardProps {
   isPinned?: boolean;
   onPinToggle?: (project: Project) => void;
   onShare?: (project: Project) => void;
+  currentUserId?: string;
 }
 
 export function ProjectCard({
@@ -33,10 +34,12 @@ export function ProjectCard({
   onToggleSelect,
   isPinned = false,
   onPinToggle,
-  onShare
+  onShare,
+  currentUserId
 }: ProjectCardProps) {
   const [isLoading, setIsLoading] = useState(false);
   const isListView = viewMode === 'list';
+  const isCollab = currentUserId ? project.userId !== currentUserId : false;
 
   const handleClick = (e: React.MouseEvent | React.KeyboardEvent) => {
     if (selectable && onToggleSelect) {
@@ -112,74 +115,82 @@ export function ProjectCard({
               {new Date(project.updatedAt).toLocaleDateString()}
             </span>
           )}
-          {onPinToggle ? (
-            <button
-              className={`p-1 rounded hover:bg-zinc-800 transition-colors ${isPinned ? 'text-blue-500 hover:text-blue-400' : 'text-zinc-400 hover:text-white'
-                }`}
-              title={isPinned ? 'Unpin project' : 'Pin project'}
-              onClick={(e) => {
-                e.stopPropagation();
-                onPinToggle(project);
-              }}
-              tabIndex={-1}
-              type="button"
-            >
-              <Pin className={`w-4 h-4 ${isPinned ? 'fill-current' : ''}`} />
-            </button>
-          ) : isPinned ? (
-            <div className="p-1 text-blue-500" title="Pinned project">
-              <Pin className="w-4 h-4 fill-current" />
+          {isCollab ? (
+            <div className="px-2 py-1 rounded bg-zinc-800 text-[10px] font-medium text-zinc-400 select-none">
+              Collab
             </div>
-          ) : null}
-          {onInfoClick && (
-            <button
-              className="p-1 rounded hover:bg-zinc-800 text-zinc-400 hover:text-white transition-colors"
-              title="View Info"
-              onClick={(e) => {
-                e.stopPropagation();
-                onInfoClick(project);
-              }}
-              tabIndex={-1}
-              type="button"
-            >
-              <Info className="w-4 h-4" />
-            </button>
-          )}
-          {onShare && (
-            <button
-              className="p-1 rounded hover:bg-zinc-800 text-zinc-400 hover:text-blue-400 transition-colors"
-              title="Share project"
-              onClick={(e) => {
-                e.stopPropagation();
-                onShare(project);
-              }}
-              tabIndex={-1}
-              type="button"
-            >
-              <Share2 className="w-4 h-4" />
-            </button>
-          )}
-          {onEdit && (
-            <button
-              className="p-1 rounded hover:bg-zinc-800 text-zinc-400 hover:text-blue-400 transition-colors"
-              title="Edit project"
-              onClick={handleEdit}
-              tabIndex={-1}
-              type="button"
-            >
-              <Pencil className="w-4 h-4" />
-            </button>
-          )}
-          {onDelete && (
-            <button
-              className="p-1 rounded hover:bg-zinc-800 text-zinc-400 hover:text-red-500 transition-colors"
-              title="Delete project"
-              onClick={handleDelete}
-              tabIndex={-1}
-              type="button"
-            >
-              <Trash2 className="w-4 h-4" />
-            </button>
+          ) : (
+            <>
+              {onPinToggle ? (
+                <button
+                  className={`p-1 rounded hover:bg-zinc-800 transition-colors ${isPinned ? 'text-blue-500 hover:text-blue-400' : 'text-zinc-400 hover:text-white'
+                    }`}
+                  title={isPinned ? 'Unpin project' : 'Pin project'}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onPinToggle(project);
+                  }}
+                  tabIndex={-1}
+                  type="button"
+                >
+                  <Pin className={`w-4 h-4 ${isPinned ? 'fill-current' : ''}`} />
+                </button>
+              ) : isPinned ? (
+                <div className="p-1 text-blue-500" title="Pinned project">
+                  <Pin className="w-4 h-4 fill-current" />
+                </div>
+              ) : null}
+              {onInfoClick && (
+                <button
+                  className="p-1 rounded hover:bg-zinc-800 text-zinc-400 hover:text-white transition-colors"
+                  title="View Info"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onInfoClick(project);
+                  }}
+                  tabIndex={-1}
+                  type="button"
+                >
+                  <Info className="w-4 h-4" />
+                </button>
+              )}
+              {onShare && (
+                <button
+                  className="p-1 rounded hover:bg-zinc-800 text-zinc-400 hover:text-blue-400 transition-colors"
+                  title="Share project"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onShare(project);
+                  }}
+                  tabIndex={-1}
+                  type="button"
+                >
+                  <Share2 className="w-4 h-4" />
+                </button>
+              )}
+              {onEdit && (
+                <button
+                  className="p-1 rounded hover:bg-zinc-800 text-zinc-400 hover:text-blue-400 transition-colors"
+                  title="Edit project"
+                  onClick={handleEdit}
+                  tabIndex={-1}
+                  type="button"
+                >
+                  <Pencil className="w-4 h-4" />
+                </button>
+              )}
+              {onDelete && (
+                <button
+                  className="p-1 rounded hover:bg-zinc-800 text-zinc-400 hover:text-red-500 transition-colors"
+                  title="Delete project"
+                  onClick={handleDelete}
+                  tabIndex={-1}
+                  type="button"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              )}
+            </>
           )}
         </div>
       </div>
@@ -196,6 +207,7 @@ interface ProjectGridProps {
   selectable?: boolean;
   selectedIds?: Set<number>;
   onToggleSelect?: (project: Project) => void;
+  currentUserId?: string;
 }
 
 export function ProjectGrid({
@@ -206,7 +218,8 @@ export function ProjectGrid({
   onProjectEdit,
   selectable = false,
   selectedIds,
-  onToggleSelect
+  onToggleSelect,
+  currentUserId
 }: ProjectGridProps) {
   const [shareUrl, setShareUrl] = useState<string | null>(null);
 
@@ -238,6 +251,7 @@ export function ProjectGrid({
             selectable={selectable}
             isSelected={selectedIds?.has(project.id)}
             onToggleSelect={onToggleSelect}
+            currentUserId={currentUserId}
           />
         ))}
       </div>

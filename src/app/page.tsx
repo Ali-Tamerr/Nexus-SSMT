@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, Suspense, useRef } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Github } from 'lucide-react';
 
@@ -61,7 +61,7 @@ export default function HomePage() {
   const createCollection = useProjectCollectionStore(state => state.createCollection);
   const deleteCollection = useProjectCollectionStore(state => state.deleteCollection);
 
-  console.log('[Page] Render collections count:', collections.length, 'Example:', collections[0]);
+
 
   const {
     projects,
@@ -91,20 +91,13 @@ export default function HomePage() {
   const [activeTab, setActiveTab] = useState<'all' | 'groups'>('all');
   const [isCreateGroupOpen, setIsCreateGroupOpen] = useState(false);
 
-  const fetchedUserIdRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (user?.id && fetchedUserIdRef.current !== user.id) {
-      // Clear previous user data to prevent leakage
-      setProjects([]);
-      setCollections([]);
-      setCurrentProject(null);
-
+    if (user?.id && isAuthenticated) {
       setCurrentUserId(user.id);
       fetchCollections(user.id);
-      fetchedUserIdRef.current = user.id;
     }
-  }, [user?.id, setCurrentUserId, fetchCollections, setProjects, setCollections, setCurrentProject]);
+  }, [user?.id, isAuthenticated, setCurrentUserId, fetchCollections]);
 
   useEffect(() => {
     const loadProjects = async () => {
@@ -323,7 +316,7 @@ export default function HomePage() {
           href="https://github.com/Ali-Tamerr/nexus--social-study-mapping-tool"
           target="_blank"
           rel="noopener noreferrer"
-          className="flex items-center justify-center h-9 w-9 border border-zinc-400 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-full transition-colors"
+          className="hidden md:flex items-center justify-center h-9 w-9 border border-zinc-400 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-full transition-colors"
           title="View on GitHub"
         >
           <Github className="h-5 w-5" />
@@ -367,6 +360,7 @@ export default function HomePage() {
                     onProjectClick={handleOpenProject}
                     onProjectEdit={handleEditProjectClick}
                     onProjectDelete={handleDeleteProject}
+                    currentUserId={user?.id}
                   />
                 ) : (
                   <GroupList
@@ -374,6 +368,7 @@ export default function HomePage() {
                     onDelete={handleDeleteGroupClick}
                     onEdit={handleEditGroupClick}
                     viewMode={viewMode}
+                    currentUserId={user?.id}
                   />
                 )}
               </>
