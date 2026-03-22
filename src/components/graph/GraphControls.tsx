@@ -158,7 +158,7 @@ export function GraphControls({ settings, onSettingsChange }: GraphControlsProps
                   <button
                     key={tool.id}
                     onClick={() => setActiveTool(tool.id)}
-                    className={`p-2 rounded-lg transition-all flex-shrink-0 flex flex-col items-center justify-center gap-2.5 ${isActive
+                    className={`p-2 rounded-lg transition-all shrink-0 flex flex-col items-center justify-center gap-2.5 ${isActive
                       ? 'bg-[#355ea1] text-white'
                       : 'text-zinc-400 hover:bg-zinc-800 hover:text-white'
                       }`}
@@ -186,7 +186,7 @@ export function GraphControls({ settings, onSettingsChange }: GraphControlsProps
                     <button
                       key={tool.id}
                       onClick={() => setActiveTool(tool.id)}
-                      className={`relative p-2 rounded-lg flex-shrink-0 flex flex-col items-center justify-center gap-2.5 transition-colors duration-200 ${isActive
+                      className={`relative p-2 rounded-lg shrink-0 flex flex-col items-center justify-center gap-2.5 transition-colors duration-200 ${isActive
                         ? 'text-white'
                         : 'text-zinc-400 hover:bg-zinc-800 hover:text-white bg-transparent'
                         }`}
@@ -198,7 +198,7 @@ export function GraphControls({ settings, onSettingsChange }: GraphControlsProps
                       )}
 
                       <Icon className="h-4 w-4 relative z-20 pointer-events-none" />
-                      <span className={`text-[10px] leading-none font-medium hidden md:block relative z-[30] pointer-events-none ${index === 1 ? 'visible text-zinc-500' : 'opacity-0'}`} aria-hidden="true">
+                      <span className={`text-[10px] leading-none font-medium hidden md:block relative z-30 pointer-events-none ${index === 1 ? 'visible text-zinc-500' : 'opacity-0'}`} aria-hidden="true">
                         {tool.keyBind}
                       </span>
                     </button>
@@ -214,7 +214,7 @@ export function GraphControls({ settings, onSettingsChange }: GraphControlsProps
                   <button
                     key={tool.id}
                     onClick={() => setActiveTool(tool.id)}
-                    className={`p-2 rounded-lg transition-all flex-shrink-0 flex flex-col items-center justify-center gap-2.5 ${isActive
+                    className={`p-2 rounded-lg transition-all shrink-0 flex flex-col items-center justify-center gap-2.5 ${isActive
                       ? 'bg-[#355ea1] text-white'
                       : 'text-zinc-400 hover:bg-zinc-800 hover:text-white'
                       }`}
@@ -233,20 +233,20 @@ export function GraphControls({ settings, onSettingsChange }: GraphControlsProps
 
             {/* Left Shadow Overlay */}
             <div
-              className={`absolute left-0 top-0 bottom-0 w-12 bg-gradient-to-r from-zinc-900 to-transparent pointer-events-none transition-opacity duration-200 rounded-l-xl ${showLeftShadow ? 'opacity-100' : 'opacity-0'}`}
+              className={`absolute left-0 top-0 bottom-0 w-12 bg-linear-to-r from-zinc-900 to-transparent pointer-events-none transition-opacity duration-200 rounded-l-xl ${showLeftShadow ? 'opacity-100' : 'opacity-0'}`}
               style={{ paddingLeft: '6px' }} // Match container padding roughly
             />
 
             {/* Right Shadow Overlay */}
             <div
-              className={`absolute right-0 top-0 bottom-0 w-12 bg-gradient-to-l from-zinc-900 to-transparent pointer-events-none transition-opacity duration-200 rounded-r-xl ${showRightShadow ? 'opacity-100' : 'opacity-0'}`}
+              className={`absolute right-0 top-0 bottom-0 w-12 bg-linear-to-l from-zinc-900 to-transparent pointer-events-none transition-opacity duration-200 rounded-r-xl ${showRightShadow ? 'opacity-100' : 'opacity-0'}`}
             />
           </div>
         </div>
       )}
 
       {!settings.isPreviewMode && settings.activeTool === 'pen' && (
-        <div className="absolute max-md:hidden top-[138px] left-1/2 -translate-x-1/2 z-28 text-xs text-zinc-400 bg-zinc-900/80 px-3 py-1.5 rounded-lg border border-zinc-800 pointer-events-none w-max shadow-sm graph-ui-hide">
+        <div className="absolute max-md:hidden top-[160px] left-1/2 -translate-x-1/2 z-28 text-xs text-zinc-400 bg-zinc-900/80 px-3 py-1.5 rounded-lg border border-zinc-800 pointer-events-none w-max shadow-sm graph-ui-hide">
           Click and drag, release when you're finished
         </div>
       )}

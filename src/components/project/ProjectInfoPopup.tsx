@@ -117,7 +117,7 @@ export const ProjectInfoPopup = forwardRef<{ open: () => void }, ProjectInfoPopu
                       className="flex items-center justify-between p-2 rounded-lg hover:bg-zinc-800/50 transition-colors"
                     >
                       <div className="flex items-center gap-3 min-w-0">
-                        <div className="h-8 w-8 rounded-full bg-zinc-700 flex-shrink-0 flex items-center justify-center overflow-hidden border border-zinc-600">
+                        <div className="h-8 w-8 rounded-full bg-zinc-700 shrink-0 flex items-center justify-center overflow-hidden border border-zinc-600">
                           {member.profile?.avatarUrl || member.profile?.avatar_url ? (
                             <NextImage 
                               src={member.profile.avatarUrl || member.profile.avatar_url} 

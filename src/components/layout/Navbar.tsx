@@ -38,7 +38,7 @@ export function Navbar({ showSearch = true, onSearchClick, children }: NavbarPro
             <NextImage src={NexusLogo} alt="Nexus Logo" fill className="object-contain" />
           </div>
           <div>
-            <h1 className="text-lg max-md:text-sm font-bold tracking-tight text-white font-light font-ka1">Nexus</h1>
+            <h1 className="text-lg max-md:text-sm font-bold tracking-tight text-white font-ka1">Nexus</h1>
             <p className="text-[10px] max-md:text-[8px] text-zinc-400">Social Study Mapping Tool</p>
           </div>
         </Link>
@@ -297,7 +297,7 @@ export function ProjectNavbar({
 
           {/* Mobile Search Overlay */}
           {isMobileSearchOpen && (
-            <div className="fixed top-0 left-0 right-0 h-14 z-[200] flex items-center bg-zinc-950 px-2 sm:px-4 animate-in fade-in slide-in-from-top-2 duration-200">
+            <div className="fixed top-0 left-0 right-0 h-14 z-200 flex items-center bg-zinc-950 px-2 sm:px-4 animate-in fade-in slide-in-from-top-2 duration-200">
               <div className="flex-1 relative max-w-4xl mx-auto w-full flex items-center">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" />
                 <input
@@ -347,7 +347,7 @@ export function ProjectNavbar({
             {onAddNodeFromClassroom && (
               <button
                 onClick={() => setIsAddNodeMenuOpen(!isAddNodeMenuOpen)}
-                className="bg-[#355ea1] hover:bg-[#265fbd] text-white px-2 rounded-r-lg border-l border-l-3 border-zinc-900 transition-colors"
+                className="bg-[#355ea1] hover:bg-[#265fbd] text-white px-2 rounded-r-lg border-l-2 border-zinc-900 transition-colors"
               >
                 {/* {hasClassroomAccess ? (
                   <Check className="h-4 w-4" />

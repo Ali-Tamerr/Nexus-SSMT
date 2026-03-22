@@ -2696,7 +2696,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
             style={{
               cursor: getToolCursor(),
             }}
-            className="[&_canvas]:!cursor-[inherit]"
+            className="[&_canvas]:cursor-[inherit]!"
           >
             <ForceGraph2D
               ref={graphRef}
