@@ -120,12 +120,13 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
 
     if (hasHydrated && isAuthenticated) {
       loadProjectData();
-      
+
       // Subscribe to real-time changes
       if (user?.id) {
-         realtimeSync.subscribeToProject(id, user.id, () => {
-             showToast('A collaborator made changes. Please refresh the page to see the latest version.', 'info');
-         });
+        realtimeSync.subscribeToProject(id, user.id, () => {
+          // 0 duration means it won't auto-close
+          showToast('Some changes were made. Please refresh the page to see the latest version.', 'info', 0);
+        });
       }
     }
 

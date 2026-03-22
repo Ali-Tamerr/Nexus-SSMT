@@ -31,7 +31,13 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         const id = crypto.randomUUID();
         const newToast: ToastMessage = { id, message, type };
 
-        setToasts((prev) => [...prev, newToast]);
+        setToasts((prev) => {
+            // Prevent duplicate toasts on screen
+            if (prev.some((t) => t.message === message)) {
+                return prev;
+            }
+            return [...prev, newToast];
+        });
 
         if (duration > 0 && type !== 'confirmation') {
             setTimeout(() => {

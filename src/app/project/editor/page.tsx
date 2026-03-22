@@ -8,6 +8,8 @@ import { useGraphStore, filterNodes } from '@/store/useGraphStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { api } from '@/lib/api';
 import { decodeWallpaper } from '@/lib/imageUtils';
+import { realtimeSync } from '@/lib/supabase/realtime';
+import { useToast } from '@/context/ToastContext';
 
 import { LoadingScreen, LoadingOverlay } from '@/components/ui';
 import { SearchInput } from '@/components/ui/Input';
@@ -28,6 +30,7 @@ export default function EditorPage() {
     const [isInitializing, setIsInitializing] = useState(true);
     const [isClassroomModalOpen, setIsClassroomModalOpen] = useState(false);
     const graphCanvasRef = useRef<GraphCanvasHandle>(null);
+    const { showToast } = useToast();
 
     const handleExportPNG = () => {
         graphCanvasRef.current?.exportToPNG();
@@ -165,12 +168,20 @@ export default function EditorPage() {
 
         if (hasHydrated && isAuthenticated && projectId) {
             loadProjectData();
+
+            // Subscribe to real-time changes
+            if (user?.id) {
+                realtimeSync.subscribeToProject(projectId, user.id, () => {
+                    showToast('Some changes were made. Please refresh the page to see the latest version.', 'info', 0);
+                });
+            }
         }
 
         return () => {
             dataLoadedRef.current = false;
+            realtimeSync.unsubscribe();
         };
-    }, [projectId, hasHydrated, isAuthenticated, setCurrentProject, setNodes, setLinks, setLoading]);
+    }, [projectId, hasHydrated, isAuthenticated, setCurrentProject, setNodes, setLinks, setLoading, user?.id, showToast]);
 
     const activeGroupId = useGraphStore(state => state.activeGroupId);
 

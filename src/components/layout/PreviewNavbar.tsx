@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import NextImage from 'next/image';
-import { Info, Search, ChevronDown, Save, ChevronRight, LayoutGrid, X, Share2, Check } from 'lucide-react';
+import { Info, Search, ChevronDown, Save, ChevronRight, LayoutGrid, X, Share2, Check, Users, User } from 'lucide-react';
 import NexusLogo from '@/assets/Logo/Logo with no circle.svg';
 import { SearchInput } from '@/components/ui/Input';
 import { createColorImage } from '@/lib/imageUtils';
@@ -12,6 +12,7 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { AuthModal } from '@/components/auth/AuthModal';
 import { collaborationApi } from '@/lib/supabase/collaboration';
 import { useToast } from '@/context/ToastContext';
+import { ProjectInfoPopup } from '@/components/project/ProjectInfoPopup';
 
 interface PreviewNavbarProps {
     projectName: string;
@@ -55,13 +56,13 @@ export function PreviewNavbar({
 }: PreviewNavbarProps) {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [isSaveAsMenuOpen, setIsSaveAsMenuOpen] = useState(false);
-    const [showDescription, setShowDescription] = useState(false);
     const [isShareModalOpen, setIsShareModalOpen] = useState(false);
     const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
     const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
     const [requestStatus, setRequestStatus] = useState<'idle' | 'pending' | 'requested' | 'accepted'>('idle');
+
     const menuRef = useRef<HTMLDivElement>(null);
-    const descriptionRef = useRef<HTMLDivElement>(null);
+    const infoPopupRef = useRef<{ open: () => void } | null>(null);
 
     const { isAuthenticated, user, setReturnUrl } = useAuthStore();
     const { showToast } = useToast();
@@ -75,9 +76,6 @@ export function PreviewNavbar({
             if (menuRef.current && !menuRef.current.contains(event.target as any)) {
                 setIsMenuOpen(false);
                 setIsSaveAsMenuOpen(false);
-            }
-            if (descriptionRef.current && !descriptionRef.current.contains(event.target as any)) {
-                setShowDescription(false);
             }
         }
         document.addEventListener('mousedown', handleClickOutside, true);
@@ -160,13 +158,13 @@ export function PreviewNavbar({
                             <div className="absolute top-full left-0 mt-2 w-56 rounded-xl border border-zinc-800 bg-zinc-900 shadow-xl p-1.5 z-50 flex flex-col gap-1">
                                 <button
                                     onClick={() => {
-                                        setShowDescription(true);
+                                        infoPopupRef.current?.open();
                                         setIsMenuOpen(false);
                                     }}
                                     className="sm:hidden flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-zinc-300 hover:bg-zinc-800 hover:text-white transition-colors cursor-pointer"
                                 >
                                     <Info className="w-4 h-4" />
-                                    <span>Description</span>
+                                    <span>Project Info</span>
                                 </button>
 
                                 <button
@@ -253,31 +251,15 @@ export function PreviewNavbar({
 
                     <div className="hidden sm:block h-6 w-px bg-zinc-800/50" />
 
-                    <div className='hidden sm:flex items-center gap-3' ref={descriptionRef}>
-                        <button
-                            onClick={() => setShowDescription(!showDescription)}
-                            className={`flex items-center justify-center rounded-md p-1 transition-colors ${showDescription ? 'text-white' : 'text-zinc-500 hover:text-white'}`}
-                            title={projectDescription ? "Show description" : "No description"}
-                        >
-                            <Info className="h-5 w-5" />
-                        </button>
-                        {showDescription && (
-                            <div className="absolute top-full left-0 mt-2 w-72 rounded-xl border border-zinc-800 bg-zinc-900/95 backdrop-blur-md p-4 text-sm text-zinc-300 shadow-2xl z-[101] flex flex-col gap-3 animate-in fade-in zoom-in-95 duration-200">
-                                <div className="whitespace-pre-wrap">
-                                    {projectDescription || <span className="text-zinc-500 italic">No description</span>}
-                                </div>
-                                {projectUpdatedAt && (
-                                    <div className="pt-3 border-t border-zinc-800/50 text-[10px] text-zinc-500">
-                                        Last edit on {new Date(projectUpdatedAt).toLocaleString(undefined, {
-                                            year: 'numeric',
-                                            month: 'short',
-                                            day: 'numeric',
-                                            hour: '2-digit',
-                                            minute: '2-digit'
-                                        })}
-                                    </div>
-                                )}
-                            </div>
+                    <div className='flex items-center gap-3 relative'>
+                        {projectId && (
+                            <ProjectInfoPopup
+                                ref={infoPopupRef}
+                                type="project"
+                                targetId={projectId}
+                                description={projectDescription}
+                                updatedAt={projectUpdatedAt}
+                            />
                         )}
                     </div>
                 </div>
@@ -350,37 +332,7 @@ export function PreviewNavbar({
                 </div>
             </header>
 
-            {showDescription && (
-                <div className="sm:hidden fixed inset-0 z-[200] flex items-center justify-center pointer-events-auto">
-                    <div
-                        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-                        onClick={() => setShowDescription(false)}
-                    />
-                    <div className="relative w-[90%] max-w-sm rounded-xl border border-zinc-800 bg-zinc-900/95 backdrop-blur-md p-4 text-sm text-zinc-300 shadow-2xl z-[201] animate-in fade-in zoom-in-95 duration-200">
-                        <button
-                            onClick={() => setShowDescription(false)}
-                            className="absolute top-3 right-3 p-1 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
-                        >
-                            <X className="w-4 h-4" />
-                        </button>
-                        <h3 className="text-white font-medium mb-2">Description</h3>
-                        <div className="whitespace-pre-wrap">
-                            {projectDescription || <span className="text-zinc-500 italic">No description</span>}
-                        </div>
-                        {projectUpdatedAt && (
-                            <div className="mt-4 pt-3 border-t border-zinc-800/50 text-xs text-zinc-500">
-                                Last edit on {new Date(projectUpdatedAt).toLocaleString(undefined, {
-                                    year: 'numeric',
-                                    month: 'short',
-                                    day: 'numeric',
-                                    hour: '2-digit',
-                                    minute: '2-digit'
-                                })}
-                            </div>
-                        )}
-                    </div>
-                </div>
-            )}
+
 
             <ShareModal
                 isOpen={isShareModalOpen}

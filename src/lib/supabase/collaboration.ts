@@ -44,5 +44,10 @@ export const collaborationApi = {
   // 6. Unified Access Check (Collections)
   hasCollectionAccess: async (collectionId: number, userId: string): Promise<boolean> => {
     return api.fetchApi<boolean>(`${BASE_URL}/access/collection/${collectionId}?userId=${userId}`, { method: 'GET' }).catch(() => false);
+  },
+
+  // 7. Get Members (Projects/Collections)
+  getMembers: async (type: 'project' | 'collection', targetId: number) => {
+    return api.fetchApi<any[]>(`${BASE_URL}/members/${type}/${targetId}`, { method: 'GET' });
   }
 };

@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import NextImage from 'next/image';
 import NexusLogo from '@/assets/Logo/Logo with no circle.svg';
-import { Search, ChevronDown, Image, Save, LayoutGrid, ChevronRight, Plus, Check } from 'lucide-react';
+import { Search, ChevronDown, Image, Save, LayoutGrid, ChevronRight, Plus, Check, Info, Users, User } from 'lucide-react';
 import { UserMenu } from '@/components/auth/UserMenu';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useGraphStore } from '@/store/useGraphStore';
@@ -14,6 +14,9 @@ import { Button } from '@/components/ui/Button';
 import { NotificationDropdown } from './NotificationDropdown';
 import { useHasClassroomAccess } from '@/hooks/useClassroomApi';
 import GoogleClassroomIcon from '@/assets/Icons/classroomLogo.png';
+import { collaborationApi } from '@/lib/supabase/collaboration';
+import { useToast } from '@/context/ToastContext';
+import { ProjectInfoPopup } from '@/components/project/ProjectInfoPopup';
 
 interface NavbarProps {
   showSearch?: boolean;
@@ -106,6 +109,9 @@ export function ProjectNavbar({
   const menuRef = useRef<HTMLDivElement>(null);
   const addNodeMenuRef = useRef<HTMLDivElement>(null);
 
+  const { showToast } = useToast();
+  const { user, isAuthenticated } = useAuthStore();
+
   const { hasAccess: hasClassroomAccess, isGoogleUser } = useHasClassroomAccess();
 
   const updateProject = useGraphStore(state => state.updateProject);
@@ -137,7 +143,7 @@ export function ProjectNavbar({
   };
 
   return (
-    <header className="relative flex h-14 items-center justify-between border-b border-zinc-800 bg-zinc-900/50 px-2 sm:px-4">
+    <header className="relative flex h-14 items-center justify-between border-b border-zinc-800/20 bg-zinc-900/30 backdrop-blur-md px-2 sm:px-4">
       <div className="flex items-center gap-2 sm:gap-4">
         <div className="relative" ref={menuRef}>
           <button
@@ -238,9 +244,21 @@ export function ProjectNavbar({
         </div>
 
         <div className="h-6 w-px bg-zinc-800" />
-        <div className="flex items-center gap-2">
-          <div>
-            <h1 className="text-sm font-semibold text-white max-w-[120px] sm:max-w-xs truncate block" title={projectName || 'Project'}>{projectName || 'Project'}</h1>
+        
+        <div className="flex items-center gap-2 relative">
+          {currentProject?.id && (
+            <ProjectInfoPopup
+              type="project"
+              targetId={currentProject.id}
+              description={currentProject.description}
+              updatedAt={currentProject.updatedAt}
+            />
+          )}
+
+          <div className="flex items-center gap-2">
+            <h1 className="text-sm font-semibold text-white max-w-[120px] sm:max-w-xs truncate block" title={projectName || 'Project'}>
+              {projectName || 'Project'}
+            </h1>
           </div>
         </div>
       </div>
