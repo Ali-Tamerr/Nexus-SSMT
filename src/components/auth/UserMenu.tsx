@@ -62,7 +62,10 @@ export function UserMenu() {
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 z-99 top-full mt-2 w-56 rounded-xl border border-zinc-800 bg-zinc-900 py-2 shadow-xl">
+        <div 
+          className="absolute right-0 z-100 top-full mt-2 w-56 rounded-xl border border-zinc-800 bg-zinc-900 py-2 shadow-xl"
+          style={{ backgroundColor: '#18181b', isolation: 'isolate' }}
+        >
           <div className="border-b border-zinc-800 px-4 pb-3 pt-1">
             <p className="font-medium text-white">{user.displayName || 'User'}</p>
             <p className="text-sm text-zinc-500 truncate">{user.email}</p>
@@ -117,7 +120,7 @@ export function UserMenu() {
                 setIsOpen(false);
                 window.location.reload();
               }}
-              className="flex w-full py-4 items-center gap-3 px-4 py-2 text-sm text-red-400 transition-colors hover:bg-zinc-800"
+              className="flex w-full items-center gap-3 px-4 py-2 text-sm text-red-400 transition-colors hover:bg-zinc-800"
             >
               <LogOut className="h-4 w-4" />
               Sign out

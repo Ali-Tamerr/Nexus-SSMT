@@ -28,7 +28,10 @@ export function Navbar({ showSearch = true, onSearchClick, children }: NavbarPro
   const { user, isAuthenticated } = useAuthStore();
 
   return (
-    <header className="flex h-16 items-center justify-between border-b border-zinc-800 bg-zinc-900/50 px-6">
+    <header 
+      className="sticky top-0 flex h-16 items-center justify-between border-b border-zinc-800/10 bg-zinc-900/15 backdrop-blur-md px-6 z-50"
+      style={{ isolation: 'isolate' }}
+    >
       <div className="flex items-center gap-3">
         <Link href="/" className="flex items-center gap-3">
           <div className="relative h-9 w-9">
@@ -143,7 +146,10 @@ export function ProjectNavbar({
   };
 
   return (
-    <header className="relative flex h-14 items-center justify-between border-b border-zinc-800/20 bg-zinc-900/30 backdrop-blur-md px-2 sm:px-4">
+    <header 
+      className="absolute top-0 left-0 right-0 flex h-14 items-center justify-between border-b border-zinc-800/10 bg-zinc-900/15 backdrop-blur-md px-2 sm:px-4 z-50"
+      style={{ isolation: 'isolate' }}
+    >
       <div className="flex items-center gap-2 sm:gap-4">
         <div className="relative" ref={menuRef}>
           <button
@@ -157,7 +163,10 @@ export function ProjectNavbar({
           </button>
 
           {isMenuOpen && (
-            <div className="absolute top-full left-0 mt-2 w-56 rounded-xl border border-zinc-800 bg-zinc-900 shadow-xl p-1.5 z-50 flex flex-col gap-1">
+            <div 
+              className="absolute top-full left-0 mt-2 w-56 rounded-xl border border-zinc-800 shadow-xl p-1.5 z-50 flex flex-col gap-1"
+              style={{ backgroundColor: '#000000', isolation: 'isolate' }}
+            >
               <div className="px-3 py-2">
                 <p className="text-xs font-medium text-zinc-500 mb-2">Wallpaper</p>
                 <div className="grid grid-cols-5 gap-2 max-h-32 overflow-y-auto scrollbar-thin scrollbar-thumb-zinc-700">
@@ -350,7 +359,10 @@ export function ProjectNavbar({
 
             {/* Add Node Dropdown */}
             {isAddNodeMenuOpen && onAddNodeFromClassroom && (
-              <div className="absolute top-full right-0 mt-2 w-66 rounded-lg border border-zinc-800 bg-zinc-900 shadow-xl p-1 z-50">
+              <div 
+                className="absolute top-full right-0 mt-2 w-64 rounded-lg border border-zinc-800  shadow-xl p-1 z-50"
+                style={{ backgroundColor: '#18181b', isolation: 'isolate' }}
+              >
                 <button
                   onClick={() => {
                     onAddNodeFromClassroom();

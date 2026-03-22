@@ -141,7 +141,10 @@ export function PreviewNavbar({
 
     return (
         <>
-            <header className="absolute top-0 left-0 right-0 z-20 flex h-14 items-center justify-between border-b border-zinc-800/20 bg-zinc-900/30 backdrop-blur-md px-4 pointer-events-none">
+        <header 
+            className="absolute top-0 left-0 right-0 z-50 flex h-14 items-center justify-between border-b border-zinc-800/10 bg-zinc-900/15 backdrop-blur-md px-4 pointer-events-none"
+            style={{ isolation: 'isolate' }}
+        >
                 <div className="flex items-center gap-3 pointer-events-auto shrink-0">
                     <div className="relative" ref={menuRef}>
                         <button
@@ -155,7 +158,10 @@ export function PreviewNavbar({
                         </button>
 
                         {isMenuOpen && (
-                            <div className="absolute top-full left-0 mt-2 w-56 rounded-xl border border-zinc-800 bg-zinc-900 shadow-xl p-1.5 z-50 flex flex-col gap-1">
+                            <div 
+                                className="absolute top-full left-0 mt-2 w-56 rounded-xl border border-zinc-800 shadow-xl p-1.5 z-50 flex flex-col gap-1"
+                                style={{ backgroundColor: '#18181b', isolation: 'isolate' }}
+                            >
                                 <button
                                     onClick={() => {
                                         infoPopupRef.current?.open();

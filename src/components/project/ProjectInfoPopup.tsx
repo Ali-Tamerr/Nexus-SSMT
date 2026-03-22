@@ -73,10 +73,13 @@ export const ProjectInfoPopup = forwardRef<{ open: () => void }, ProjectInfoPopu
       </button>
 
       {isOpen && (
-        <div className="absolute top-full left-0 mt-3 w-[95%] sm:w-[550px] rounded-xl border border-zinc-800 bg-zinc-900 shadow-2xl z-[100] flex flex-col sm:flex-row overflow-hidden animate-in fade-in zoom-in-95 duration-200 pointer-events-auto">
+        <div 
+          className="absolute top-full left-0 mt-3 w-[95%] sm:w-[550px] rounded-xl border border-zinc-800 shadow-2xl z-100 flex flex-col sm:flex-row overflow-hidden animate-in slide-in-from-top-2 zoom-in-95 duration-200 pointer-events-auto"
+          style={{ backgroundColor: '#18181b', isolation: 'isolate' }}
+        >
           {/* Description Section */}
-          <div className="flex-1 flex flex-col max-h-[350px] sm:max-h-[350px] border-b sm:border-b-0 sm:border-r border-zinc-800">
-            <div className="px-4 py-3 border-b border-zinc-800 flex items-center gap-2 bg-zinc-900/50">
+          <div className="flex-1 flex flex-col max-h-[350px] sm:max-h-[350px] border-b sm:border-b-0 sm:border-r border-zinc-800" style={{ backgroundColor: '#18181b' }}>
+            <div className="px-4 py-3 border-b border-zinc-800 flex items-center gap-2 bg-zinc-900">
               <span className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">
                 {type === 'project' ? 'Project Description' : 'Collection Description'}
               </span>
@@ -96,8 +99,8 @@ export const ProjectInfoPopup = forwardRef<{ open: () => void }, ProjectInfoPopu
           </div>
           
           {/* Members Section */}
-          <div className="flex-1 flex flex-col max-h-[350px] sm:max-h-[350px]">
-            <div className="px-4 py-3 border-b border-zinc-800 flex items-center justify-between bg-zinc-900/50">
+          <div className="flex-1 flex flex-col max-h-[350px] sm:max-h-[350px]" style={{ backgroundColor: '#18181b' }}>
+            <div className="px-4 py-3 border-b border-zinc-800 flex items-center justify-between bg-zinc-900" style={{ backgroundColor: '#18181b' }}>
               <span className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">
                 {type === 'project' ? 'Project Members' : 'Collection Members'}
               </span>

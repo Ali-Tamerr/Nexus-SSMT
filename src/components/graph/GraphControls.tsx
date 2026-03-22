@@ -141,7 +141,7 @@ export function GraphControls({ settings, onSettingsChange }: GraphControlsProps
   return (
     <>
       {!settings.isPreviewMode && (
-        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-30 flex items-center justify-center graph-ui-hide max-w-[95vw]">
+        <div className="absolute top-20 left-1/2 -translate-x-1/2 z-30 flex items-center justify-center graph-ui-hide max-w-[95vw]">
           <div className="relative flex items-center rounded-xl bg-zinc-900/90 p-1.5 backdrop-blur-sm border border-zinc-800 shadow-sm overflow-hidden">
 
             {/* Scroll Container */}
@@ -246,18 +246,18 @@ export function GraphControls({ settings, onSettingsChange }: GraphControlsProps
       )}
 
       {!settings.isPreviewMode && settings.activeTool === 'pen' && (
-        <div className="absolute max-md:hidden top-[80px] left-1/2 -translate-x-1/2 z-28 text-xs text-zinc-400 bg-zinc-900/80 px-3 py-1.5 rounded-lg border border-zinc-800 pointer-events-none w-max shadow-sm graph-ui-hide">
+        <div className="absolute max-md:hidden top-[138px] left-1/2 -translate-x-1/2 z-28 text-xs text-zinc-400 bg-zinc-900/80 px-3 py-1.5 rounded-lg border border-zinc-800 pointer-events-none w-max shadow-sm graph-ui-hide">
           Click and drag, release when you're finished
         </div>
       )}
 
       {settings.isPreviewMode && (
-        <div className="absolute max-md:hidden top-6 left-1/2 -translate-x-1/2 z-30 text-xs text-zinc-400 bg-zinc-900/80 px-3 py-1.5 rounded-lg border border-zinc-800 pointer-events-none w-max shadow-sm graph-ui-hide">
+        <div className="absolute max-md:hidden top-20 left-1/2 -translate-x-1/2 z-30 text-xs text-zinc-400 bg-zinc-900/80 px-3 py-1.5 rounded-lg border border-zinc-800 pointer-events-none w-max shadow-sm graph-ui-hide">
           Click on a node to view the details and links
         </div>
       )}
 
-      <div className="absolute right-2.5 top-[4.5rem] z-30 flex flex-col items-end gap-2 graph-ui-hide md:top-4">
+      <div className="absolute right-2.5 top-20 z-30 flex flex-col items-end gap-2 graph-ui-hide">
         <div className="flex items-center gap-2 rounded-xl bg-zinc-900/90 p-2 backdrop-blur-sm border border-zinc-800">
           <PreviewControl
             enabled={settings.isPreviewMode}
