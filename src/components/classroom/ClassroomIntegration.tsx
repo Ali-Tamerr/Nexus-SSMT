@@ -29,7 +29,9 @@ export function ClassroomIntegration({ isOpen, onClose }: ClassroomIntegrationPr
     currentProject,
     currentUserId,
     toggleEditor,
-    activeGroupId
+    activeGroupId,
+    setPendingNodes,
+    setGraphSettings
   } = useGraphStore();
   const { showToast } = useToast();
 
@@ -200,17 +202,11 @@ export function ClassroomIntegration({ isOpen, onClose }: ClassroomIntegrationPr
         };
       });
 
-      // Call batch endpoint
-      const newNodes = await api.nodes.batchCreate(batchPayload);
+      // Store in pending nodes and switch to node tool
+      setPendingNodes(batchPayload);
+      setGraphSettings({ activeTool: 'node' });
 
-      // Add to store and set as active
-      if (newNodes && newNodes.length > 0) {
-        newNodes.forEach(node => addNode(node));
-        setActiveNode(newNodes[newNodes.length - 1]);
-        toggleEditor(true);
-      }
-
-      showToast(`Successfully added ${items.length} node(s) from Classroom`, 'success');
+      showToast(`${items.length} node(s) ready to be placed. Click on the canvas to add them.`, 'info');
 
       handleClose();
     } catch (error) {

@@ -4,15 +4,19 @@ import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import NextImage from 'next/image';
 import NexusLogo from '@/assets/Logo/Logo with no circle.svg';
-import { Search, ChevronDown, Image, Save, LayoutGrid, ChevronRight, Plus, Check } from 'lucide-react';
+import { Search, ChevronDown, Image, Save, LayoutGrid, ChevronRight, Plus, Check, Info, Users, User } from 'lucide-react';
 import { UserMenu } from '@/components/auth/UserMenu';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useGraphStore } from '@/store/useGraphStore';
 import { createColorImage } from '@/lib/imageUtils';
 import { SearchInput } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
+import { NotificationDropdown } from './NotificationDropdown';
 import { useHasClassroomAccess } from '@/hooks/useClassroomApi';
 import GoogleClassroomIcon from '@/assets/Icons/classroomLogo.png';
+import { collaborationApi } from '@/lib/supabase/collaboration';
+import { useToast } from '@/context/ToastContext';
+import { ProjectInfoPopup } from '@/components/project/ProjectInfoPopup';
 
 interface NavbarProps {
   showSearch?: boolean;
@@ -24,14 +28,17 @@ export function Navbar({ showSearch = true, onSearchClick, children }: NavbarPro
   const { user, isAuthenticated } = useAuthStore();
 
   return (
-    <header className="flex h-16 items-center justify-between border-b border-zinc-800 bg-zinc-900/50 px-6">
+    <header 
+      className="sticky top-0 flex h-16 items-center justify-between border-b border-zinc-800/10 bg-zinc-900/15 backdrop-blur-md px-6 z-50"
+      style={{ isolation: 'isolate' }}
+    >
       <div className="flex items-center gap-3">
         <Link href="/" className="flex items-center gap-3">
           <div className="relative h-9 w-9">
             <NextImage src={NexusLogo} alt="Nexus Logo" fill className="object-contain" />
           </div>
           <div>
-            <h1 className="text-lg max-md:text-sm font-bold tracking-tight text-white font-light font-ka1">Nexus</h1>
+            <h1 className="text-lg max-md:text-sm font-bold tracking-tight text-white font-ka1">Nexus</h1>
             <p className="text-[10px] max-md:text-[8px] text-zinc-400">Social Study Mapping Tool</p>
           </div>
         </Link>
@@ -51,6 +58,7 @@ export function Navbar({ showSearch = true, onSearchClick, children }: NavbarPro
           </button>
         )}
 
+        {isAuthenticated && user && <NotificationDropdown />}
         {isAuthenticated && user && <UserMenu />}
       </div>
     </header>
@@ -64,9 +72,6 @@ interface ProjectNavbarProps {
   onExportPNG?: () => void;
   onExportJPG?: () => void;
   onExportProject?: () => void;
-  onAddNode?: () => void;
-  onAddNodeFromClassroom?: () => void;
-  isAddingNode?: boolean;
   isPreviewMode?: boolean;
 }
 
@@ -90,19 +95,16 @@ export function ProjectNavbar({
   onExportPNG,
   onExportJPG,
   onExportProject,
-  onAddNode,
-  onAddNodeFromClassroom,
-  isAddingNode,
   isPreviewMode
 }: ProjectNavbarProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isWallpaperMenuOpen, setIsWallpaperMenuOpen] = useState(false);
   const [isSaveAsMenuOpen, setIsSaveAsMenuOpen] = useState(false);
   const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
-  const [isAddNodeMenuOpen, setIsAddNodeMenuOpen] = useState(false);
-
   const menuRef = useRef<HTMLDivElement>(null);
-  const addNodeMenuRef = useRef<HTMLDivElement>(null);
+
+  const { showToast } = useToast();
+  const { user, isAuthenticated } = useAuthStore();
 
   const { hasAccess: hasClassroomAccess, isGoogleUser } = useHasClassroomAccess();
 
@@ -116,9 +118,6 @@ export function ProjectNavbar({
       if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
         setIsMenuOpen(false);
         setIsWallpaperMenuOpen(false);
-      }
-      if (addNodeMenuRef.current && !addNodeMenuRef.current.contains(event.target as Node)) {
-        setIsAddNodeMenuOpen(false);
       }
     }
     document.addEventListener('mousedown', handleClickOutside);
@@ -135,7 +134,10 @@ export function ProjectNavbar({
   };
 
   return (
-    <header className="relative flex h-14 items-center justify-between border-b border-zinc-800 bg-zinc-900/50 px-2 sm:px-4">
+    <header 
+      className="absolute top-0 left-0 right-0 flex h-14 items-center justify-between border-b border-zinc-800/10 bg-zinc-900/15 backdrop-blur-md px-2 sm:px-4 z-50"
+      style={{ isolation: 'isolate' }}
+    >
       <div className="flex items-center gap-2 sm:gap-4">
         <div className="relative" ref={menuRef}>
           <button
@@ -149,7 +151,10 @@ export function ProjectNavbar({
           </button>
 
           {isMenuOpen && (
-            <div className="absolute top-full left-0 mt-2 w-56 rounded-xl border border-zinc-800 bg-zinc-900 shadow-xl p-1.5 z-50 flex flex-col gap-1">
+            <div 
+              className="absolute top-full left-0 mt-2 w-56 rounded-xl border border-zinc-800 shadow-xl p-1.5 z-50 flex flex-col gap-1"
+              style={{ backgroundColor: '#000000', isolation: 'isolate' }}
+            >
               <div className="px-3 py-2">
                 <p className="text-xs font-medium text-zinc-500 mb-2">Wallpaper</p>
                 <div className="grid grid-cols-5 gap-2 max-h-32 overflow-y-auto scrollbar-thin scrollbar-thumb-zinc-700">
@@ -236,9 +241,21 @@ export function ProjectNavbar({
         </div>
 
         <div className="h-6 w-px bg-zinc-800" />
-        <div className="flex items-center gap-2">
-          <div>
-            <h1 className="text-sm font-semibold text-white max-w-[120px] sm:max-w-xs truncate block" title={projectName || 'Project'}>{projectName || 'Project'}</h1>
+        
+        <div className="flex items-center gap-2 relative">
+          {currentProject?.id && (
+            <ProjectInfoPopup
+              type="project"
+              targetId={currentProject.id}
+              description={currentProject.description}
+              updatedAt={currentProject.updatedAt}
+            />
+          )}
+
+          <div className="flex items-center gap-2">
+            <h1 className="text-sm font-semibold text-white max-w-[120px] sm:max-w-xs truncate block" title={projectName || 'Project'}>
+              {projectName || 'Project'}
+            </h1>
           </div>
         </div>
       </div>
@@ -268,7 +285,7 @@ export function ProjectNavbar({
 
           {/* Mobile Search Overlay */}
           {isMobileSearchOpen && (
-            <div className="fixed top-0 left-0 right-0 h-14 z-[200] flex items-center bg-zinc-950 px-2 sm:px-4 animate-in fade-in slide-in-from-top-2 duration-200">
+            <div className="fixed top-0 left-0 right-0 h-14 z-200 flex items-center bg-zinc-950 px-2 sm:px-4 animate-in fade-in slide-in-from-top-2 duration-200">
               <div className="flex-1 relative max-w-4xl mx-auto w-full flex items-center">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" />
                 <input
@@ -298,60 +315,9 @@ export function ProjectNavbar({
           )}
         </div>
 
-        {(onAddNode || onAddNodeFromClassroom) && (
-          <div className="relative flex gap-0" ref={addNodeMenuRef}>
-            <Button
-              variant="primary"
-              onClick={() => {
-                if (onAddNode) {
-                  onAddNode();
-                }
-              }}
-              loading={isAddingNode}
-              icon={<Plus className="h-4 w-4" />}
-              className="px-2 sm:px-4 rounded-r-none"
-            >
-              <span className="hidden  md:inline">Add Node</span>
-            </Button>
 
-            {/* Chevron/Check button for dropdown */}
-            {onAddNodeFromClassroom && (
-              <button
-                onClick={() => setIsAddNodeMenuOpen(!isAddNodeMenuOpen)}
-                className="bg-[#355ea1] hover:bg-[#265fbd] text-white px-2 rounded-r-lg border-l border-l-3 border-zinc-900 transition-colors"
-              >
-                {/* {hasClassroomAccess ? (
-                  <Check className="h-4 w-4" />
-                ) : ( */}
-                  <ChevronDown className="h-4 w-4" />
-                {/* )} */}
-              </button>
-            )}
 
-            {/* Add Node Dropdown */}
-            {isAddNodeMenuOpen && onAddNodeFromClassroom && (
-              <div className="absolute top-full right-0 mt-2 w-66 rounded-lg border border-zinc-800 bg-zinc-900 shadow-xl p-1 z-50">
-                <button
-                  onClick={() => {
-                    onAddNodeFromClassroom();
-                    setIsAddNodeMenuOpen(false);
-                  }}
-                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-white hover:bg-zinc-800 transition-colors"
-                >
-                  <NextImage 
-                    src={GoogleClassroomIcon} 
-                    alt="Google Classroom" 
-                    width={16} 
-                    height={16} 
-                    className="object-contain"
-                  />
-                  Add from Google Classroom
-                </button>
-              </div>
-            )}
-          </div>
-        )}
-
+        <NotificationDropdown />
         <UserMenu />
       </div>
     </header>

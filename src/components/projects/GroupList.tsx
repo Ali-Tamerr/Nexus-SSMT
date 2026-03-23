@@ -11,9 +11,10 @@ interface GroupListProps {
     onDelete: (group: ProjectCollection) => void;
     onEdit: (group: ProjectCollection) => void;
     viewMode: 'grid' | 'list';
+    currentUserId?: string;
 }
 
-export function GroupList({ groups, onDelete, onEdit, viewMode }: GroupListProps) {
+export function GroupList({ groups, onDelete, onEdit, viewMode, currentUserId }: GroupListProps) {
     const [shareUrl, setShareUrl] = useState<string | null>(null);
     const router = useRouter();
     const isListView = viewMode === 'list';
@@ -88,38 +89,46 @@ export function GroupList({ groups, onDelete, onEdit, viewMode }: GroupListProps
                                         ? new Date(group.updatedAt).toLocaleDateString()
                                         : ''}
                                 </span>
-                                <button
-                                    onClick={(e) => handleShare(e, group)}
-                                    className="p-1 rounded hover:bg-zinc-800 text-zinc-400 hover:text-blue-400 transition-colors"
-                                    title="Share Collection"
-                                    type="button"
-                                >
-                                    <Share2 className="w-4 h-4" />
-                                </button>
-                                <button
-                                    onClick={(e) => {
-                                        e.preventDefault();
-                                        e.stopPropagation();
-                                        onEdit(group);
-                                    }}
-                                    className="p-1 rounded hover:bg-zinc-800 text-zinc-400 hover:text-white transition-colors"
-                                    title="Edit Collection"
-                                    type="button"
-                                >
-                                    <Pencil className="w-4 h-4" />
-                                </button>
-                                <button
-                                    onClick={(e) => {
-                                        e.preventDefault();
-                                        e.stopPropagation();
-                                        onDelete(group);
-                                    }}
-                                    className="p-1 rounded hover:bg-zinc-800 text-zinc-400 hover:text-red-500 transition-colors"
-                                    title="Delete Collection"
-                                    type="button"
-                                >
-                                    <Trash2 className="w-4 h-4" />
-                                </button>
+                                {currentUserId && group.userId !== currentUserId ? (
+                                    <div className="px-2 py-1 rounded bg-zinc-800 text-[10px] font-medium text-zinc-400 select-none">
+                                        Collab
+                                    </div>
+                                ) : (
+                                    <>
+                                        <button
+                                            onClick={(e) => handleShare(e, group)}
+                                            className="p-1 rounded hover:bg-zinc-800 text-zinc-400 hover:text-blue-400 transition-colors"
+                                            title="Share Collection"
+                                            type="button"
+                                        >
+                                            <Share2 className="w-4 h-4" />
+                                        </button>
+                                        <button
+                                            onClick={(e) => {
+                                                e.preventDefault();
+                                                e.stopPropagation();
+                                                onEdit(group);
+                                            }}
+                                            className="p-1 rounded hover:bg-zinc-800 text-zinc-400 hover:text-white transition-colors"
+                                            title="Edit Collection"
+                                            type="button"
+                                        >
+                                            <Pencil className="w-4 h-4" />
+                                        </button>
+                                        <button
+                                            onClick={(e) => {
+                                                e.preventDefault();
+                                                e.stopPropagation();
+                                                onDelete(group);
+                                            }}
+                                            className="p-1 rounded hover:bg-zinc-800 text-zinc-400 hover:text-red-500 transition-colors"
+                                            title="Delete Collection"
+                                            type="button"
+                                        >
+                                            <Trash2 className="w-4 h-4" />
+                                        </button>
+                                    </>
+                                )}
                             </div>
                         </div>
                     </div>

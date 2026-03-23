@@ -151,6 +151,51 @@ async function getBackendProfile(email: string, provider?: string) {
   }
 }
 
+/**
+ * Helper to refresh a Google access token using the refresh token
+ */
+async function refreshAccessToken(token: any) {
+  try {
+    const url = "https://oauth2.googleapis.com/token";
+    const clientId = process.env.AUTH_GOOGLE_ID || process.env.GOOGLE_CLIENT_ID || process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
+    const clientSecret = process.env.AUTH_GOOGLE_SECRET || process.env.GOOGLE_CLIENT_SECRET;
+
+    if (!clientId || !clientSecret) {
+      throw new Error("Google OAuth credentials missing for refresh");
+    }
+
+    const response = await fetch(url, {
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        client_id: clientId,
+        client_secret: clientSecret,
+        grant_type: "refresh_token",
+        refresh_token: token.refreshToken,
+      }),
+      method: "POST",
+    });
+
+    const refreshedTokens = await response.json();
+
+    if (!response.ok) {
+      throw refreshedTokens;
+    }
+
+    return {
+      ...token,
+      accessToken: refreshedTokens.access_token,
+      expiresAt: Date.now() + refreshedTokens.expires_in * 1000,
+      refreshToken: refreshedTokens.refresh_token ?? token.refreshToken, // Fall back to old refresh token
+    };
+  } catch (error) {
+    console.error("Auth: Error refreshing access token", error);
+    return {
+      ...token,
+      error: "RefreshAccessTokenError",
+    };
+  }
+}
+
 export const config = {
   providers: [
     Google({
@@ -163,7 +208,7 @@ export const config = {
       authorization: {
         params: {
           scope:
-            "openid email profile https://www.googleapis.com/auth/classroom.courses.readonly https://www.googleapis.com/auth/classroom.coursework.me https://www.googleapis.com/auth/classroom.coursework.students.readonly https://www.googleapis.com/auth/classroom.announcements.readonly https://www.googleapis.com/auth/classroom.courseworkmaterials.readonly",
+             "openid email profile https://www.googleapis.com/auth/classroom.courses.readonly https://www.googleapis.com/auth/classroom.coursework.me https://www.googleapis.com/auth/classroom.coursework.students.readonly https://www.googleapis.com/auth/classroom.announcements.readonly https://www.googleapis.com/auth/classroom.courseworkmaterials.readonly",
           prompt: "consent",
           access_type: "offline",
           response_type: "code",
@@ -192,7 +237,6 @@ export const config = {
           };
         }
 
-        // Throw specific error message if available
         if (result.error) {
           throw new Error(result.error);
         }
@@ -203,7 +247,7 @@ export const config = {
   ],
 
   callbacks: {
-    async signIn({ user, account, profile }) {
+    async signIn({ user, account }) {
       if (account?.provider === "google") {
         const email = user.email;
         if (!email) return false;
@@ -235,19 +279,19 @@ export const config = {
       }
       return true;
     },
-    // ... rest of callbacks
-    async jwt({ token, user, account }) {
-      if (user) {
+    async jwt({ token, user, account, trigger }) {
+      // Initial sign in
+      if (account && user) {
         token.id = user.id;
-        token.provider = account?.provider;
-        token.provider = account?.provider;
+        token.provider = account.provider;
 
-        if (account?.provider === "google" && account.access_token) {
+        if (account.provider === "google") {
           token.accessToken = account.access_token;
           token.refreshToken = account.refresh_token;
+          token.expiresAt = (account.expires_at || 0) * 1000; // Account expires_at is in seconds
         }
 
-        if (account?.provider === "google" && user.email) {
+        if (user.email && account.provider === "google") {
           try {
             const backendUser = await getBackendProfile(user.email, "google");
             if (backendUser && (backendUser.id || backendUser.Id)) {
@@ -258,12 +302,24 @@ export const config = {
           }
         }
       }
+
+      // Return previous token if the access token has not expired yet
+      if (token.provider === "google" && token.expiresAt && Date.now() < (token.expiresAt as number) - 5000) {
+        return token;
+      }
+
+      // Access token has expired, try to update it
+      if (token.provider === "google" && token.refreshToken) {
+        console.log("Auth: Access token expired, refreshing...");
+        return await refreshAccessToken(token);
+      }
+
       return token;
     },
     async session({ session, token }) {
-      if (!token || Object.keys(token).length === 0) {
-        // @ts-ignore
-        return { expires: "now" };
+      if (!token || token.error === "RefreshAccessTokenError") {
+        // Force logout or handle error if needed
+        // return null; 
       }
 
       if (token && session.user) {
@@ -274,13 +330,15 @@ export const config = {
         session.user.accessToken = token.accessToken as string;
         // @ts-ignore
         session.user.refreshToken = token.refreshToken as string;
+        // @ts-ignore
+        session.user.error = token.error as string;
       }
       return session;
     },
   },
   pages: {
-    signIn: "/", // Show login modal on home? Or just redirect home.
-    error: "/", // Redirect to home on error for now
+    signIn: "/",
+    error: "/",
   },
   session: { strategy: "jwt" },
   secret: process.env.AUTH_SECRET,

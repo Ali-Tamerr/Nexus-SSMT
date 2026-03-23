@@ -3,11 +3,16 @@
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import NextImage from 'next/image';
-import { Info, Search, ChevronDown, Save, ChevronRight, LayoutGrid, X, Share2 } from 'lucide-react';
+import { Info, Search, ChevronDown, Save, ChevronRight, LayoutGrid, X, Share2, Check, Users, User } from 'lucide-react';
 import NexusLogo from '@/assets/Logo/Logo with no circle.svg';
 import { SearchInput } from '@/components/ui/Input';
 import { createColorImage } from '@/lib/imageUtils';
 import { ShareModal } from '@/components/ui/ShareModal';
+import { useAuthStore } from '@/store/useAuthStore';
+import { AuthModal } from '@/components/auth/AuthModal';
+import { collaborationApi } from '@/lib/supabase/collaboration';
+import { useToast } from '@/context/ToastContext';
+import { ProjectInfoPopup } from '@/components/project/ProjectInfoPopup';
 
 interface PreviewNavbarProps {
     projectName: string;
@@ -51,10 +56,16 @@ export function PreviewNavbar({
 }: PreviewNavbarProps) {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [isSaveAsMenuOpen, setIsSaveAsMenuOpen] = useState(false);
-    const [showDescription, setShowDescription] = useState(false);
     const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+    const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+    const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
+    const [requestStatus, setRequestStatus] = useState<'idle' | 'pending' | 'requested' | 'accepted'>('idle');
+
     const menuRef = useRef<HTMLDivElement>(null);
-    const descriptionRef = useRef<HTMLDivElement>(null);
+    const infoPopupRef = useRef<{ open: () => void } | null>(null);
+
+    const { isAuthenticated, user, setReturnUrl } = useAuthStore();
+    const { showToast } = useToast();
 
     const shareUrl = projectId
         ? `${typeof window !== 'undefined' ? window.location.origin : ''}/project/${projectId}/preview`
@@ -66,13 +77,38 @@ export function PreviewNavbar({
                 setIsMenuOpen(false);
                 setIsSaveAsMenuOpen(false);
             }
-            if (descriptionRef.current && !descriptionRef.current.contains(event.target as any)) {
-                setShowDescription(false);
-            }
         }
         document.addEventListener('mousedown', handleClickOutside, true);
         return () => document.removeEventListener('mousedown', handleClickOutside, true);
     }, []);
+
+    useEffect(() => {
+        const fetchStatus = async () => {
+             if (!isAuthenticated || !user?.id || !projectId) return;
+             try {
+                 // Check if user has access to this project (owner or collaborator)
+                 const hasAccess = await collaborationApi.hasProjectAccess(projectId, user.id);
+                 if (hasAccess) {
+                     setRequestStatus('accepted');
+                     return;
+                 }
+
+                 // If no direct access, check if there's a pending/requested status for the resource
+                 const requests = await collaborationApi.getMyRequests(user.id);
+                 const targetId = Number(collectionId || projectId);
+                 const type = collectionId ? 'collection' : 'project';
+                 const req = requests.find(r => r.targetId === targetId && r.type === type);
+                 
+                 if (req) {
+                     if (req.status === 'pending') setRequestStatus('requested');
+                     else if (req.status === 'accepted') setRequestStatus('accepted');
+                 }
+             } catch (err) {
+                 console.error('Failed to fetch request status', err);
+             }
+        };
+        fetchStatus();
+    }, [isAuthenticated, user?.id, projectId, collectionId]);
 
     const handleColorSelect = (color: string) => {
         if (onWallpaperChange) {
@@ -81,9 +117,34 @@ export function PreviewNavbar({
         }
     };
 
+    const handleRequestAccess = async () => {
+        if (!isAuthenticated) {
+            setReturnUrl(window.location.pathname);
+            setIsAuthModalOpen(true);
+            return;
+        }
+
+        if (!user || (!projectId && !collectionId)) return;
+
+        setRequestStatus('pending');
+        try {
+            const type = collectionId ? 'collection' : 'project';
+            const targetId = Number(collectionId || projectId);
+            await collaborationApi.requestAccess(type, targetId, user.id);
+            setRequestStatus('requested');
+            showToast('Access request sent successfully.', 'success');
+        } catch (error: any) {
+            showToast(error.message || 'Failed to request access.', 'error');
+            setRequestStatus('idle');
+        }
+    };
+
     return (
         <>
-            <header className="absolute top-0 left-0 right-0 z-20 flex h-14 items-center justify-between border-b border-zinc-800/20 bg-zinc-900/30 backdrop-blur-md px-4 pointer-events-none">
+        <header 
+            className="absolute top-0 left-0 right-0 z-50 flex h-14 items-center justify-between border-b border-zinc-800/10 bg-zinc-900/15 backdrop-blur-md px-4 pointer-events-none"
+            style={{ isolation: 'isolate' }}
+        >
                 <div className="flex items-center gap-3 pointer-events-auto shrink-0">
                     <div className="relative" ref={menuRef}>
                         <button
@@ -97,16 +158,19 @@ export function PreviewNavbar({
                         </button>
 
                         {isMenuOpen && (
-                            <div className="absolute top-full left-0 mt-2 w-56 rounded-xl border border-zinc-800 bg-zinc-900 shadow-xl p-1.5 z-50 flex flex-col gap-1">
+                            <div 
+                                className="absolute top-full left-0 mt-2 w-56 rounded-xl border border-zinc-800 shadow-xl p-1.5 z-50 flex flex-col gap-1"
+                                style={{ backgroundColor: '#18181b', isolation: 'isolate' }}
+                            >
                                 <button
                                     onClick={() => {
-                                        setShowDescription(true);
+                                        infoPopupRef.current?.open();
                                         setIsMenuOpen(false);
                                     }}
                                     className="sm:hidden flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-zinc-300 hover:bg-zinc-800 hover:text-white transition-colors cursor-pointer"
                                 >
                                     <Info className="w-4 h-4" />
-                                    <span>Description</span>
+                                    <span>Project Info</span>
                                 </button>
 
                                 <button
@@ -193,100 +257,99 @@ export function PreviewNavbar({
 
                     <div className="hidden sm:block h-6 w-px bg-zinc-800/50" />
 
-                    <div className='hidden sm:flex items-center gap-3' ref={descriptionRef}>
-                        <button
-                            onClick={() => setShowDescription(!showDescription)}
-                            className={`flex items-center justify-center rounded-md p-1 transition-colors ${showDescription ? 'text-white' : 'text-zinc-500 hover:text-white'}`}
-                            title={projectDescription ? "Show description" : "No description"}
-                        >
-                            <Info className="h-5 w-5" />
-                        </button>
-                        {showDescription && (
-                            <div className="absolute top-full left-0 mt-2 w-72 rounded-xl border border-zinc-800 bg-zinc-900/95 backdrop-blur-md p-4 text-sm text-zinc-300 shadow-2xl z-[101] flex flex-col gap-3 animate-in fade-in zoom-in-95 duration-200">
-                                <div className="whitespace-pre-wrap">
-                                    {projectDescription || <span className="text-zinc-500 italic">No description</span>}
-                                </div>
-                                {projectUpdatedAt && (
-                                    <div className="pt-3 border-t border-zinc-800/50 text-[10px] text-zinc-500">
-                                        Last edit on {new Date(projectUpdatedAt).toLocaleString(undefined, {
-                                            year: 'numeric',
-                                            month: 'short',
-                                            day: 'numeric',
-                                            hour: '2-digit',
-                                            minute: '2-digit'
-                                        })}
-                                    </div>
-                                )}
-                            </div>
+                    <div className='flex items-center gap-3 relative'>
+                        {projectId && (
+                            <ProjectInfoPopup
+                                ref={infoPopupRef}
+                                type="project"
+                                targetId={projectId}
+                                description={projectDescription}
+                                updatedAt={projectUpdatedAt}
+                            />
                         )}
-                    </div>
-
-                    <div className="hidden sm:block h-6 w-px bg-zinc-800/50" />
-
-                    <div className="hidden sm:block">
-                        <button
-                            onClick={() => setIsShareModalOpen(true)}
-                            className="flex items-center gap-2 rounded-lg bg-[#355ea1] px-3 py-1.5 text-xs font-medium text-white transition-all hover:bg-[#2563EB]"
-                            title="Share project"
-                        >
-                            <Share2 className="h-3.5 w-3.5" />
-                            <span>Share</span>
-                        </button>
                     </div>
                 </div>
 
-                <div className="flex items-center gap-2 sm:gap-4 flex-1 ml-3 pointer-events-auto min-w-0">
-                    <div className="flex-1 min-w-0">
-                        <h1 className="text-xs sm:text-sm font-semibold text-white truncate">{projectName || 'Project'}</h1>
-                        <p className="text-[10px] text-zinc-500">Preview Mode</p>
-                    </div>
+                <div className="flex-1 min-w-0 mx-4 pointer-events-auto">
+                    <h1 className="text-xs sm:text-sm font-semibold text-white truncate">{projectName || 'Project'}</h1>
+                    <p className="text-[10px] text-zinc-500">Preview Mode</p>
+                </div>
 
-                    <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 sm:gap-3 shrink-0 pointer-events-auto">
+                    <div className="hidden sm:block w-48 lg:w-64">
                         <SearchInput
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             placeholder="Search nodes..."
                         />
                     </div>
+
+                    {isAuthenticated && user?.id ? (
+                        requestStatus === 'accepted' ? (
+                            <Link
+                                href={`/project/${projectId}`}
+                                className="hidden sm:flex items-center gap-2 rounded-lg bg-emerald-500/20 px-3 py-1.5 text-xs font-medium text-emerald-400 transition-all hover:bg-emerald-500/30"
+                            >
+                                <Check className="w-3.5 h-3.5" />
+                                Go to Editor
+                            </Link>
+                        ) : (
+                            <button
+                                onClick={handleRequestAccess}
+                                disabled={requestStatus !== 'idle'}
+                                className="hidden sm:flex items-center gap-2 rounded-lg bg-zinc-800 px-3 py-1.5 text-xs font-medium text-zinc-300 transition-all hover:bg-zinc-700 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                {requestStatus === 'requested' ? 'Requested' : 'Request Access'}
+                            </button>
+                        )
+                    ) : (
+                        <div className="flex items-center space-x-3">
+                           <button
+                               onClick={() => {
+                                   setReturnUrl(window.location.pathname);
+                                   setAuthMode('login');
+                                   setIsAuthModalOpen(true);
+                               }}
+                               className="text-xs sm:text-sm font-medium text-zinc-300 hover:text-white transition-colors"
+                           >
+                               Sign in
+                           </button>
+                           <button
+                               onClick={() => {
+                                   setReturnUrl(window.location.pathname);
+                                   setAuthMode('signup');
+                                   setIsAuthModalOpen(true);
+                               }}
+                               className="rounded-lg bg-[#355ea1] px-3 sm:px-4 py-1.5 text-xs sm:text-sm font-medium text-white transition-colors hover:bg-[#2563EB]"
+                           >
+                               Sign up
+                           </button>
+                        </div>
+                    )}
+
+                    <button
+                        onClick={() => setIsShareModalOpen(true)}
+                        className="hidden sm:flex items-center gap-2 rounded-lg bg-[#355ea1] px-3 py-1.5 text-xs font-medium text-white transition-all hover:bg-[#2563EB]"
+                        title="Share project"
+                    >
+                        <Share2 className="h-3.5 w-3.5" />
+                        <span>Share</span>
+                    </button>
                 </div>
             </header>
 
-            {showDescription && (
-                <div className="sm:hidden fixed inset-0 z-[200] flex items-center justify-center pointer-events-auto">
-                    <div
-                        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-                        onClick={() => setShowDescription(false)}
-                    />
-                    <div className="relative w-[90%] max-w-sm rounded-xl border border-zinc-800 bg-zinc-900/95 backdrop-blur-md p-4 text-sm text-zinc-300 shadow-2xl z-[201] animate-in fade-in zoom-in-95 duration-200">
-                        <button
-                            onClick={() => setShowDescription(false)}
-                            className="absolute top-3 right-3 p-1 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
-                        >
-                            <X className="w-4 h-4" />
-                        </button>
-                        <h3 className="text-white font-medium mb-2">Description</h3>
-                        <div className="whitespace-pre-wrap">
-                            {projectDescription || <span className="text-zinc-500 italic">No description</span>}
-                        </div>
-                        {projectUpdatedAt && (
-                            <div className="mt-4 pt-3 border-t border-zinc-800/50 text-xs text-zinc-500">
-                                Last edit on {new Date(projectUpdatedAt).toLocaleString(undefined, {
-                                    year: 'numeric',
-                                    month: 'short',
-                                    day: 'numeric',
-                                    hour: '2-digit',
-                                    minute: '2-digit'
-                                })}
-                            </div>
-                        )}
-                    </div>
-                </div>
-            )}
+
 
             <ShareModal
                 isOpen={isShareModalOpen}
                 onClose={() => setIsShareModalOpen(false)}
                 shareUrl={shareUrl}
+            />
+
+            <AuthModal
+                isOpen={isAuthModalOpen}
+                onClose={() => setIsAuthModalOpen(false)}
+                initialMode={authMode}
             />
         </>
     );

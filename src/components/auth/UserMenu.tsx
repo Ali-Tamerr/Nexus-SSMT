@@ -2,7 +2,7 @@
 import { signOut } from 'next-auth/react';
 
 import { useState, useRef, useEffect } from 'react';
-import { LogOut, Settings, User, ChevronDown, UserPen, Lock } from 'lucide-react';
+import { LogOut, Settings, User, ChevronDown, UserPen, Lock, Github } from 'lucide-react';
 import { useAuthStore } from '@/store/useAuthStore';
 import { ProfileModal, ModalMode } from './ProfileModal';
 import { useToast } from '@/context/ToastContext';
@@ -62,7 +62,10 @@ export function UserMenu() {
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 z-99 top-full mt-2 w-56 rounded-xl border border-zinc-800 bg-zinc-900 py-2 shadow-xl">
+        <div 
+          className="absolute right-0 z-100 top-full mt-2 w-56 rounded-xl border border-zinc-800 bg-zinc-900 py-2 shadow-xl"
+          style={{ backgroundColor: '#18181b', isolation: 'isolate' }}
+        >
           <div className="border-b border-zinc-800 px-4 pb-3 pt-1">
             <p className="font-medium text-white">{user.displayName || 'User'}</p>
             <p className="text-sm text-zinc-500 truncate">{user.email}</p>
@@ -102,6 +105,7 @@ export function UserMenu() {
               <Lock className="h-4 w-4" />
               Change Password
             </button>
+           
             {/* <button className="flex w-full items-center gap-3 px-4 py-2 text-sm text-zinc-300 transition-colors hover:bg-zinc-800">
               <Settings className="h-4 w-4" />
               Settings
@@ -122,6 +126,16 @@ export function UserMenu() {
               Sign out
             </button>
           </div>
+          <a
+            href="https://github.com/Ali-Tamerr/nexus--social-study-mapping-tool"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="border-t border-zinc-800 pt-6 md:hidden flex w-full items-center gap-3 px-4 py-2 text-sm text-zinc-300 transition-colors hover:bg-zinc-800"
+            onClick={() => setIsOpen(false)}
+          >
+            <Github className="h-4 w-4" />
+            View Github Repository
+          </a>
         </div>
       )}
       <ProfileModal isOpen={showProfileModal} onClose={() => setShowProfileModal(false)} initialMode={modalMode} />

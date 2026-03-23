@@ -124,7 +124,7 @@ function MaterialItem({ item, type, isSelected, onToggle }: MaterialItemProps) {
             </div>
           )}
         </div>
-        <div className="flex-shrink-0 ml-4 flex items-center self-center">
+        <div className="shrink-0 ml-4 flex items-center self-center">
           {isSelected ? (
             <CheckSquare className="h-5 w-5 text-blue-500" />
           ) : (
@@ -250,7 +250,7 @@ export function SectionMaterialModal({
     >
       <div className="flex flex-col h-[70vh] sm:h-[600px]">
         {/* Header */}
-        <div className="flex-shrink-0 p-3 sm:p-4 border-b border-zinc-800">
+        <div className="shrink-0 p-3 sm:p-4 border-b border-zinc-800">
           <div className="flex items-center gap-3 mb-3 sm:mb-4">
             <button
               onClick={handleBack}

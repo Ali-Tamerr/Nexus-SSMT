@@ -12,6 +12,9 @@ import { LoadingScreen, LoadingOverlay } from '@/components/ui';
 import { SearchInput } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { ProjectNavbar } from '@/components/layout';
+import { collaborationApi } from '@/lib/supabase/collaboration';
+import { realtimeSync } from '@/lib/supabase/realtime';
+import { useToast } from '@/context/ToastContext';
 import { GraphCanvas, GraphCanvasHandle } from '@/components/graph/GraphCanvas';
 import { GraphControls } from '@/components/graph/GraphControls';
 import { NodeEditor } from '@/components/editor/NodeEditor';
@@ -27,6 +30,7 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
   const [isMounted, setIsMounted] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isClassroomModalOpen, setIsClassroomModalOpen] = useState(false);
+  const { showToast } = useToast();
 
   const { user, isAuthenticated, hasHydrated } = useAuthStore();
 
@@ -41,6 +45,8 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
     setSearchQuery,
     graphSettings,
     setGraphSettings,
+    canEdit,
+    setCanEdit,
     addNode,
     isLoading,
     setLoading,
@@ -72,10 +78,12 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
       try {
         const project = await api.projects.getById(id);
 
-        // Ownership Check
-        if (project.userId !== user?.id) {
+        // Access Check
+        const hasAccess = await collaborationApi.hasProjectAccess(id, user?.id || '');
+        if (!hasAccess) {
           throw new Error("Unauthorized");
         }
+        setCanEdit(true);
 
         setCurrentProject(project);
 
@@ -112,12 +120,21 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
 
     if (hasHydrated && isAuthenticated) {
       loadProjectData();
+
+      // Subscribe to real-time changes
+      if (user?.id) {
+        realtimeSync.subscribeToProject(id, user.id, () => {
+          // 0 duration means it won't auto-close
+          showToast('Some changes were made. Please refresh the page to see the latest version.', 'info', 0);
+        });
+      }
     }
 
     return () => {
       dataLoadedRef.current = false;
+      realtimeSync.unsubscribe();
     };
-  }, [id, hasHydrated, isAuthenticated, setCurrentProject, setNodes, setLinks, setLoading]);
+  }, [id, hasHydrated, isAuthenticated, setCurrentProject, setNodes, setLinks, setLoading, user?.id, showToast]);
 
   const handleCreateNode = async () => {
     if (!currentProject) return;
@@ -238,9 +255,6 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
         projectColor={currentProject?.color}
         nodeCount={filteredNodes.length}
         onExportPNG={handleExportPNG}
-        onAddNode={handleCreateNode}
-        onAddNodeFromClassroom={() => setIsClassroomModalOpen(true)}
-        isAddingNode={isLoading}
       />
 
       {error && (
