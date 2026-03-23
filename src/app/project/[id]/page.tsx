@@ -255,9 +255,6 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
         projectColor={currentProject?.color}
         nodeCount={filteredNodes.length}
         onExportPNG={handleExportPNG}
-        onAddNode={handleCreateNode}
-        onAddNodeFromClassroom={() => setIsClassroomModalOpen(true)}
-        isAddingNode={isLoading}
       />
 
       {error && (

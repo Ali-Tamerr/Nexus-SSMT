@@ -26,6 +26,7 @@ interface AppState {
   isCommandPaletteOpen: boolean;
   isCreateProjectOpen: boolean;
   isLoading: boolean;
+  isClassroomModalOpen: boolean;
   graphSettings: GraphSettings;
   currentUserId: string | null;
   hasHydrated: boolean;
@@ -45,6 +46,8 @@ interface AppState {
   shapes: DrawnShape[];
   undoStack: DrawnShape[][];
   redoStack: DrawnShape[][];
+  pendingNodes: any[];
+  setPendingNodes: (nodes: any[]) => void;
 
   // Connection Picker state
   isConnectionPickerActive: boolean;
@@ -98,6 +101,7 @@ interface AppState {
   toggleCommandPalette: (open?: boolean) => void;
   toggleCreateProject: (open?: boolean) => void;
   setLoading: (loading: boolean) => void;
+  setIsClassroomModalOpen: (open: boolean) => void;
   setGraphSettings: (settings: Partial<GraphSettings>) => void;
 }
 
@@ -116,6 +120,7 @@ export const useGraphStore = create<AppState>()(
       isCommandPaletteOpen: false,
       isCreateProjectOpen: false,
       isLoading: false,
+      isClassroomModalOpen: false,
       graphSettings: {
         isPreviewMode: false,
         lockAllMovement: false,
@@ -140,6 +145,8 @@ export const useGraphStore = create<AppState>()(
       shapes: [],
       undoStack: [],
       redoStack: [],
+      pendingNodes: [],
+      setPendingNodes: (nodes) => set({ pendingNodes: nodes }),
 
       // Connection Picker state
       isConnectionPickerActive: false,
@@ -431,6 +438,7 @@ export const useGraphStore = create<AppState>()(
         set((state) => ({
           isCreateProjectOpen: open ?? !state.isCreateProjectOpen,
         })),
+      setIsClassroomModalOpen: (open) => set({ isClassroomModalOpen: open }),
       setLoading: (loading) => set({ isLoading: loading }),
       setGraphSettings: (settings) =>
         set((state) => ({

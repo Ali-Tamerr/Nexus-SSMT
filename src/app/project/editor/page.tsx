@@ -28,7 +28,6 @@ export default function EditorPage() {
     const [error, setError] = useState<string | null>(null);
     const [loadingProgress, setLoadingProgress] = useState(0);
     const [isInitializing, setIsInitializing] = useState(true);
-    const [isClassroomModalOpen, setIsClassroomModalOpen] = useState(false);
     const graphCanvasRef = useRef<GraphCanvasHandle>(null);
     const { showToast } = useToast();
 
@@ -56,6 +55,8 @@ export default function EditorPage() {
         addNode,
         isLoading,
         setLoading,
+        isClassroomModalOpen,
+        setIsClassroomModalOpen,
         hasHydrated: graphHydrated,
     } = useGraphStore();
 
@@ -303,9 +304,6 @@ export default function EditorPage() {
                     nodeCount={filteredNodes.length}
                     onExportPNG={handleExportPNG}
                     onExportJPG={handleExportJPG}
-                    onAddNode={!isPreviewMode ? handleCreateNode : undefined}
-                    onAddNodeFromClassroom={!isPreviewMode ? () => setIsClassroomModalOpen(true) : undefined}
-                    isAddingNode={isLoading}
                     isPreviewMode={isPreviewMode}
                 />
             )}

@@ -5,21 +5,26 @@ import {
   Play, Pause,
   Hand, MousePointer2, Square, Diamond, Circle,
   ArrowRight, Minus, Pencil, Type, Eraser,
-  Undo2, Redo2, Share2
+  Undo2, Redo2, Share2, CircleDot
 } from 'lucide-react';
 import { GraphSettings, DrawingTool } from '@/types/knowledge';
 
 import { useGraphStore } from '@/store/useGraphStore';
 import { ShareModal } from '@/components/ui/ShareModal';
+import NextImage from 'next/image';
+import GoogleClassroomIcon from '@/assets/Icons/classroomLogo.png';
+import NodeIcon from '@/assets/Icons/node icon.png';
+import { PendingNodesIndicator } from './PendingNodesIndicator';
 
 interface GraphControlsProps {
   settings: GraphSettings;
   onSettingsChange: (settings: Partial<GraphSettings>) => void;
 }
 
-const drawingTools: { id: DrawingTool; icon: typeof Hand; label: string; keyBind?: string }[] = [
+const drawingTools: { id: DrawingTool; icon: any; label: string; keyBind?: string }[] = [
   { id: 'pan', icon: Hand, label: 'Pan', keyBind: 'H' },
   { id: 'select', icon: MousePointer2, label: 'Select', keyBind: 'V' },
+  { id: 'node', icon: NodeIcon, label: 'Add Node', keyBind: 'N' },
   { id: 'rectangle', icon: Square, label: 'Rectangle', keyBind: 'M' },
   { id: 'diamond', icon: Diamond, label: 'Diamond', keyBind: 'M' },
   { id: 'circle', icon: Circle, label: 'Circle', keyBind: 'M' },
@@ -40,6 +45,11 @@ export function GraphControls({ settings, onSettingsChange }: GraphControlsProps
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [showLeftShadow, setShowLeftShadow] = useState(false);
   const [showRightShadow, setShowRightShadow] = useState(false);
+  const [isNodeDropdownOpen, setIsNodeDropdownOpen] = useState(false);
+  const nodeDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Removed direct store call here as it's called below
+
 
   const checkScroll = () => {
     if (scrollContainerRef.current) {
@@ -67,6 +77,26 @@ export function GraphControls({ settings, onSettingsChange }: GraphControlsProps
 
   const mPressCountRef = useRef<number>(0);
   const mPressTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const setIsClassroomModalOpen = useGraphStore(state => state.setIsClassroomModalOpen);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (nodeDropdownRef.current && !nodeDropdownRef.current.contains(event.target as Node)) {
+        if (isNodeDropdownOpen) {
+          // If we're closing the dropdown by clicking outside, 
+          // and we haven't queued any nodes yet, go back to select mode
+          if (useGraphStore.getState().pendingNodes.length === 0) {
+            setActiveTool('select');
+          }
+        }
+        setIsNodeDropdownOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isNodeDropdownOpen, setActiveTool]);
+
 
   useEffect(() => {
     if (settings.isPreviewMode) return;
@@ -109,6 +139,9 @@ export function GraphControls({ settings, onSettingsChange }: GraphControlsProps
         case 'e':
           setActiveTool('eraser');
           break;
+        case 'n':
+          setIsNodeDropdownOpen(true);
+          break;
         case 'm':
           // Increment press count
           mPressCountRef.current += 1;
@@ -142,35 +175,74 @@ export function GraphControls({ settings, onSettingsChange }: GraphControlsProps
     <>
       {!settings.isPreviewMode && (
         <div className="absolute top-20 left-1/2 -translate-x-1/2 z-30 flex items-center justify-center graph-ui-hide max-w-[95vw]">
-          <div className="relative flex items-center rounded-xl bg-zinc-900/90 p-1.5 backdrop-blur-sm border border-zinc-800 shadow-sm overflow-hidden">
+          <div className="relative flex items-center rounded-xl bg-zinc-900/90 p-1.5 backdrop-blur-sm border border-zinc-800 shadow-sm">
 
             {/* Scroll Container */}
             <div
               ref={scrollContainerRef}
               onScroll={checkScroll}
-              className="flex items-center gap-1 overflow-x-auto scrollbar-none  max-w-full"
+              className={`flex items-center gap-1 max-w-full ${isNodeDropdownOpen ? 'overflow-visible' : 'overflow-x-auto scrollbar-none'}`}
             >
               {/* Group 1: Pan, Select */}
-              {drawingTools.slice(0, 2).map((tool) => {
+              {drawingTools.slice(0, 3).map((tool) => {
                 const Icon = tool.icon;
                 const isActive = settings.activeTool === tool.id;
+                const isNodeTool = tool.id === 'node';
+
                 return (
-                  <button
-                    key={tool.id}
-                    onClick={() => setActiveTool(tool.id)}
-                    className={`p-2 rounded-lg transition-all shrink-0 flex flex-col items-center justify-center gap-2.5 ${isActive
-                      ? 'bg-[#355ea1] text-white'
-                      : 'text-zinc-400 hover:bg-zinc-800 hover:text-white'
-                      }`}
-                    title={`${tool.label} (${tool.keyBind})`}
-                  >
-                    <Icon className="h-4 w-4" />
-                    {tool.keyBind && (
-                      <span className="text-[10px] leading-none font-medium opacity-60 hidden md:block">
-                        {tool.keyBind}
-                      </span>
+                  <div key={tool.id} className="relative" ref={isNodeTool ? nodeDropdownRef : null}>
+                    <button
+                      onClick={() => {
+                        if (isNodeTool) {
+                          setIsNodeDropdownOpen(!isNodeDropdownOpen);
+                        } else {
+                          setActiveTool(tool.id);
+                        }
+                      }}
+                      className={`p-2 rounded-lg transition-all shrink-0 flex flex-col items-center justify-center gap-2.5 ${isActive
+                        ? 'bg-[#355ea1] text-white'
+                        : 'text-zinc-400 hover:bg-zinc-800 hover:text-white'
+                        }`}
+                      title={`${tool.label} (${tool.keyBind})`}
+                    >
+                      {isNodeTool ? (
+                        <NextImage src={tool.icon} alt={tool.label} width={16} height={16} className={`object-contain transition-all ${isActive ? 'brightness-200 invert' : 'invert opacity-60'}`} />
+                      ) : (
+                        <Icon className="h-4 w-4" />
+                      )}
+                      
+                      {tool.keyBind && (
+                        <span className="text-[10px] leading-none font-medium opacity-60 hidden md:block">
+                          {tool.keyBind}
+                        </span>
+                      )}
+                    </button>
+
+                    {isNodeTool && isNodeDropdownOpen && (
+                      <div className="absolute top-full left-0 mt-2 w-56 rounded-xl border border-zinc-800 bg-zinc-900/90 backdrop-blur-lg shadow-xl p-1.5 z-50 flex flex-col gap-1">
+                        <button
+                          onClick={() => {
+                            setActiveTool('node');
+                            setIsNodeDropdownOpen(false);
+                          }}
+                          className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-zinc-300 hover:bg-zinc-800 hover:text-white transition-colors text-left"
+                        >
+                          <CircleDot className="h-4 w-4" />
+                          <span>Add normal node</span>
+                        </button>
+                        <button
+                          onClick={() => {
+                            setIsClassroomModalOpen(true);
+                            setIsNodeDropdownOpen(false);
+                          }}
+                          className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-zinc-300 hover:bg-zinc-800 hover:text-white transition-colors text-left"
+                        >
+                          <NextImage src={GoogleClassroomIcon} alt="Google Classroom" width={16} height={16} />
+                          <span>Add from Google Classroom</span>
+                        </button>
+                      </div>
                     )}
-                  </button>
+                  </div>
                 );
               })}
 
@@ -179,7 +251,7 @@ export function GraphControls({ settings, onSettingsChange }: GraphControlsProps
                 {/* Visual Pill Background for M keys */}
                 <div className="absolute left-[4px] right-[4px] bottom-1 h-[18px] bg-zinc-900/95 backdrop-blur-sm rounded-full pointer-events-none hidden md:block z-10 shadow-[0_-1px_3px_rgba(0,0,0,0.1)] border border-zinc-700/30" />
 
-                {drawingTools.slice(2, 5).map((tool, index) => {
+                {drawingTools.slice(3, 6).map((tool, index) => {
                   const Icon = tool.icon;
                   const isActive = settings.activeTool === tool.id;
                   return (
@@ -207,7 +279,7 @@ export function GraphControls({ settings, onSettingsChange }: GraphControlsProps
               </div>
 
               {/* Group 3: Remaining tools */}
-              {drawingTools.slice(5).map((tool) => {
+              {drawingTools.slice(6).map((tool) => {
                 const Icon = tool.icon;
                 const isActive = settings.activeTool === tool.id;
                 return (
@@ -251,6 +323,12 @@ export function GraphControls({ settings, onSettingsChange }: GraphControlsProps
         </div>
       )}
 
+      {!settings.isPreviewMode && settings.activeTool === 'node' && !isNodeDropdownOpen && (
+        <div className="absolute max-md:hidden top-[160px] left-1/2 -translate-x-1/2 z-28 text-xs text-zinc-400 bg-zinc-900/80 px-3 py-1.5 rounded-lg border border-zinc-800 pointer-events-none w-max shadow-sm graph-ui-hide">
+          Click on an area to place the node/s
+        </div>
+      )}
+
       {settings.isPreviewMode && (
         <div className="absolute max-md:hidden top-20 left-1/2 -translate-x-1/2 z-30 text-xs text-zinc-400 bg-zinc-900/80 px-3 py-1.5 rounded-lg border border-zinc-800 pointer-events-none w-max shadow-sm graph-ui-hide">
           Click on a node to view the details and links
@@ -270,35 +348,39 @@ export function GraphControls({ settings, onSettingsChange }: GraphControlsProps
         </div>
 
         {!settings.isPreviewMode && (
-          <div className="flex items-center gap-2 rounded-xl bg-zinc-900/90 p-2 backdrop-blur-sm border border-zinc-800">
-            <button
-              onClick={undo}
-              disabled={!canUndo}
-              className={`flex flex-1 items-center justify-center gap-2 rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${canUndo
-                ? 'bg-zinc-800 text-zinc-300 hover:text-white hover:bg-zinc-700'
-                : 'bg-zinc-800/50 text-zinc-600 cursor-not-allowed'
-                }`}
-              title="Undo (Ctrl+Z)"
-            >
-              <Undo2 className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Undo</span>
-            </button>
+          <>
+            <div className="flex items-center gap-2 rounded-xl bg-zinc-900/90 p-2 backdrop-blur-sm border border-zinc-800">
+              <button
+                onClick={undo}
+                disabled={!canUndo}
+                className={`flex flex-1 items-center justify-center gap-2 rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${canUndo
+                  ? 'bg-zinc-800 text-zinc-300 hover:text-white hover:bg-zinc-700'
+                  : 'bg-zinc-800/50 text-zinc-600 cursor-not-allowed'
+                  }`}
+                title="Undo (Ctrl+Z)"
+              >
+                <Undo2 className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Undo</span>
+              </button>
 
-            <div className="h-6 w-px bg-zinc-700" />
+              <div className="h-6 w-px bg-zinc-700" />
 
-            <button
-              onClick={redo}
-              disabled={!canRedo}
-              className={`flex items-center justify-center gap-2 flex-1 rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${canRedo
-                ? 'bg-zinc-800 text-zinc-300 hover:text-white hover:bg-zinc-700'
-                : 'bg-zinc-800/50 text-zinc-600 cursor-not-allowed'
-                }`}
-              title="Redo (Ctrl+Y)"
-            >
-              <Redo2 className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Redo</span>
-            </button>
-          </div>
+              <button
+                onClick={redo}
+                disabled={!canRedo}
+                className={`flex items-center justify-center gap-2 flex-1 rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${canRedo
+                  ? 'bg-zinc-800 text-zinc-300 hover:text-white hover:bg-zinc-700'
+                  : 'bg-zinc-800/50 text-zinc-600 cursor-not-allowed'
+                  }`}
+                title="Redo (Ctrl+Y)"
+              >
+                <Redo2 className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Redo</span>
+              </button>
+            </div>
+            
+            <PendingNodesIndicator />
+          </>
         )}
       </div>
     </>
