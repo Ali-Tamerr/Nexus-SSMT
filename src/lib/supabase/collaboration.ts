@@ -36,9 +36,14 @@ export const collaborationApi = {
     });
   },
 
-  // 5. Unified Access Check (Projects)
+  // 5. Unified Access Check (Projects) - view access
   hasProjectAccess: async (projectId: number, userId: string): Promise<boolean> => {
     return api.fetchApi<boolean>(`${BASE_URL}/access/project/${projectId}?userId=${userId}`, { method: 'GET' }).catch(() => false);
+  },
+
+  // 5b. Edit Access Check (Projects) - checks per-project exclusions
+  hasProjectEditAccess: async (projectId: number, userId: string): Promise<boolean> => {
+    return api.fetchApi<boolean>(`${BASE_URL}/access/project/${projectId}?userId=${userId}&checkEdit=true`, { method: 'GET' }).catch(() => false);
   },
 
   // 6. Unified Access Check (Collections)
@@ -49,5 +54,10 @@ export const collaborationApi = {
   // 7. Get Members (Projects/Collections)
   getMembers: async (type: 'project' | 'collection', targetId: number) => {
     return api.fetchApi<any[]>(`${BASE_URL}/members/${type}/${targetId}`, { method: 'GET' });
+  },
+  
+  // 8. Remove Member (Kick or Leave)
+  removeMember: async (type: 'project' | 'collection', targetId: number, userId: string) => {
+    return api.fetchApi<void>(`${BASE_URL}/members/${type}/${targetId}?userId=${userId}`, { method: 'DELETE' });
   }
 };

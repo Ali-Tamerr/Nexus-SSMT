@@ -78,10 +78,18 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
       try {
         const project = await api.projects.getById(id);
 
-        // Access Check
+        // View Access Check
         const hasAccess = await collaborationApi.hasProjectAccess(id, user?.id || '');
         if (!hasAccess) {
           throw new Error("Unauthorized");
+        }
+
+        // Edit Access Check (checks per-project exclusions)
+        const canEditProject = await collaborationApi.hasProjectEditAccess(id, user?.id || '');
+        if (!canEditProject) {
+          // User can view but not edit — redirect to preview mode
+          router.replace(`/project/${id}/preview`);
+          return;
         }
         setCanEdit(true);
 

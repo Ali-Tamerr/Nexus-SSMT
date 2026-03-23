@@ -9,9 +9,6 @@ import type {
   DrawnShape,
   ProjectCollection,
 } from "@/types/knowledge";
-import { useGraphStore } from "@/store/useGraphStore";
-import { useAuthStore } from "@/store/useAuthStore";
-import { realtimeSync } from "@/lib/supabase/realtime";
 
 const RAW_API_URL =
   process.env.NEXT_PUBLIC_API_URL ||
@@ -63,19 +60,6 @@ function toApi(data: unknown): unknown {
   return transformKeys(data, camelToPascal);
 }
 
-function notifyProjectUpdate() {
-  if (typeof window === 'undefined') return;
-  try {
-    const projectId = useGraphStore.getState().currentProjectId || useGraphStore.getState().currentProject?.id;
-    const userId = useAuthStore.getState().user?.id;
-    if (projectId && userId) {
-      realtimeSync.notifyUpdate(projectId, userId);
-    }
-  } catch (err) {
-    // ignore
-  }
-}
-
 async function fetchApi<T>(
   endpoint: string,
   options?: RequestInit & { suppressLog?: boolean },
@@ -119,18 +103,10 @@ async function fetchApi<T>(
     }
 
     if (response.status === 204) {
-      if (fetchOptions.method && ['POST', 'PUT', 'DELETE'].includes(fetchOptions.method.toUpperCase())) {
-        notifyProjectUpdate();
-      }
       return {} as T;
     }
 
     const data = await response.json();
-    
-    if (fetchOptions.method && ['POST', 'PUT', 'DELETE'].includes(fetchOptions.method.toUpperCase())) {
-      notifyProjectUpdate();
-    }
-    
     return toFrontend<T>(data);
   } catch (err) {
     if (!suppressLog) {
@@ -233,7 +209,6 @@ export const api = {
         "x",
         "y",
         "customColor",
-        "attachments"
       );
       return fetchApiWithBody<Node>("/api/nodes", "POST", payload);
     },
@@ -250,7 +225,6 @@ export const api = {
           "x",
           "y",
           "customColor",
-          "attachments"
         ),
       );
       return fetchApiWithBody<Node[]>("/api/nodes/batch", "POST", payload);
@@ -268,7 +242,6 @@ export const api = {
         "x",
         "y",
         "customColor",
-        "attachments"
       );
       return fetchApiWithBody<Node>(`/api/nodes/${id}`, "PUT", payload);
     },
@@ -286,7 +259,6 @@ export const api = {
           "x",
           "y",
           "customColor",
-          "attachments"
         ),
       );
       return fetchApiWithBody<void>("/api/nodes/batch", "PUT", payload);
@@ -619,10 +591,6 @@ export const api = {
     delete: (id: number) =>
       fetchApi<void>(`/api/ProjectCollections/${id}`, { method: "DELETE" }),
   },
-  
-  // Exporting base fetch methods for collaboration api to use
-  fetchApi,
-  fetchApiWithBody
 };
 
 export type ApiDrawing = DrawnShape;

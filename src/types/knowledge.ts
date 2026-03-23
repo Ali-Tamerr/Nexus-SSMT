@@ -87,7 +87,6 @@ export type DrawingTool =
   | "line"
   | "pen"
   | "text"
-  | "node"
   | "eraser";
 
 export type StrokeStyle = "solid" | "dashed" | "dotted";
