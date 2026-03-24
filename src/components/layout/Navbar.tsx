@@ -135,10 +135,10 @@ export function ProjectNavbar({
 
   return (
     <header 
-      className="absolute top-0 left-0 right-0 flex h-14 items-center justify-between border-b border-zinc-800/10 bg-zinc-900/15 backdrop-blur-md px-2 sm:px-4 z-50"
+      className="fixed top-0 left-0 right-0 flex h-14 items-center justify-between border-b border-zinc-800/10 bg-zinc-900/15 backdrop-blur-lg px-4 sm:px-6 z-50"
       style={{ isolation: 'isolate' }}
     >
-      <div className="flex items-center gap-2 sm:gap-4">
+      <div className="flex items-center gap-2 sm:gap-4 min-w-0">
         <div className="relative" ref={menuRef}>
           <button
             onClick={() => setIsMenuOpen(!isMenuOpen)}
@@ -249,18 +249,19 @@ export function ProjectNavbar({
               targetId={currentProject.id}
               description={currentProject.description}
               updatedAt={currentProject.updatedAt}
+              name={projectName}
             />
           )}
 
-          <div className="flex items-center gap-2">
-            <h1 className="text-sm font-semibold text-white max-w-[120px] sm:max-w-xs truncate block" title={projectName || 'Project'}>
+          <div className="flex items-center gap-2 min-w-0">
+            <h1 className="text-sm font-semibold text-white max-w-[80px] sm:max-w-[180px] lg:max-w-xs truncate hidden md:block" title={projectName || 'Project'}>
               {projectName || 'Project'}
             </h1>
           </div>
         </div>
       </div>
 
-      <div className="flex items-center gap-1.5 sm:gap-3">
+      <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
         <div className="flex items-center">
           {/* Mobile Search Toggle */}
           {!isPreviewMode && !isMobileSearchOpen && (
@@ -274,7 +275,7 @@ export function ProjectNavbar({
 
           {/* Desktop Search */}
           {!isPreviewMode && (
-            <div className="hidden md:block w-64 transition-all duration-300">
+            <div className="hidden md:block md:w-32 lg:w-48 xl:w-64 transition-all duration-300">
               <SearchInput
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
