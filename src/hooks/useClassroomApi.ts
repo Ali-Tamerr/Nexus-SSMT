@@ -91,9 +91,9 @@ function useClassroomAccessToken() {
   }, [session, refreshTokenAction]);
 
   // Priority: 
-  // 1. Session token (If user is signed in with Google, we use the managed session token which has auto-refresh)
-  // 2. Stored token (For users who connected a DIFFERENT Classroom account manually)
-  const accessToken = isGoogleUser ? (sessionToken || storedToken) : (storedToken || sessionToken);
+  // 1. Stored token (For users who connected a DIFFERENT Classroom account manually or switched accounts)
+  // 2. Session token (If user is signed in with Google and hasn't manually overridden it)
+  const accessToken = storedToken || sessionToken;
   const hasAccess = !!accessToken;
 
   return { accessToken, hasAccess, isGoogleUser, refreshToken: refreshTokenAction };
