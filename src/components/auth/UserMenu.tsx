@@ -54,7 +54,7 @@ export function UserMenu() {
           <p className="text-sm font-medium text-white">
             {user.displayName || 'User'}
           </p>
-          <p className="text-xs text-zinc-500 truncate max-w-[120px]">
+          <p className="text-xs text-zinc-500 truncate max-lg:max-w-[90px]">
             {user.email}
           </p>
         </div>

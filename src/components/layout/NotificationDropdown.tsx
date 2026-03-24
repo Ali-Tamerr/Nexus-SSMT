@@ -168,7 +168,7 @@ export function NotificationDropdown() {
             </button>
 
             {isOpen && (
-                <div className="absolute top-full -right-12 sm:right-0 mt-2 w-[290px] sm:w-80 max-w-[95vw] rounded-xl border border-zinc-800 bg-zinc-900 shadow-2xl overflow-hidden z-[100] animate-in fade-in zoom-in-95 duration-200">
+                <div className="absolute top-full -right-4 sm:right-0 mt-2 w-[290px] sm:w-80 max-w-[calc(100vw-32px)] rounded-xl border border-zinc-800 bg-zinc-900 shadow-2xl overflow-hidden z-100 animate-in fade-in zoom-in-95 duration-200">
                     <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-800 bg-zinc-900/50">
                         <h3 className="font-semibold text-white">Notifications</h3>
                         {isLoading && <Loader2 className="w-4 h-4 text-zinc-500 animate-spin" />}

@@ -143,6 +143,8 @@ function pick<T, K extends keyof T>(obj: T, ...keys: K[]): Pick<T, K> {
 }
 
 export const api = {
+  fetchApi,
+  fetchApiWithBody,
   auth: {
     register: (data: RegisterRequest) =>
       fetchApiWithBody<Profile>("/api/auth/register", "POST", data),

@@ -296,7 +296,7 @@ export default function EditorPage() {
     const isPreviewMode = graphSettings.isPreviewMode;
 
     return (
-        <div className="flex h-dvh flex-col overflow-hidden bg-zinc-950">
+        <div className="relative flex h-dvh w-full max-w-full flex-col overflow-hidden bg-zinc-950">
             {!isPreviewMode && (
                 <ProjectNavbar
                     projectName={currentProject?.name}

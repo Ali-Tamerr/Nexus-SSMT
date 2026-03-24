@@ -195,13 +195,14 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
 
   const nodes = useGraphStore((s) => s.nodes);
   const links = useGraphStore((s) => s.links);
+  const shapes = useGraphStore((s) => s.shapes);
   const activeNode = useGraphStore((s) => s.activeNode);
   const setActiveNode = useGraphStore((s) => s.setActiveNode);
   const setHoveredNode = useGraphStore((s) => s.setHoveredNode);
   const searchQuery = useGraphStore((s) => s.searchQuery);
   const graphSettings = useGraphStore((s) => s.graphSettings);
-  const { showToast, showConfirmation } = useToast();
   const setGraphSettings = useGraphStore((s) => s.setGraphSettings);
+  const { showToast, showConfirmation } = useToast();
 
   const groups = useGraphStore(state => state.groups);
   const activeGroupId = useGraphStore(state => state.activeGroupId);
@@ -212,7 +213,16 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
   const deleteGroup = useGraphStore(state => state.deleteGroup);
 
   const { user } = useAuthStore();
-  const { pendingNodes, setPendingNodes, addNode } = useGraphStore();
+  const pendingNodes = useGraphStore(s => s.pendingNodes);
+  const setPendingNodes = useGraphStore(s => s.setPendingNodes);
+  const addNode = useGraphStore(s => s.addNode);
+  const setNodes = useGraphStore(s => s.setNodes);
+  const setShapes = useGraphStore(s => s.setShapes);
+  const undo = useGraphStore(s => s.undo);
+  const redo = useGraphStore(s => s.redo);
+  const pushToUndoStack = useGraphStore(s => s.pushToUndoStack);
+  const deleteNode = useGraphStore(s => s.deleteNode);
+  const deleteShape = useGraphStore(s => s.deleteShape);
 
   const [selectedNodeIds, _setSelectedNodeIds] = useState<Set<number>>(new Set());
   const [selectedLink, setSelectedLink] = useState<any | null>(null);
@@ -587,16 +597,9 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
   const [graphTransform, setGraphTransform] = useState({ x: 0, y: 0, k: 1 });
 
   const currentProject = useGraphStore(state => state.currentProject);
-  const shapes = useGraphStore(state => state.shapes);
-  const setShapes = useGraphStore(state => state.setShapes);
   const addShape = useGraphStore(state => state.addShape);
   const updateShape = useGraphStore(state => state.updateShape);
-  const deleteShape = useGraphStore(state => state.deleteShape);
   const updateNode = useGraphStore(state => state.updateNode);
-  const deleteNode = useGraphStore(state => state.deleteNode);
-  const undo = useGraphStore(state => state.undo);
-  const redo = useGraphStore(state => state.redo);
-  const pushToUndoStack = useGraphStore(state => state.pushToUndoStack);
 
   // Sync shapesRef with shapes state
   useEffect(() => {
@@ -1059,10 +1062,13 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
   const syncUndoRedo = useCallback(async (isUndo: boolean) => {
     const state = useGraphStore.getState();
     const oldShapes = state.shapes;
+    const oldNodes = state.nodes;
     const stack = isUndo ? state.undoStack : state.redoStack;
     if (stack.length === 0) return;
 
-    const targetShapes = stack[stack.length - 1];
+    const targetSnapshot = stack[stack.length - 1];
+    const targetShapes = targetSnapshot.shapes;
+    const targetNodes = targetSnapshot.nodes;
 
     if (isUndo) {
       undo();
@@ -1070,47 +1076,81 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
       redo();
     }
 
-    const oldIds = new Set(oldShapes.map(s => s.id));
-    const newIds = new Set(targetShapes.map(s => s.id));
+    // Sync Shapes
+    const oldShapeIds = new Set(oldShapes.map(s => s.id));
+    const newShapeIds = new Set(targetShapes.map(s => s.id));
 
-    const reappeared = targetShapes.filter(s => !oldIds.has(s.id));
-    const disappeared = oldShapes.filter(s => !newIds.has(s.id));
+    const reappearedShapes = targetShapes.filter(s => !oldShapeIds.has(s.id));
+    const disappearedShapes = oldShapes.filter(s => !newShapeIds.has(s.id));
 
-    for (const shape of disappeared) {
+    for (const shape of disappearedShapes) {
+      try { await api.drawings.delete(shape.id); } catch { }
+    }
+
+    const shapeIdMap = new Map<number, number>();
+    for (const shape of reappearedShapes) {
       try {
-        await api.drawings.delete(shape.id);
+        const payload = shapeToApiDrawing(shape, currentProject?.id || 0, activeGroupId ?? undefined);
+        const newShape = await api.drawings.create(payload);
+        shapeIdMap.set(shape.id, newShape.id);
       } catch { }
     }
 
-    const idMap = new Map<number, number>();
-    for (const shape of reappeared) {
+    // Sync Nodes
+    const oldNodeIds = new Set(oldNodes.map(n => n.id));
+    const newNodeIds = new Set(targetNodes.map(n => n.id));
+
+    const reappearedNodes = targetNodes.filter(n => !oldNodeIds.has(n.id));
+    const disappearedNodes = oldNodes.filter(n => !newNodeIds.has(n.id));
+
+    for (const node of disappearedNodes) {
+      try { await api.nodes.delete(node.id); } catch { }
+    }
+
+    const nodeIdMap = new Map<number, number>();
+    for (const node of reappearedNodes) {
       try {
         const payload = {
-          projectId: shape.projectId!,
-          type: shape.type as string,
-          points: shape.points,
-          color: shape.color,
-          width: shape.width,
-          style: shape.style as string,
-          text: shape.text ?? undefined,
-          fontSize: shape.fontSize ?? undefined,
-          fontFamily: shape.fontFamily ?? undefined,
-          groupId: shape.groupId ?? undefined,
+          title: node.title,
+          content: node.content || '',
+          projectId: node.projectId,
+          groupId: node.groupId,
+          userId: node.userId,
+          customColor: node.customColor,
+          x: node.x,
+          y: node.y
         };
-        const newShape = await api.drawings.create(payload);
-        idMap.set(shape.id, newShape.id);
+        const newNode = await api.nodes.create(payload);
+        nodeIdMap.set(node.id, newNode.id);
       } catch { }
     }
 
-    if (idMap.size > 0) {
-      const currentShapes = useGraphStore.getState().shapes;
-      const updatedShapes = currentShapes.map(s => {
-        const newId = idMap.get(s.id);
-        return newId !== undefined ? { ...s, id: newId } : s;
-      });
-      setShapes(updatedShapes);
+    // Apply ID mappings if items were re-created with new IDs
+    if (shapeIdMap.size > 0 || nodeIdMap.size > 0) {
+      setTimeout(() => {
+        const currentState = useGraphStore.getState();
+        let updatedShapes = currentState.shapes;
+        let updatedNodes = currentState.nodes;
+
+        if (shapeIdMap.size > 0) {
+          updatedShapes = updatedShapes.map(s => {
+            const newId = shapeIdMap.get(s.id);
+            return newId !== undefined ? { ...s, id: newId } : s;
+          });
+        }
+
+        if (nodeIdMap.size > 0) {
+          updatedNodes = updatedNodes.map(n => {
+            const newId = nodeIdMap.get(n.id);
+            return newId !== undefined ? { ...n, id: newId } : n;
+          });
+        }
+
+        setShapes(updatedShapes);
+        setNodes(updatedNodes);
+      }, 50);
     }
-  }, [undo, redo, setShapes]);
+  }, [undo, redo, setShapes, setNodes, currentProject?.id, activeGroupId, shapeToApiDrawing]);
 
   // Combined Keyboard Shortcut Handler
   useEffect(() => {
@@ -1147,7 +1187,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
           e.preventDefault();
           // Delete selected shapes
           if (hasSelectedShapes) {
-            pushToUndoStack(shapesRef.current);
+            pushToUndoStack();
             const toDelete = shapesRef.current.filter(s => selectedShapeIdsRef.current.has(s.id));
             const remaining = shapesRef.current.filter(s => !selectedShapeIdsRef.current.has(s.id));
             setShapes(remaining);
@@ -2130,7 +2170,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
 
     if (graphSettings.activeTool === 'eraser') {
       setIsDrawing(true);
-      pushToUndoStack(shapes);
+            pushToUndoStack();
       return;
     }
 
@@ -2449,7 +2489,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
             resizingShapeIdRef.current = selectedShape.id;
             originalShapeRef.current = { ...selectedShape, points: [...selectedShape.points] };
             currentResizingShapeRef.current = { ...selectedShape, points: [...selectedShape.points] };
-            pushToUndoStack(shapes);
+                  pushToUndoStack();
             return;
           }
         }
@@ -2495,7 +2535,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
       setIsDraggingSelection(true);
       dragStartWorldRef.current = worldPoint;
       setDragStartWorld(worldPoint);
-      pushToUndoStack(shapes);
+            pushToUndoStack();
     } else {
       if (!e.shiftKey && !e.ctrlKey && !e.metaKey) {
         setSelectedShapeIds(new Set());
@@ -2518,7 +2558,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
     if (target.closest('.graph-ui-hide') || target.closest('button')) return;
 
     if (!isPanTool) {
-      // e.preventDefault(); // Prevent scrolling while drawing/selecting
+      e.preventDefault(); // Prevent scrolling while drawing/selecting
     }
 
     const syntheticEvent = {
@@ -2529,7 +2569,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
       buttons: 1,
       target: e.target,
       currentTarget: e.currentTarget,
-      preventDefault: () => { }, // e.preventDefault(),
+      preventDefault: () => e.preventDefault(),
       stopPropagation: () => e.stopPropagation(),
       shiftKey: e.shiftKey,
       altKey: e.altKey,
@@ -2545,7 +2585,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
     if (e.touches.length !== 1) return;
     const touch = e.touches[0];
 
-    // if (!isPanTool) e.preventDefault();
+    if (!isPanTool) e.preventDefault();
 
     const syntheticEvent = {
       ...e,
@@ -2553,7 +2593,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
       clientY: touch.clientY,
       target: e.target,
       currentTarget: e.currentTarget,
-      preventDefault: () => { }, // e.preventDefault(),
+      preventDefault: () => e.preventDefault(),
       stopPropagation: () => e.stopPropagation(),
       shiftKey: e.shiftKey,
     } as unknown as React.MouseEvent;
@@ -2608,6 +2648,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
 
   const handleCanvasTouchMove = useCallback((e: React.TouchEvent) => {
     if (e.touches.length === 2 && lastPinchRef.current && graphRef.current) {
+      e.preventDefault();
       // Handle Pinch/Zoom
       const t1 = e.touches[0];
       const t2 = e.touches[1];
@@ -2657,6 +2698,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
     }
 
     if (e.touches.length !== 1) return;
+    e.preventDefault();
     const touch = e.touches[0];
     const syntheticEvent = {
       ...e,
@@ -2680,7 +2722,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
   return (
     <div
       ref={containerRef}
-      className="relative h-full w-full bg-transparent"
+      className="relative h-full w-full bg-transparent overflow-hidden"
       style={{
         cursor: getToolCursor(),
         overscrollBehavior: 'none',
@@ -2701,7 +2743,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
             style={{
               cursor: getToolCursor(),
             }}
-            className="[&_canvas]:cursor-[inherit]!"
+            className="[&_canvas]:cursor-[inherit]! overflow-hidden"
           >
             <ForceGraph2D
               ref={graphRef}
@@ -2876,8 +2918,8 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
               onZoom={handleZoom}
               onRenderFramePost={onRenderFramePost}
               enableNodeDrag={!graphSettings.lockAllMovement && !isDrawingTool}
-              enableZoomInteraction={isSelectTool}
-              enablePanInteraction={false}
+              enableZoomInteraction={isSelectTool || isPanTool}
+              enablePanInteraction={isPanTool || (isSelectTool && !isHoveringNode && !isHoveringShape && !isDrawing)}
               cooldownTicks={isPreviewMode ? 100 : 0}
               d3AlphaDecay={isPreviewMode ? 0.02 : 1}
               d3VelocityDecay={isPreviewMode ? 0.3 : 0.9}
@@ -3371,12 +3413,19 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
               setActiveNode(null);
             }}
             onDeleteNode={(nodeId) => {
-              deleteNode(nodeId);
-              setSelectedNodeIds(new Set());
-              setActiveNode(null);
+              const nodeToDelete = nodes.find(n => n.id === nodeId);
+              if (nodeToDelete) {
+                pushToUndoStack();
+                deleteNode(nodeId);
+                api.nodes.delete(nodeId).catch(() => { });
+                setSelectedNodeIds(new Set());
+                setActiveNode(null);
+              }
             }}
             onDeleteShape={(shapeId) => {
+              pushToUndoStack();
               deleteShape(shapeId);
+              api.drawings.delete(shapeId).catch(() => { });
               setSelectedShapeIds(new Set());
             }}
           />

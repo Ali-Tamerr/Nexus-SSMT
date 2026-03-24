@@ -80,6 +80,7 @@ export interface GraphData {
 export type DrawingTool =
   | "pan"
   | "select"
+  | "node"
   | "rectangle"
   | "diamond"
   | "circle"

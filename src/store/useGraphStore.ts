@@ -44,8 +44,8 @@ interface AppState {
 
   // Drawing state
   shapes: DrawnShape[];
-  undoStack: DrawnShape[][];
-  redoStack: DrawnShape[][];
+  undoStack: { nodes: Node[]; links: Link[]; shapes: DrawnShape[] }[];
+  redoStack: { nodes: Node[]; links: Link[]; shapes: DrawnShape[] }[];
   pendingNodes: any[];
   setPendingNodes: (nodes: any[]) => void;
 
@@ -71,7 +71,7 @@ interface AppState {
   undo: () => void;
   redo: () => void;
   clearShapes: () => void;
-  pushToUndoStack: (shapes: DrawnShape[]) => void;
+  pushToUndoStack: () => void;
 
   // Group actions
   setGroups: (groups: Group[]) => void;
@@ -324,6 +324,11 @@ export const useGraphStore = create<AppState>()(
 
       deleteNode: (id) =>
         set((state) => ({
+          undoStack: [
+            ...state.undoStack,
+            { nodes: state.nodes, links: state.links, shapes: state.shapes },
+          ],
+          redoStack: [],
           nodes: state.nodes.filter((n) => n.id !== id),
           links: state.links.filter(
             (l) => l.sourceId !== id && l.targetId !== id,
@@ -453,15 +458,21 @@ export const useGraphStore = create<AppState>()(
       setConnectionPickerResult: (nodeId) =>
         set({ connectionPickerResult: nodeId }),
 
-      pushToUndoStack: (shapes) =>
+      pushToUndoStack: () =>
         set((state) => ({
-          undoStack: [...state.undoStack, shapes],
+          undoStack: [
+            ...state.undoStack,
+            { nodes: state.nodes, links: state.links, shapes: state.shapes },
+          ],
           redoStack: [],
         })),
 
       addShape: (shape) =>
         set((state) => ({
-          undoStack: [...state.undoStack, state.shapes],
+          undoStack: [
+            ...state.undoStack,
+            { nodes: state.nodes, links: state.links, shapes: state.shapes },
+          ],
           redoStack: [],
           shapes: [...state.shapes, shape],
         })),
@@ -475,7 +486,10 @@ export const useGraphStore = create<AppState>()(
 
       deleteShape: (id) =>
         set((state) => ({
-          undoStack: [...state.undoStack, state.shapes],
+          undoStack: [
+            ...state.undoStack,
+            { nodes: state.nodes, links: state.links, shapes: state.shapes },
+          ],
           redoStack: [],
           shapes: state.shapes.filter((s) => s.id !== id),
         })),
@@ -539,8 +553,13 @@ export const useGraphStore = create<AppState>()(
           if (state.undoStack.length === 0) return state;
           const prevState = state.undoStack[state.undoStack.length - 1];
           return {
-            redoStack: [...state.redoStack, state.shapes],
-            shapes: prevState,
+            redoStack: [
+              ...state.redoStack,
+              { nodes: state.nodes, links: state.links, shapes: state.shapes },
+            ],
+            nodes: prevState.nodes,
+            links: prevState.links,
+            shapes: prevState.shapes,
             undoStack: state.undoStack.slice(0, -1),
           };
         }),
@@ -550,15 +569,23 @@ export const useGraphStore = create<AppState>()(
           if (state.redoStack.length === 0) return state;
           const nextState = state.redoStack[state.redoStack.length - 1];
           return {
-            undoStack: [...state.undoStack, state.shapes],
-            shapes: nextState,
+            undoStack: [
+              ...state.undoStack,
+              { nodes: state.nodes, links: state.links, shapes: state.shapes },
+            ],
+            nodes: nextState.nodes,
+            links: nextState.links,
+            shapes: nextState.shapes,
             redoStack: state.redoStack.slice(0, -1),
           };
         }),
 
       clearShapes: () =>
         set((state) => ({
-          undoStack: [...state.undoStack, state.shapes],
+          undoStack: [
+            ...state.undoStack,
+            { nodes: state.nodes, links: state.links, shapes: state.shapes },
+          ],
           redoStack: [],
           shapes: [],
         })),

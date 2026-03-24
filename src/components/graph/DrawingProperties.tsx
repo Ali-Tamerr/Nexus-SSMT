@@ -101,7 +101,7 @@ export function DrawingProperties({
     }
 
     return (
-        <div className="absolute top-[4.5rem] left-2.5 right-auto md:left-4 md:top-4 z-30 flex flex-col md:flex-col gap-0 rounded-xl bg-zinc-900/90 backdrop-blur-sm border border-zinc-800 min-w-[180px] max-w-[calc(100vw-140px)] md:max-w-none max-h-[calc(100dvh-12rem)] transition-all duration-300 drawing-properties-panel">
+        <div className="absolute top-35 left-2.5 right-auto md:left-4 lg:top-20 z-30 flex flex-col md:flex-col gap-0 rounded-xl bg-zinc-900/90 backdrop-blur-sm border border-zinc-800 min-w-[180px] max-w-[calc(100vw-140px)] md:max-w-none max-h-[calc(100dvh-12rem)] transition-all duration-300 drawing-properties-panel">
 
             <button
                 onClick={onClose}

@@ -174,8 +174,17 @@ export function GraphControls({ settings, onSettingsChange }: GraphControlsProps
   return (
     <>
       {!settings.isPreviewMode && (
-        <div className="absolute top-20 left-1/2 -translate-x-1/2 z-30 flex items-center justify-center graph-ui-hide max-w-[95vw]">
-          <div className="relative flex items-center rounded-xl bg-zinc-900/90 p-1.5 backdrop-blur-sm border border-zinc-800 shadow-sm">
+        <div className={`absolute top-20 left-4 right-4 md:left-1/2 md:-translate-x-1/2 flex items-center justify-center graph-ui-hide md:max-w-[95vw] ${isNodeDropdownOpen ? 'z-50' : 'z-30'}`}>
+          <div className={`relative flex items-center rounded-xl bg-zinc-900/90 p-1.5 backdrop-blur-sm border border-zinc-800 shadow-sm w-full md:w-auto ${isNodeDropdownOpen ? 'overflow-visible' : 'overflow-hidden'}`}>
+            {/* Left Shadow Indicator */}
+            <div 
+              className={`absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-zinc-900 to-transparent z-40 transition-opacity duration-200 pointer-events-none ${showLeftShadow ? 'opacity-100' : 'opacity-0'}`}
+            />
+            
+            {/* Right Shadow Indicator */}
+            <div 
+              className={`absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-zinc-900 to-transparent z-40 transition-opacity duration-200 pointer-events-none ${showRightShadow ? 'opacity-100' : 'opacity-0'}`}
+            />
 
             {/* Scroll Container */}
             <div
@@ -205,11 +214,19 @@ export function GraphControls({ settings, onSettingsChange }: GraphControlsProps
                         }`}
                       title={`${tool.label} (${tool.keyBind})`}
                     >
-                      {isNodeTool ? (
-                        <NextImage src={tool.icon} alt={tool.label} width={16} height={16} className={`object-contain transition-all ${isActive ? 'brightness-200 invert' : 'invert opacity-60'}`} />
-                      ) : (
-                        <Icon className="h-4 w-4" />
-                      )}
+                        {tool.id === 'node' ? (
+                          <div className="h-4 w-4 flex items-center justify-center overflow-hidden">
+                            <NextImage 
+                              src={NodeIcon} 
+                              alt="Node" 
+                              width={20} 
+                              height={20} 
+                              className={`object-contain transition-all invert ${isActive ? 'brightness-200' : 'opacity-60'}`}
+                            />
+                          </div>
+                        ) : (
+                          <Icon className="h-4 w-4 shrink-0 transition-transform group-active:scale-95" />
+                        )}
                       
                       {tool.keyBind && (
                         <span className="text-[10px] leading-none font-medium opacity-60 hidden md:block">
@@ -219,7 +236,7 @@ export function GraphControls({ settings, onSettingsChange }: GraphControlsProps
                     </button>
 
                     {isNodeTool && isNodeDropdownOpen && (
-                      <div className="absolute top-full left-0 mt-2 w-56 rounded-xl border border-zinc-800 bg-zinc-900/90 backdrop-blur-lg shadow-xl p-1.5 z-50 flex flex-col gap-1">
+                      <div className="absolute top-10 left-0 mt-2 w-56 rounded-xl border border-zinc-800 bg-zinc-900/90 backdrop-blur-lg shadow-xl p-1.5 z-50 flex flex-col gap-1">
                         <button
                           onClick={() => {
                             setActiveTool('node');
@@ -227,7 +244,7 @@ export function GraphControls({ settings, onSettingsChange }: GraphControlsProps
                           }}
                           className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-zinc-300 hover:bg-zinc-800 hover:text-white transition-colors text-left"
                         >
-                          <CircleDot className="h-4 w-4" />
+                          <NextImage src={NodeIcon} alt="Node" width={18} height={18} className="object-contain invert opacity-80" />
                           <span>Add normal node</span>
                         </button>
                         <button
@@ -335,7 +352,7 @@ export function GraphControls({ settings, onSettingsChange }: GraphControlsProps
         </div>
       )}
 
-      <div className="absolute right-2.5 top-20 z-30 flex flex-col items-end gap-2 graph-ui-hide">
+      <div className="absolute right-2.5 top-35 md:top-20 z-30 flex flex-col items-end gap-2 graph-ui-hide">
         <div className="flex items-center gap-2 rounded-xl bg-zinc-900/90 p-2 backdrop-blur-sm border border-zinc-800">
           <PreviewControl
             enabled={settings.isPreviewMode}
