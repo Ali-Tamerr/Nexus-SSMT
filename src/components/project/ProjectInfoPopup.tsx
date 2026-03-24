@@ -19,10 +19,10 @@ interface ProjectInfoPopupProps {
   className?: string;
 }
 
-export const ProjectInfoPopup = forwardRef<{ open: () => void }, ProjectInfoPopupProps>(({ 
-  type, 
-  targetId, 
-  description, 
+export const ProjectInfoPopup = forwardRef<{ open: () => void }, ProjectInfoPopupProps>(({
+  type,
+  targetId,
+  description,
   updatedAt,
   name,
   className = ""
@@ -37,7 +37,7 @@ export const ProjectInfoPopup = forwardRef<{ open: () => void }, ProjectInfoPopu
     type: 'kick' | 'leave';
     member: any | null;
   }>({ isOpen: false, type: 'kick', member: null });
-  
+
   const infoRef = useRef<HTMLDivElement>(null);
   const { user } = useAuthStore();
   const { showToast } = useToast();
@@ -67,7 +67,7 @@ export const ProjectInfoPopup = forwardRef<{ open: () => void }, ProjectInfoPopu
     setIsLoading(true);
     try {
       let data = await collaborationApi.getMembers(type, targetId);
-      
+
       // Ensure the list is a valid array
       if (!Array.isArray(data)) {
         data = [];
@@ -87,10 +87,10 @@ export const ProjectInfoPopup = forwardRef<{ open: () => void }, ProjectInfoPopu
 
         const isInList = normalizedData.some((m: any) => m.userId === user.id);
         if (!isInList) {
-          const hasAccess = type === 'project' 
+          const hasAccess = type === 'project'
             ? await collaborationApi.hasProjectAccess(targetId, user.id)
             : await collaborationApi.hasCollectionAccess(targetId, user.id);
-            
+
           if (hasAccess) {
             normalizedData.push({
               userId: user.id,
@@ -158,18 +158,18 @@ export const ProjectInfoPopup = forwardRef<{ open: () => void }, ProjectInfoPopu
     try {
       await collaborationApi.removeMember(type, targetId, memberId);
       showToast(
-        actionType === 'kick' 
-          ? `Kicked '${member.profile?.displayName || 'user'}' from the project` 
+        actionType === 'kick'
+          ? `Kicked '${member.profile?.displayName || 'user'}' from the project`
           : `You have left the project as a collaborator`,
         'success'
       );
-      
+
       if (actionType === 'leave') {
         // Redirect to preview mode — user keeps view access but loses edit
         window.location.href = `/project/${targetId}/preview`;
         return;
       }
-      
+
       fetchMembers(); // Refresh list if kicked someone else
     } catch (err: any) {
       console.error('Action failed:', err);
@@ -183,18 +183,17 @@ export const ProjectInfoPopup = forwardRef<{ open: () => void }, ProjectInfoPopu
     <div className={`relative ${className}`} ref={infoRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className={`flex items-center justify-center rounded-full ${
-          isOpen 
-            ? 'text-white bg-zinc-800' 
-            : 'text-zinc-500 hover:text-white'
-        } transition-all w-8 h-8 sm:w-5 sm:h-5 shrink-0 cursor-pointer`}
+        className={`flex items-center justify-center rounded-full ${isOpen
+            ? 'text-white bg-zinc-800'
+            : 'text-zinc-500 hover:text-white hover:bg-zinc-800/50'
+          } transition-all w-8 h-8 sm:w-6 sm:h-6 shrink-0 cursor-pointer border border-transparent hover:border-zinc-700/50`}
         title={description ? "Project information" : "No description"}
       >
-        <Info className="w-full h-full" />
+        <Info className="w-4 h-4" />
       </button>
 
       {isOpen && (
-        <div 
+        <div
           className="fixed md:absolute inset-x-4 md:inset-x-auto md:top-full md:left-0 top-16 md:mt-3 md:w-[550px] rounded-xl border border-zinc-800 shadow-2xl z-100 flex flex-col md:flex-row overflow-hidden animate-in slide-in-from-top-2 zoom-in-95 duration-200 pointer-events-auto max-h-[calc(100vh-100px)] md:max-h-none"
           style={{ backgroundColor: '#18181b', isolation: 'isolate' }}
         >
@@ -202,7 +201,7 @@ export const ProjectInfoPopup = forwardRef<{ open: () => void }, ProjectInfoPopu
           <div className="flex-1 flex flex-col max-h-[350px] sm:max-h-[350px] border-b sm:border-b-0 sm:border-r border-zinc-800" style={{ backgroundColor: '#18181b' }}>
             <div className="px-4 py-3 border-b border-zinc-800 flex flex-col gap-0.5 bg-zinc-900/50">
               {name && (
-                <div className="mb-2">
+                <div className="mb-2 md:hidden">
                   <h3 className="text-base font-bold text-white leading-tight">
                     {name}
                   </h3>
@@ -225,7 +224,7 @@ export const ProjectInfoPopup = forwardRef<{ open: () => void }, ProjectInfoPopu
               </div>
             )}
           </div>
-          
+
           {/* Members Section */}
           <div className="flex-1 flex flex-col max-h-[350px] sm:max-h-[350px]" style={{ backgroundColor: '#18181b' }}>
             <div className="px-4 py-3 border-b border-zinc-800 flex items-center justify-between bg-zinc-900" style={{ backgroundColor: '#18181b' }}>
@@ -240,18 +239,18 @@ export const ProjectInfoPopup = forwardRef<{ open: () => void }, ProjectInfoPopu
               {members.length > 0 ? (
                 <div className="flex flex-col gap-1">
                   {members.map((member) => (
-                    <div 
-                      key={member.userId || member.user_id} 
+                    <div
+                      key={member.userId || member.user_id}
                       className="flex items-center justify-between p-2 rounded-lg hover:bg-zinc-800/50 transition-colors"
                     >
                       <div className="flex items-center gap-3 min-w-0">
                         <div className="h-8 w-8 rounded-full bg-zinc-700 shrink-0 flex items-center justify-center overflow-hidden border border-zinc-600">
                           {member.profile?.avatarUrl || member.profile?.avatar_url ? (
-                            <NextImage 
-                              src={member.profile.avatarUrl || member.profile.avatar_url} 
-                              alt={member.profile.displayName || member.profile.display_name} 
-                              width={32} 
-                              height={32} 
+                            <NextImage
+                              src={member.profile.avatarUrl || member.profile.avatar_url}
+                              alt={member.profile.displayName || member.profile.display_name}
+                              width={32}
+                              height={32}
                             />
                           ) : (
                             <div className="flex h-full w-full items-center justify-center bg-[#355ea1] text-[13px] text-white uppercase">
@@ -301,11 +300,11 @@ export const ProjectInfoPopup = forwardRef<{ open: () => void }, ProjectInfoPopu
                             )}
 
                             {activeMemberMenu === (member.userId || member.user_id) && menuPosition && createPortal(
-                              <div 
+                              <div
                                 data-member-menu-portal
                                 className="fixed w-44 rounded-lg border border-zinc-800 bg-zinc-900 shadow-xl p-1 z-200 animate-in fade-in slide-in-from-top-1 duration-150"
-                                style={{ 
-                                  top: menuPosition.top + 4, 
+                                style={{
+                                  top: menuPosition.top + 4,
                                   left: menuPosition.left
                                 }}
                                 onClick={(e) => e.stopPropagation()}
@@ -353,13 +352,13 @@ export const ProjectInfoPopup = forwardRef<{ open: () => void }, ProjectInfoPopu
             <div className="flex h-12 w-12 items-center justify-center rounded-full bg-red-500/10 text-red-500 mb-4 mx-auto">
               <AlertTriangle className="h-6 w-6" />
             </div>
-            
+
             <h3 className="text-lg font-semibold text-white text-center mb-2">
               {confirmDialog.type === 'kick' ? 'Kick Member?' : 'Leave Project?'}
             </h3>
-            
+
             <p className="text-sm text-zinc-400 text-center mb-6">
-              {confirmDialog.type === 'kick' 
+              {confirmDialog.type === 'kick'
                 ? `Are you sure you want to remove '${confirmDialog.member?.profile?.displayName || 'this user'}' from the project? They will lose all access.`
                 : 'Are you sure you want to leave this project as a collaborator? You will not be able to edit it anymore.'
               }

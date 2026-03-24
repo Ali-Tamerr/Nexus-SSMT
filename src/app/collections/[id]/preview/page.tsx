@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { ArrowLeft, Loader2, Link2, ExternalLink, Info, X, Check } from 'lucide-react';
+import { ArrowLeft, Loader2, Link2, ExternalLink, Info, X, Check, Share2 } from 'lucide-react';
 import { ProjectCollection, Project, ProjectCollectionItem, Profile } from '@/types/knowledge';
 import { api } from '@/lib/api';
 import { Navbar } from '@/components/layout';
@@ -10,6 +10,9 @@ import { ProjectCard } from '@/components/projects/ProjectCard';
 import { useAuthStore } from '@/store/useAuthStore';
 import { collaborationApi } from '@/lib/supabase/collaboration';
 import { AuthModal } from '@/components/auth/AuthModal';
+import { ProjectInfoPopup } from '@/components/project/ProjectInfoPopup';
+import { useToast } from '@/context/ToastContext';
+import { ShareModal } from '@/components/ui/ShareModal';
 
 export default function CollectionPreviewPage() {
     const params = useParams();
@@ -252,13 +255,13 @@ export default function CollectionPreviewPage() {
                     <div className="flex items-center justify-between gap-4 flex-wrap">
                         <div className="flex items-center gap-3">
 
-                            <button
-                                onClick={() => setShowGroupInfo(true)}
-                                className="p-1 rounded-full hover:bg-zinc-800 text-zinc-400 hover:text-white transition-colors"
-                                title="View Description"
-                            >
-                                <Info className="h-5 w-5" />
-                            </button>
+                            <ProjectInfoPopup
+                                type="collection"
+                                targetId={id}
+                                name={collection.name}
+                                description={collection.description}
+                                updatedAt={collection.updatedAt}
+                            />
                             <h1 className="text-3xl font-bold text-white max-w-2xl truncate" title={collection.name}>
                                 {collection.name}
                             </h1>
@@ -344,28 +347,6 @@ export default function CollectionPreviewPage() {
                     </div>
                 )}
 
-                {/* Group Info Modal */}
-                {showGroupInfo && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-                        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setShowGroupInfo(false)} />
-                        <div className="relative w-full max-w-md rounded-xl border border-zinc-800 bg-zinc-900 p-6 shadow-2xl">
-                            <button
-                                onClick={() => setShowGroupInfo(false)}
-                                className="absolute top-4 right-4 rounded-lg p-1 text-zinc-400 hover:bg-zinc-800 hover:text-white"
-                            >
-                                <X className="h-5 w-5" />
-                            </button>
-                            <h3 className="mb-4 text-xl font-bold text-white pr-8">{collection.name}</h3>
-                            <div className="max-h-[60vh] overflow-y-auto">
-                                {collection.description ? (
-                                    <p className="text-zinc-300 leading-relaxed whitespace-pre-wrap">{collection.description}</p>
-                                ) : (
-                                    <p className="text-zinc-500 italic">No description provided.</p>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-                )}
 
                 {/* Project Info Modal */}
                 {projectInfo && (

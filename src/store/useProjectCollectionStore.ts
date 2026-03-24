@@ -53,6 +53,7 @@ export const useProjectCollectionStore = create<ProjectCollectionState>(
               .map((i: any) => i.projectId) ||
             [],
         }));
+        console.log(`Fetched ${collections.length} collections for user ${userId}`);
         set({ collections, isLoading: false });
       } catch (err) {
         console.error("Failed to fetch collections:", err);

@@ -116,7 +116,16 @@ export function PreviewNavbar({
              }
         };
         fetchStatus();
-    }, [isAuthenticated, user?.id, projectId, collectionId]);
+
+        let interval: any;
+        if (requestStatus === 'requested') {
+            interval = setInterval(fetchStatus, 10000); // Poll every 10 seconds
+        }
+
+        return () => {
+            if (interval) clearInterval(interval);
+        };
+    }, [isAuthenticated, user?.id, projectId, collectionId, requestStatus]);
 
     const handleColorSelect = (color: string) => {
         if (onWallpaperChange) {
