@@ -178,12 +178,12 @@ export function GraphControls({ settings, onSettingsChange }: GraphControlsProps
           <div className={`relative flex items-center rounded-xl bg-zinc-900/90 p-1.5 backdrop-blur-sm border border-zinc-800 shadow-sm w-full md:w-auto ${isNodeDropdownOpen ? 'overflow-visible' : 'overflow-hidden'}`}>
             {/* Left Shadow Indicator */}
             <div 
-              className={`absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-zinc-900 to-transparent z-40 transition-opacity duration-200 pointer-events-none ${showLeftShadow ? 'opacity-100' : 'opacity-0'}`}
+              className={`absolute left-0 top-0 bottom-0 w-8 bg-linear-to-r from-zinc-900 to-transparent z-40 transition-opacity duration-200 pointer-events-none ${showLeftShadow ? 'opacity-100' : 'opacity-0'}`}
             />
             
             {/* Right Shadow Indicator */}
             <div 
-              className={`absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-zinc-900 to-transparent z-40 transition-opacity duration-200 pointer-events-none ${showRightShadow ? 'opacity-100' : 'opacity-0'}`}
+              className={`absolute right-0 top-0 bottom-0 w-8 bg-linear-to-l from-zinc-900 to-transparent z-40 transition-opacity duration-200 pointer-events-none ${showRightShadow ? 'opacity-100' : 'opacity-0'}`}
             />
 
             {/* Scroll Container */}

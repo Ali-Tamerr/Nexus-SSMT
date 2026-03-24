@@ -118,11 +118,11 @@ export function DrawingProperties({
                     onScroll={checkScroll}
                     className="flex flex-col gap-3 overflow-auto md:overflow-visible scrollbar-none items-start md:items-stretch flex-1 min-h-0"
                 >
-                    <div className="text-xs font-medium text-zinc-400 uppercase tracking-wide flex-shrink-0 md:flex-shrink">
+                    <div className="text-xs font-medium text-zinc-400 uppercase tracking-wide shrink-0 md:shrink">
                         {showTextProps ? 'Text Properties' : 'Properties'}
                     </div>
 
-                    <div className="flex-shrink-0">
+                    <div className="shrink-0">
                         <ColorPicker
                             selectedColor={strokeColor}
                             onChange={onStrokeColorChange}
@@ -132,7 +132,7 @@ export function DrawingProperties({
 
                     {showTextProps && (
                         <div className="flex flex-col gap-3">
-                            <div className="space-y-2 flex-shrink-0 w-48 md:w-auto">
+                            <div className="space-y-2 shrink-0 w-48 md:w-auto">
                                 <label className="text-xs text-zinc-500">Font</label>
                                 <div className="flex gap-1">
                                     {fonts.map((font) => (
@@ -152,7 +152,7 @@ export function DrawingProperties({
                             </div>
 
                             {onTextDirChange && (
-                                <div className="space-y-2 flex-shrink-0 w-48 md:w-auto">
+                                <div className="space-y-2 shrink-0 w-48 md:w-auto">
                                     <label className="text-xs text-zinc-500">Direction</label>
                                     <div className="flex gap-1">
                                         {(['ltr', 'rtl'] as const).map((dir) => (
@@ -171,7 +171,7 @@ export function DrawingProperties({
                                 </div>
                             )}
 
-                            <div className="space-y-2 flex-shrink-0 w-48 md:w-64">
+                            <div className="space-y-2 shrink-0 w-48 md:w-64">
                                 <label className="text-xs text-zinc-500">Size</label>
                                 <div className="flex items-center bg-zinc-800/30 rounded-lg border border-zinc-700/50 h-9 p-0.5" ref={sizeDropdownRef}>
                                     <div className="flex items-center px-1">
@@ -249,7 +249,7 @@ export function DrawingProperties({
 
                     {showDrawingProps && (
                         <div className="flex flex-col gap-3">
-                            <div className="space-y-2 flex-shrink-0 w-48 md:w-auto">
+                            <div className="space-y-2 shrink-0 w-48 md:w-auto">
                                 <label className="text-xs text-zinc-500">Stroke Width</label>
                                 <div className="flex gap-1">
                                     {widths.map((w) => (
@@ -267,7 +267,7 @@ export function DrawingProperties({
                                 </div>
                             </div>
 
-                            <div className="space-y-2 flex-shrink-0 w-48 md:w-auto">
+                            <div className="space-y-2 shrink-0 w-48 md:w-auto">
                                 <label className="text-xs text-zinc-500">Style</label>
                                 <div className="flex gap-1">
                                     <button
@@ -305,17 +305,17 @@ export function DrawingProperties({
 
                 {/* Left Shadow Overlay (Mobile Only) */}
                 <div
-                    className={`absolute left-0 top-0 bottom-0 w-12 bg-gradient-to-r from-zinc-900 via-zinc-900/80 to-transparent pointer-events-none transition-opacity duration-200 md:hidden ${showLeftShadow ? 'opacity-100' : 'opacity-0'}`}
+                    className={`absolute left-0 top-0 bottom-0 w-12 bg-linear-to-r from-zinc-900 via-zinc-900/80 to-transparent pointer-events-none transition-opacity duration-200 md:hidden ${showLeftShadow ? 'opacity-100' : 'opacity-0'}`}
                     style={{ paddingLeft: '6px' }}
                 />
 
                 {/* Right Shadow Overlay (Mobile Only) */}
                 <div
-                    className={`absolute right-0 top-0 bottom-0 w-12 bg-gradient-to-l from-zinc-900 via-zinc-900/80 to-transparent pointer-events-none transition-opacity duration-200 md:hidden ${showRightShadow ? 'opacity-100' : 'opacity-0'}`}
+                    className={`absolute right-0 top-0 bottom-0 w-12 bg-linear-to-l from-zinc-900 via-zinc-900/80 to-transparent pointer-events-none transition-opacity duration-200 md:hidden ${showRightShadow ? 'opacity-100' : 'opacity-0'}`}
                 />
             </div>
 
-            <div className="w-full px-3 pb-3 pt-4 flex-shrink-0 w-48 md:w-auto">
+            <div className="w-full px-3 pb-3 pt-4 shrink-0 md:w-auto">
                 <button
                     onClick={onDelete}
                     className="flex items-center border border-0.5 border-red-600/60 justify-center gap-2 w-full max-w-[100px] py-2 text-red-500 hover:text-red-700 rounded-lg text-xs font-medium transition-colors"
