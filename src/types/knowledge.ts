@@ -8,6 +8,7 @@ export interface Project {
   createdAt: string;
   updatedAt: string;
   nodes?: Node[];
+  user?: Profile | null;
 }
 
 export interface Attachment {

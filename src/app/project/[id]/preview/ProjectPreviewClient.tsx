@@ -391,11 +391,14 @@ export default function ProjectPreviewClient({ params }: { params: Promise<{ id:
         <div
             className="relative h-screen w-full overflow-hidden bg-zinc-950 bg-cover bg-center"
             style={{
-                backgroundImage: wallpaper
+                backgroundColor: wallpaper && wallpaper.startsWith('#') ? wallpaper : undefined,
+                backgroundImage: wallpaper && !wallpaper.startsWith('#')
                     ? (wallpaper.startsWith('http') || wallpaper.startsWith('url')
                         ? `url(${wallpaper})`
                         : `url(data:image/png;base64,${wallpaper})`)
-                    : undefined
+                    : undefined,
+                backgroundSize: 'cover',
+                backgroundPosition: 'center'
             }}
         >
             <PreviewNavbar

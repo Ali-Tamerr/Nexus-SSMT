@@ -272,6 +272,23 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
       )}
 
       <div className="relative flex-1 overflow-hidden">
+        {/* Background layer */}
+        <div
+          className="absolute inset-0 transition-all duration-300 pointer-events-none"
+          style={{
+            backgroundColor: currentProject?.wallpaper?.startsWith('#')
+              ? currentProject.wallpaper
+              : undefined,
+            backgroundImage: currentProject?.wallpaper && !currentProject.wallpaper.startsWith('#')
+              ? (currentProject.wallpaper.startsWith('http') || currentProject.wallpaper.startsWith('url')
+                  ? `url(${currentProject.wallpaper})`
+                  : `url(data:image/png;base64,${currentProject.wallpaper})`)
+              : undefined,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center'
+          }}
+        />
+
         <GraphControls
           settings={graphSettings}
           onSettingsChange={setGraphSettings}

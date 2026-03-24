@@ -278,7 +278,7 @@ export default function CollectionPreviewPage() {
                                 >
                                     {requestStatus === 'loading' && <Loader2 className="h-4 w-4 animate-spin" />}
                                     {requestStatus === 'sent' && <Check className="h-4 w-4 text-green-500" />}
-                                    {requestStatus === 'sent' ? 'Request Sent' : 'Send Request Access'}
+                                    {requestStatus === 'sent' ? 'Request Sent' : 'Send edit request'}
                                 </button>
                             )
                         )}

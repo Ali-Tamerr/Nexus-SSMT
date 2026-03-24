@@ -157,7 +157,7 @@ export const useGraphStore = create<AppState>()(
       setCurrentUserId: (userId) => set({ currentUserId: userId }),
       setProjects: (projects) => set({ projects }),
       setCurrentProjectId: (id) => set({ currentProjectId: id }),
-      
+
       canEdit: false,
       setCanEdit: (canEdit) => set({ canEdit }),
 
@@ -184,18 +184,15 @@ export const useGraphStore = create<AppState>()(
             s.currentProject?.id === id ? merged : s.currentProject,
         }));
 
-        const fullProject = {
-          id: prev.id,
-          name: updates.name ?? prev.name,
-          color: updates.color ?? prev.color ?? "",
-          userId: updates.userId ?? prev.userId,
-          wallpaper: encodeWallpaper(updates.wallpaper ?? prev.wallpaper ?? ""),
-          description: updates.description ?? prev.description ?? "",
-        };
+        const minimalUpdates: any = {};
+        if (updates.name !== undefined) minimalUpdates.name = updates.name;
+        if (updates.description !== undefined) minimalUpdates.description = updates.description;
+        if (updates.color !== undefined) minimalUpdates.color = updates.color;
+        if (updates.wallpaper !== undefined) minimalUpdates.wallpaper = updates.wallpaper;
 
         try {
           const updated = await import("@/lib/api").then((m) =>
-            m.api.projects.update(id, fullProject),
+            m.api.projects.update(id, minimalUpdates),
           );
 
           if (updated && updated.wallpaper) {

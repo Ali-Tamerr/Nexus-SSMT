@@ -174,14 +174,12 @@ export const api = {
     update: (id: number, data: Partial<Project>) => {
       const payload = pick(
         data,
-        "id",
         "name",
         "description",
         "color",
-        "userId",
         "wallpaper",
       );
-      return fetchApiWithBody<Project>(`/api/projects/${id}`, "PUT", payload);
+      return fetchApiWithBody<Project>(`/api/projects/${id}`, "PATCH", payload);
     },
 
     delete: (id: number) =>

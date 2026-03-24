@@ -28,7 +28,7 @@ export function Navbar({ showSearch = true, onSearchClick, children }: NavbarPro
   const { user, isAuthenticated } = useAuthStore();
 
   return (
-    <header 
+    <header
       className="sticky top-0 flex h-16 items-center justify-between border-b border-zinc-800/10 bg-zinc-900/15 backdrop-blur-md px-6 z-50"
       style={{ isolation: 'isolate' }}
     >
@@ -76,16 +76,11 @@ interface ProjectNavbarProps {
 }
 
 const WALLPAPER_COLORS = [
-  '#000000', // Black (Default)
-  '#18181b', // Zinc 900
-  '#09090b', // Zinc 950
-  '#020617', // Slate 950
-  '#0f172a', // Slate 900
-  '#0a0a0a', // Neutral 950
-  '#171717', // Neutral 900
-  '#111827', // Gray 900
-  '#0f0f0f', // Onyx
-  '#1a1a1a', // Jet
+  '#000000', // Black
+  '#09090b', // Midnight
+  '#18181b', // Charcoal
+  '#020617', // Deep Navy
+  '#0f172a', // Slate
 ];
 
 export function ProjectNavbar({
@@ -126,15 +121,14 @@ export function ProjectNavbar({
 
   const handleColorSelect = (color: string) => {
     if (currentProject) {
-      const base64Image = createColorImage(color);
-      updateProject(currentProject.id, { wallpaper: base64Image });
+      updateProject(currentProject.id, { wallpaper: color });
     }
     setIsWallpaperMenuOpen(false);
     setIsMenuOpen(false);
   };
 
   return (
-    <header 
+    <header
       className="fixed top-0 left-0 right-0 flex h-14 items-center justify-between border-b border-zinc-800/10 bg-zinc-900/15 backdrop-blur-lg px-4 sm:px-6 z-50"
       style={{ isolation: 'isolate' }}
     >
@@ -151,13 +145,13 @@ export function ProjectNavbar({
           </button>
 
           {isMenuOpen && (
-            <div 
+            <div
               className="absolute top-full left-0 mt-2 w-56 rounded-xl border border-zinc-800 shadow-xl p-1.5 z-50 flex flex-col gap-1"
               style={{ backgroundColor: '#000000', isolation: 'isolate' }}
             >
               <div className="px-3 py-2">
                 <p className="text-xs font-medium text-zinc-500 mb-2">Wallpaper</p>
-                <div className="grid grid-cols-5 gap-2 max-h-32 overflow-y-auto scrollbar-thin scrollbar-thumb-zinc-700">
+                <div className="grid grid-cols-5 gap-2">
                   {WALLPAPER_COLORS.map((color) => {
                     const isSelected = currentProject?.wallpaper === color;
                     return (
@@ -241,7 +235,7 @@ export function ProjectNavbar({
         </div>
 
         <div className="h-6 w-px bg-zinc-800" />
-        
+
         <div className="flex items-center gap-2 relative">
           {currentProject?.id && (
             <ProjectInfoPopup

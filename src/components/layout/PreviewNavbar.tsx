@@ -29,16 +29,11 @@ interface PreviewNavbarProps {
 }
 
 const WALLPAPER_COLORS = [
-    '#000000', // Black (Default)
-    '#18181b', // Zinc 900
-    '#09090b', // Zinc 950
-    '#020617', // Slate 950
-    '#0f172a', // Slate 900
-    '#0a0a0a', // Neutral 950
-    '#171717', // Neutral 900
-    '#111827', // Gray 900
-    '#0f0f0f', // Onyx
-    '#1a1a1a', // Jet
+    '#000000', // Black
+    '#09090b', // Midnight
+    '#18181b', // Charcoal
+    '#020617', // Deep Navy
+    '#0f172a', // Slate
 ];
 
 export function PreviewNavbar({
@@ -112,8 +107,7 @@ export function PreviewNavbar({
 
     const handleColorSelect = (color: string) => {
         if (onWallpaperChange) {
-            const base64Image = createColorImage(color);
-            onWallpaperChange(base64Image);
+            onWallpaperChange(color);
         }
     };
 
@@ -188,7 +182,7 @@ export function PreviewNavbar({
 
                                 <div className="px-3 py-2">
                                     <p className="text-xs font-medium text-zinc-500 mb-2">Wallpaper</p>
-                                    <div className="grid grid-cols-5 gap-2 max-h-32 overflow-y-auto scrollbar-thin scrollbar-thumb-zinc-700">
+                                    <div className="grid grid-cols-5 gap-2">
                                         {WALLPAPER_COLORS.map((color) => (
                                             <button
                                                 key={color}
@@ -326,17 +320,22 @@ export function PreviewNavbar({
                            </button>
                         </div>
                     )}
+                </div>
+            </header>
 
+            {/* Floating Share Button (matches edit mode layout) */}
+            <div className="absolute right-4 top-20 z-30 pointer-events-none sm:block hidden">
+                <div className="flex items-center gap-2 rounded-xl bg-zinc-900/90 p-2 backdrop-blur-sm border border-zinc-800 pointer-events-auto shadow-lg">
                     <button
                         onClick={() => setIsShareModalOpen(true)}
-                        className="hidden sm:flex items-center gap-2 rounded-lg bg-[#355ea1] px-3 py-1.5 text-xs font-medium text-white transition-all hover:bg-[#2563EB]"
+                        className="flex items-center gap-2 rounded-lg bg-[#355ea1] px-3 py-1.5 text-xs font-medium text-white transition-all hover:bg-[#2563EB]"
                         title="Share project"
                     >
-                        <Share2 className="h-3.5 w-3.5" />
+                        <Share2 className="h-4 w-4" />
                         <span>Share</span>
                     </button>
                 </div>
-            </header>
+            </div>
 
 
 
