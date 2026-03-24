@@ -177,7 +177,7 @@ export function PreviewNavbar({
     return (
         <>
         <header 
-            className="absolute top-0 left-0 right-0 z-50 flex h-14 items-center justify-between border-b border-zinc-800/10 bg-zinc-900/15 backdrop-blur-md px-4 pointer-events-none"
+                className="absolute top-0 left-0 right-0 z-50 flex h-14 items-center justify-between border-b border-zinc-800/10 bg-zinc-900/15 backdrop-blur-2xl px-4 pointer-events-none"
             style={{ isolation: 'isolate' }}
         >
                 <div className="flex items-center gap-3 pointer-events-auto shrink-0">

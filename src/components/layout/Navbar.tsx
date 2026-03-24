@@ -129,7 +129,7 @@ export function ProjectNavbar({
 
   return (
     <header
-      className="fixed top-0 left-0 right-0 flex h-14 items-center justify-between border-b border-zinc-800/10 bg-zinc-900/15 backdrop-blur-lg px-4 sm:px-6 z-50"
+      className="fixed top-0 left-0 right-0 flex h-14 items-center justify-between border-b border-zinc-800/10 bg-zinc-900/15 backdrop-blur-2xl px-4 sm:px-6 z-50"
       style={{ isolation: 'isolate' }}
     >
       <div className="flex items-center gap-2 sm:gap-4 min-w-0">
