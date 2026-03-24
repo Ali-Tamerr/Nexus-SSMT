@@ -42,8 +42,14 @@ export default function ProjectPreviewClient({ params }: { params: Promise<{ id:
     // Automatic redirect for owners/collaborators
     useEffect(() => {
         if (isMounted && isAuthenticated && user?.id) {
-            collaborationApi.hasProjectAccess(id, user.id).then(hasAccess => {
-                if (hasAccess) {
+            // Check both access AND edit access. 
+            // If they can't edit (e.g. they left collaborator status but are in the collection),
+            // we should NOT redirect them to the editor, as the editor will just redirect them back here.
+            Promise.all([
+                collaborationApi.hasProjectAccess(id, user.id),
+                collaborationApi.hasProjectEditAccess(id, user.id)
+            ]).then(([hasAccess, canEdit]) => {
+                if (hasAccess && canEdit) {
                     router.replace(`/project/${id}`);
                 }
             });

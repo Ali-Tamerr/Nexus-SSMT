@@ -88,6 +88,7 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
         const canEditProject = await collaborationApi.hasProjectEditAccess(id, user?.id || '');
         if (!canEditProject) {
           // User can view but not edit — redirect to preview mode
+          setCanEdit(false);
           router.replace(`/project/${id}/preview`);
           return;
         }

@@ -87,11 +87,14 @@ export const ProjectInfoPopup = forwardRef<{ open: () => void }, ProjectInfoPopu
 
         const isInList = normalizedData.some((m: any) => m.userId === user.id);
         if (!isInList) {
-          const hasAccess = type === 'project'
-            ? await collaborationApi.hasProjectAccess(targetId, user.id)
+          // IMPORTANT: Only re-add to "Members" list if they actually have EDIT access.
+          // If they only have View access (e.g. they left the project but are in the collection),
+          // they are a "Viewer", not a "Member/Collaborator" in the technical sense for this popup.
+          const canEdit = type === 'project'
+            ? await collaborationApi.hasProjectEditAccess(targetId, user.id)
             : await collaborationApi.hasCollectionAccess(targetId, user.id);
 
-          if (hasAccess) {
+          if (canEdit) {
             normalizedData.push({
               userId: user.id,
               role: user.id === currentProject?.userId ? 'owner' : 'editor',
