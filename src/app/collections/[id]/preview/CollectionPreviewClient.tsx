@@ -8,6 +8,11 @@ import { api } from '@/lib/api';
 import { Navbar } from '@/components/layout';
 import { ProjectCard } from '@/components/projects/ProjectCard';
 import { useAuthStore } from '@/store/useAuthStore';
+import { collaborationApi } from '@/lib/supabase/collaboration';
+import { ShareModal } from '@/components/ui/ShareModal';
+import { useToast } from '@/context/ToastContext';
+import { Edit3, Users, Check, Share2 } from 'lucide-react';
+import Link from 'next/link';
 
 export default function CollectionPreviewClient() {
     const params = useParams();
@@ -21,6 +26,16 @@ export default function CollectionPreviewClient() {
     const [owner, setOwner] = useState<Profile | null>(null);
     const [showGroupInfo, setShowGroupInfo] = useState(false);
     const [projectInfo, setProjectInfo] = useState<Project | null>(null);
+
+    const [requestStatus, setRequestStatus] = useState<'idle' | 'pending' | 'requested' | 'accepted'>('idle');
+    const [requestId, setRequestId] = useState<number | null>(null);
+    const [isRequesting, setIsRequesting] = useState(false);
+    const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+
+    const { user, isAuthenticated } = useAuthStore();
+    const { showToast } = useToast();
+
+    const shareUrl = typeof window !== 'undefined' ? window.location.href : '';
 
     useEffect(() => {
         const fetchCollection = async () => {
@@ -53,6 +68,73 @@ export default function CollectionPreviewClient() {
 
         fetchCollection();
     }, [id]);
+
+    useEffect(() => {
+        const fetchStatus = async () => {
+             if (!isAuthenticated || !user?.id || !id) return;
+             try {
+                 const hasAccess = await collaborationApi.hasCollectionAccess(id, user.id);
+                 if (hasAccess) {
+                     setRequestStatus('accepted');
+                     return;
+                 }
+
+                 const requests = await collaborationApi.getMyRequests(user.id);
+                 const req = requests.find(r => r.targetId === id && r.type === 'collection');
+                 
+                 if (req) {
+                     setRequestId(req.id);
+                     if (req.status === 'pending') setRequestStatus('requested');
+                     else if (req.status === 'accepted') setRequestStatus('accepted');
+                 } else {
+                     setRequestStatus('idle');
+                     setRequestId(null);
+                 }
+             } catch (err) {
+                 console.error('Failed to fetch request status', err);
+             }
+        };
+        fetchStatus();
+    }, [isAuthenticated, user?.id, id]);
+
+    const handleRequestAccess = async () => {
+        if (!isAuthenticated) {
+            router.push(`/login?returnUrl=${encodeURIComponent(window.location.pathname)}`);
+            return;
+        }
+
+        if (!user || !id) return;
+
+        setIsRequesting(true);
+        try {
+            await collaborationApi.requestAccess('collection', id, user.id);
+            setRequestStatus('requested');
+            showToast('Access request sent successfully.', 'success');
+            // Refresh to get ID
+            const requests = await collaborationApi.getMyRequests(user.id);
+            const req = requests.find(r => r.targetId === id && r.type === 'collection' && r.status === 'pending');
+            if (req) setRequestId(req.id);
+        } catch (error: any) {
+            showToast(error.message || 'Failed to request access.', 'error');
+        } finally {
+            setIsRequesting(false);
+        }
+    };
+
+    const handleCancelRequest = async () => {
+        if (!requestId || !user?.id) return;
+        setIsRequesting(true);
+        try {
+            await collaborationApi.deleteRequest(requestId, user.id);
+            setRequestStatus('idle');
+            setRequestId(null);
+            showToast('Request withdrawn.', 'success');
+        } catch (error: any) {
+            showToast(error.message || 'Failed to withdraw request.', 'error');
+        } finally {
+            setIsRequesting(false);
+        }
+    };
 
     const handleProjectClick = (project: Project) => {
         router.push(`/project/${project.id}/preview?collection=${id}`);
@@ -283,6 +365,70 @@ export default function CollectionPreviewClient() {
                     </div>
                 )}
             </main>
+
+            {/* Floating Buttons area */}
+            <div className="fixed right-6 top-24 z-30 pointer-events-none flex-col items-end gap-3 hidden sm:flex">
+                <div className="flex items-center gap-2 rounded-xl bg-zinc-900/90 p-2 backdrop-blur-sm border border-zinc-800 pointer-events-auto shadow-lg">
+                    {/* Share Button */}
+                    <button
+                        onClick={() => setIsShareModalOpen(true)}
+                        className="flex items-center gap-2 rounded-lg bg-[#355ea1] px-3 py-1.5 text-xs font-medium text-white transition-all hover:bg-[#2563EB]"
+                        title="Share group"
+                    >
+                        <Share2 className="h-4 w-4" />
+                        <span>Share</span>
+                    </button>
+
+                    {/* Go to Editor Button (if accepted) */}
+                    {requestStatus === 'accepted' && (
+                        <Link
+                            href="/dashboard"
+                            className="flex items-center gap-2 rounded-lg bg-emerald-500/50 px-3 py-1.5 text-xs font-medium text-emerald-100 transition-all hover:bg-emerald-500/70"
+                        >
+                            <Edit3 className="h-4 w-4" />
+                            <span>Edit Group</span>
+                        </Link>
+                    )}
+
+                    {/* Request Access Button (if not accepted) */}
+                    {requestStatus !== 'accepted' && (
+                        <button
+                            onClick={handleRequestAccess}
+                            disabled={requestStatus === 'requested' || isRequesting}
+                            className="flex items-center gap-2 rounded-lg bg-zinc-800 px-3 py-1.5 text-xs font-medium text-zinc-300 transition-all hover:bg-zinc-700 hover:text-white disabled:opacity-80 disabled:cursor-default"
+                        >
+                            {requestStatus === 'requested' ? (
+                                <>
+                                    <Check className="h-4 w-4 text-emerald-400" />
+                                    <span>Requested</span>
+                                </>
+                            ) : (
+                                <>
+                                    <Users className="h-4 w-4" />
+                                    <span>Send edit request</span>
+                                </>
+                            )}
+                        </button>
+                    )}
+                </div>
+
+                {/* Cancel Request Link below the main button */}
+                {requestStatus === 'requested' && (
+                    <button
+                        onClick={handleCancelRequest}
+                        disabled={isRequesting}
+                        className="mr-2 pointer-events-auto text-[11px] font-medium text-zinc-500 hover:text-red-400 transition-colors disabled:opacity-50"
+                    >
+                        Cancel Request
+                    </button>
+                )}
+            </div>
+
+            <ShareModal
+                isOpen={isShareModalOpen}
+                onClose={() => setIsShareModalOpen(false)}
+                shareUrl={shareUrl}
+            />
         </div>
     );
 }

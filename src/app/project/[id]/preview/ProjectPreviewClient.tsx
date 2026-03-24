@@ -58,6 +58,7 @@ export default function ProjectPreviewClient({ params }: { params: Promise<{ id:
     const [searchQuery, setSearchQuery] = useState('');
     const [nodes, setNodes] = useState<Node[]>([]);
     const [links, setLinks] = useState<LinkType[]>([]);
+    const [collectionName, setCollectionName] = useState<string | undefined>();
     const [shapes, setShapes] = useState<DrawnShape[]>([]);
     const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
     const containerRef = useRef<HTMLDivElement>(null);
@@ -104,6 +105,15 @@ export default function ProjectPreviewClient({ params }: { params: Promise<{ id:
                 setProjectDescription(project.description || '');
                 setProjectUpdatedAt(project.updatedAt);
                 setWallpaper(project.wallpaper || '');
+
+                if (collectionId) {
+                    try {
+                        const coll = await api.projectCollections.getById(Number(collectionId));
+                        setCollectionName(coll.name);
+                    } catch (e) {
+                        console.warn('[Preview] Failed to fetch collection name:', e);
+                    }
+                }
 
                 let projectNodes = await api.nodes.getByProject(id);
 
@@ -412,12 +422,13 @@ export default function ProjectPreviewClient({ params }: { params: Promise<{ id:
                 onWallpaperChange={handleWallpaperChange}
                 projectUpdatedAt={projectUpdatedAt}
                 collectionId={collectionId}
+                collectionName={collectionName}
                 projectId={id}
             />
 
             <div
                 ref={containerRef}
-                className="absolute inset-0 z-10 [&_canvas]:!cursor-[inherit]"
+                className="absolute inset-0 z-10 [&_canvas]:cursor-[inherit]!"
                 style={{ cursor: isHoveringNode ? 'pointer' : 'default' }}
             >
                 <ForceGraph2D

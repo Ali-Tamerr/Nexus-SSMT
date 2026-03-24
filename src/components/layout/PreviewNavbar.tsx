@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import NextImage from 'next/image';
-import { Info, Search, ChevronDown, Save, ChevronRight, LayoutGrid, X, Share2, Check, Users, User } from 'lucide-react';
+import { Info, Search, ChevronDown, Save, ChevronRight, LayoutGrid, X, Share2, Check, Users, User, Edit3 } from 'lucide-react';
 import NexusLogo from '@/assets/Logo/Logo with no circle.svg';
 import { SearchInput } from '@/components/ui/Input';
 import { createColorImage } from '@/lib/imageUtils';
@@ -13,6 +13,10 @@ import { AuthModal } from '@/components/auth/AuthModal';
 import { collaborationApi } from '@/lib/supabase/collaboration';
 import { useToast } from '@/context/ToastContext';
 import { ProjectInfoPopup } from '@/components/project/ProjectInfoPopup';
+import { UserMenu } from '@/components/auth/UserMenu';
+import { NotificationDropdown } from './NotificationDropdown';
+import { EditRequestModal } from '@/components/ui/EditRequestModal';
+import { api } from '@/lib/api';
 
 interface PreviewNavbarProps {
     projectName: string;
@@ -25,6 +29,7 @@ interface PreviewNavbarProps {
     onWallpaperChange?: (wallpaper: string) => void;
     projectUpdatedAt?: string;
     collectionId?: string | number | null;
+    collectionName?: string;
     projectId?: number;
 }
 
@@ -47,6 +52,7 @@ export function PreviewNavbar({
     onWallpaperChange,
     projectUpdatedAt,
     collectionId,
+    collectionName,
     projectId
 }: PreviewNavbarProps) {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -55,6 +61,9 @@ export function PreviewNavbar({
     const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
     const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
     const [requestStatus, setRequestStatus] = useState<'idle' | 'pending' | 'requested' | 'accepted'>('idle');
+    const [requestId, setRequestId] = useState<number | null>(null);
+    const [isRequestModalOpen, setIsRequestModalOpen] = useState(false);
+    const [isRequesting, setIsRequesting] = useState(false);
 
     const menuRef = useRef<HTMLDivElement>(null);
     const infoPopupRef = useRef<{ open: () => void } | null>(null);
@@ -95,8 +104,12 @@ export function PreviewNavbar({
                  const req = requests.find(r => r.targetId === targetId && r.type === type);
                  
                  if (req) {
+                     setRequestId(req.id);
                      if (req.status === 'pending') setRequestStatus('requested');
                      else if (req.status === 'accepted') setRequestStatus('accepted');
+                 } else {
+                     setRequestStatus('idle');
+                     setRequestId(null);
                  }
              } catch (err) {
                  console.error('Failed to fetch request status', err);
@@ -111,7 +124,7 @@ export function PreviewNavbar({
         }
     };
 
-    const handleRequestAccess = async () => {
+    const handleRequestAccess = async (forcedType?: 'project' | 'collection') => {
         if (!isAuthenticated) {
             setReturnUrl(window.location.pathname);
             setIsAuthModalOpen(true);
@@ -120,16 +133,44 @@ export function PreviewNavbar({
 
         if (!user || (!projectId && !collectionId)) return;
 
-        setRequestStatus('pending');
+        // If in collection and type not forced, show modal
+        if (collectionId && !forcedType) {
+            setIsRequestModalOpen(true);
+            return;
+        }
+
+        const type = forcedType || (collectionId ? 'collection' : 'project');
+        const targetId = Number(type === 'collection' ? collectionId : projectId);
+
+        setIsRequesting(true);
         try {
-            const type = collectionId ? 'collection' : 'project';
-            const targetId = Number(collectionId || projectId);
             await collaborationApi.requestAccess(type, targetId, user.id);
             setRequestStatus('requested');
+            setIsRequestModalOpen(false);
             showToast('Access request sent successfully.', 'success');
+            // Refresh requests to get the ID for cancellation
+            const requests = await collaborationApi.getMyRequests(user.id);
+            const req = requests.find(r => r.targetId === targetId && r.type === type && r.status === 'pending');
+            if (req) setRequestId(req.id);
         } catch (error: any) {
             showToast(error.message || 'Failed to request access.', 'error');
+        } finally {
+            setIsRequesting(false);
+        }
+    };
+
+    const handleCancelRequest = async () => {
+        if (!requestId || !user?.id) return;
+        setIsRequesting(true);
+        try {
+            await collaborationApi.deleteRequest(requestId, user.id);
             setRequestStatus('idle');
+            setRequestId(null);
+            showToast('Request withdrawn.', 'success');
+        } catch (error: any) {
+            showToast(error.message || 'Failed to withdraw request.', 'error');
+        } finally {
+            setIsRequesting(false);
         }
     };
 
@@ -279,23 +320,10 @@ export function PreviewNavbar({
                     </div>
 
                     {isAuthenticated && user?.id ? (
-                        requestStatus === 'accepted' ? (
-                            <Link
-                                href={`/project/${projectId}`}
-                                className="hidden sm:flex items-center gap-2 rounded-lg bg-emerald-500/20 px-3 py-1.5 text-xs font-medium text-emerald-400 transition-all hover:bg-emerald-500/30"
-                            >
-                                <Check className="w-3.5 h-3.5" />
-                                Go to Editor
-                            </Link>
-                        ) : (
-                            <button
-                                onClick={handleRequestAccess}
-                                disabled={requestStatus !== 'idle'}
-                                className="hidden sm:flex items-center gap-2 rounded-lg bg-zinc-800 px-3 py-1.5 text-xs font-medium text-zinc-300 transition-all hover:bg-zinc-700 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                                {requestStatus === 'requested' ? 'Requested' : 'Request Access'}
-                            </button>
-                        )
+                        <div className="flex items-center gap-2">
+                             <NotificationDropdown />
+                             <UserMenu />
+                        </div>
                     ) : (
                         <div className="flex items-center space-x-3">
                            <button
@@ -323,9 +351,10 @@ export function PreviewNavbar({
                 </div>
             </header>
 
-            {/* Floating Share Button (matches edit mode layout) */}
-            <div className="absolute right-4 top-20 z-30 pointer-events-none sm:block hidden">
+            {/* Floating Buttons area */}
+            <div className="fixed right-6 top-24 z-30 pointer-events-none flex-col items-end gap-3 hidden sm:flex">
                 <div className="flex items-center gap-2 rounded-xl bg-zinc-900/90 p-2 backdrop-blur-sm border border-zinc-800 pointer-events-auto shadow-lg">
+                    {/* Share Button */}
                     <button
                         onClick={() => setIsShareModalOpen(true)}
                         className="flex items-center gap-2 rounded-lg bg-[#355ea1] px-3 py-1.5 text-xs font-medium text-white transition-all hover:bg-[#2563EB]"
@@ -334,7 +363,50 @@ export function PreviewNavbar({
                         <Share2 className="h-4 w-4" />
                         <span>Share</span>
                     </button>
+
+                    {/* Go to Editor Button (if accepted) */}
+                    {requestStatus === 'accepted' && (
+                        <Link
+                            href={`/project/${projectId}`}
+                            className="flex items-center gap-2 rounded-lg bg-emerald-500/50 px-3 py-1.5 text-xs font-medium text-emerald-100 transition-all hover:bg-emerald-500/70"
+                        >
+                            <Edit3 className="h-4 w-4" />
+                            <span>Edit Project</span>
+                        </Link>
+                    )}
+
+                    {/* Request Access Button (if not accepted) */}
+                    {requestStatus !== 'accepted' && (
+                        <button
+                            onClick={() => handleRequestAccess()}
+                            disabled={requestStatus === 'requested' || isRequesting}
+                            className="flex items-center gap-2 rounded-lg bg-zinc-800 px-3 py-1.5 text-xs font-medium text-zinc-300 transition-all hover:bg-zinc-700 hover:text-white disabled:opacity-80 disabled:cursor-default"
+                        >
+                            {requestStatus === 'requested' ? (
+                                <>
+                                    <Check className="h-4 w-4 text-emerald-400" />
+                                    <span>Requested</span>
+                                </>
+                            ) : (
+                                <>
+                                    <Users className="h-4 w-4" />
+                                    <span>Send edit request</span>
+                                </>
+                            )}
+                        </button>
+                    )}
                 </div>
+
+                {/* Cancel Request Link below the main button */}
+                {requestStatus === 'requested' && (
+                    <button
+                        onClick={handleCancelRequest}
+                        disabled={isRequesting}
+                        className="mr-2 pointer-events-auto text-[11px] font-medium text-zinc-500 hover:text-red-400 transition-colors disabled:opacity-50"
+                    >
+                        Cancel Request
+                    </button>
+                )}
             </div>
 
 
@@ -349,6 +421,15 @@ export function PreviewNavbar({
                 isOpen={isAuthModalOpen}
                 onClose={() => setIsAuthModalOpen(false)}
                 initialMode={authMode}
+            />
+
+            <EditRequestModal
+                isOpen={isRequestModalOpen}
+                onClose={() => setIsRequestModalOpen(false)}
+                onSelect={(type) => handleRequestAccess(type)}
+                projectName={projectName}
+                collectionName={collectionName}
+                isSubmitting={isRequesting}
             />
         </>
     );

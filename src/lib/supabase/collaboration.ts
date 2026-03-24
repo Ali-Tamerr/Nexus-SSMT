@@ -15,10 +15,10 @@ export const collaborationApi = {
   },
 
   // 2. Get Pending Requests (For Owners)
-  getPendingRequestsForOwner: async (projectIds: number[], collectionIds: number[]) => {
+  getPendingRequestsForOwner: async (projectIds: number[], collectionIds: number[], userId: string) => {
     const pIds = projectIds.join(',');
     const cIds = collectionIds.join(',');
-    return api.fetchApi<any[]>(`${BASE_URL}/pending?projectIds=${pIds}&collectionIds=${cIds}`, { method: 'GET' });
+    return api.fetchApi<any[]>(`${BASE_URL}/pending?projectIds=${pIds}&collectionIds=${cIds}&userId=${userId}`, { method: 'GET' });
   },
 
   // 3. Get Requests Made By Current User (For Members/Guests)
@@ -59,5 +59,10 @@ export const collaborationApi = {
   // 8. Remove Member (Kick or Leave)
   removeMember: async (type: 'project' | 'collection', targetId: number, userId: string) => {
     return api.fetchApi<void>(`${BASE_URL}/members/${type}/${targetId}?userId=${userId}`, { method: 'DELETE' });
+  },
+  
+  // 9. Delete Request (Cancel/Withdraw)
+  deleteRequest: async (requestId: number, userId: string) => {
+    return api.fetchApi<void>(`${BASE_URL}/request/${requestId}?userId=${userId}`, { method: 'DELETE' });
   }
 };

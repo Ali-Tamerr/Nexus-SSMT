@@ -52,9 +52,11 @@ export function NotificationDropdown() {
             // 2. Fetch pending incoming requests (only for owned resources)
             let incoming: any[] = [];
             if (pIds.length > 0 || cIds.length > 0) {
-                incoming = await collaborationApi.getPendingRequestsForOwner(pIds, cIds);
+                incoming = await collaborationApi.getPendingRequestsForOwner(pIds, cIds, user.id);
                 incoming = incoming.map((req: any) => {
                     const targetId = req.targetId || req.target_id;
+                    if (req.targetName) return req; // Use backend name if available
+
                     if (req.type === 'project') {
                         req.targetName = ownedProjects.find((p: any) => p.id === targetId)?.name || 'Unknown Project';
                     } else {
@@ -70,6 +72,7 @@ export function NotificationDropdown() {
 
             const enriched = await Promise.all(
                 resolvedRaw.map(async (req: any) => {
+                    if (req.targetName) return req;
                     try {
                         if (req.type === 'project') {
                             const proj = await api.projects.getById(req.targetId);
