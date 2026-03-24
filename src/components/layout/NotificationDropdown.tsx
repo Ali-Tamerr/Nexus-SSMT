@@ -92,9 +92,12 @@ export function NotificationDropdown() {
             
             const seenStr = localStorage.getItem('nexus_seen_requests');
             const seenIds = new Set(seenStr ? JSON.parse(seenStr) : []);
+            
+            // Re-calculate unread: True if there are new incoming OR new enriched outgoing
+            const hasNewIncoming = incoming.length > 0;
             const hasNewOutgoing = enriched.some((r: any) => !seenIds.has(r.id));
             
-            setHasUnread(incoming.length > 0 || hasNewOutgoing);
+            setHasUnread(hasNewIncoming || hasNewOutgoing);
         } catch (error) {
             console.error("Failed to load notifications", error);
         } finally {

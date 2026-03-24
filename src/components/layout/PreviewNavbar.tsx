@@ -90,12 +90,12 @@ export function PreviewNavbar({
         const fetchStatus = async () => {
              if (!isAuthenticated || !user?.id || !projectId) return;
              try {
-                 // Check if user has access to this project (owner or collaborator)
-                 const hasAccess = await collaborationApi.hasProjectAccess(projectId, user.id);
-                 if (hasAccess) {
-                     setRequestStatus('accepted');
-                     return;
-                 }
+                // Check if user has EDIT access (respects exclusions)
+                const hasEditAccess = await collaborationApi.hasProjectEditAccess(projectId, user.id);
+                if (hasEditAccess) {
+                    setRequestStatus('accepted');
+                    return;
+                }
 
                  // If no direct access, check if there's a pending/requested status for the resource
                  const requests = await collaborationApi.getMyRequests(user.id);
@@ -361,29 +361,8 @@ export function PreviewNavbar({
             </header>
 
             {/* Floating Buttons area */}
-            <div className="fixed right-6 top-24 z-30 pointer-events-none flex-col items-end gap-3 hidden sm:flex">
+            <div className="fixed right-6 top-16 z-30 pointer-events-none flex-col items-start gap-2 hidden sm:flex">
                 <div className="flex items-center gap-2 rounded-xl bg-zinc-900/90 p-2 backdrop-blur-sm border border-zinc-800 pointer-events-auto shadow-lg">
-                    {/* Share Button */}
-                    <button
-                        onClick={() => setIsShareModalOpen(true)}
-                        className="flex items-center gap-2 rounded-lg bg-[#355ea1] px-3 py-1.5 text-xs font-medium text-white transition-all hover:bg-[#2563EB]"
-                        title="Share project"
-                    >
-                        <Share2 className="h-4 w-4" />
-                        <span>Share</span>
-                    </button>
-
-                    {/* Go to Editor Button (if accepted) */}
-                    {requestStatus === 'accepted' && (
-                        <Link
-                            href={`/project/${projectId}`}
-                            className="flex items-center gap-2 rounded-lg bg-emerald-500/50 px-3 py-1.5 text-xs font-medium text-emerald-100 transition-all hover:bg-emerald-500/70"
-                        >
-                            <Edit3 className="h-4 w-4" />
-                            <span>Edit Project</span>
-                        </Link>
-                    )}
-
                     {/* Request Access Button (if not accepted) */}
                     {requestStatus !== 'accepted' && (
                         <button
@@ -404,6 +383,30 @@ export function PreviewNavbar({
                             )}
                         </button>
                     )}
+                      {/* Go to Editor Button (if accepted) */}
+                    {requestStatus === 'accepted' && (
+                        <Link
+                            href={`/project/${projectId}`}
+                            className=" flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-medium transition-all bg-zinc-800 text-zinc-400 hover:text-white"
+                        >
+                            <Edit3 className="h-4 w-4" />
+                            <span>Edit Project</span>
+                        </Link>
+                    )}
+                    <div className='h-6 w-px bg-zinc-700' />
+                    {/* Share Button */}
+                    <button
+                        onClick={() => setIsShareModalOpen(true)}
+                        className="flex items-center gap-2 rounded-lg bg-[#355ea1] px-3 py-1.5 text-xs font-medium text-white transition-all hover:bg-[#2563EB]"
+                        title="Share project"
+                    >
+                        <Share2 className="h-4 w-4" />
+                        <span>Share</span>
+                    </button>
+
+                  
+
+                    
                 </div>
 
                 {/* Cancel Request Link below the main button */}
@@ -411,7 +414,7 @@ export function PreviewNavbar({
                     <button
                         onClick={handleCancelRequest}
                         disabled={isRequesting}
-                        className="mr-2 pointer-events-auto text-[11px] font-medium text-zinc-500 hover:text-red-400 transition-colors disabled:opacity-50"
+                        className="flex ml-2 items-center gap-2 rounded-lg bg-zinc-800 px-3 py-1.5 text-xs font-medium text-zinc-300 transition-all hover:bg-zinc-700 border border-zinc-700 shadow-md hover:text-white disabled:opacity-80 pointer-events-auto cursor-pointer"
                     >
                         Cancel Request
                     </button>
