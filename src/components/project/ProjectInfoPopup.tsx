@@ -15,6 +15,7 @@ interface ProjectInfoPopupProps {
   targetId: number;
   description?: string | null;
   updatedAt?: string | null;
+  name?: string | null;
   className?: string;
 }
 
@@ -23,6 +24,7 @@ export const ProjectInfoPopup = forwardRef<{ open: () => void }, ProjectInfoPopu
   targetId, 
   description, 
   updatedAt,
+  name,
   className = ""
 }, ref) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -193,13 +195,20 @@ export const ProjectInfoPopup = forwardRef<{ open: () => void }, ProjectInfoPopu
 
       {isOpen && (
         <div 
-          className="absolute top-full left-0 mt-3 w-[95%] sm:w-[550px] rounded-xl border border-zinc-800 shadow-2xl z-100 flex flex-col sm:flex-row overflow-hidden animate-in slide-in-from-top-2 zoom-in-95 duration-200 pointer-events-auto"
+          className="fixed md:absolute inset-x-4 md:inset-x-auto md:top-full md:left-0 top-16 md:mt-3 md:w-[550px] rounded-xl border border-zinc-800 shadow-2xl z-100 flex flex-col md:flex-row overflow-hidden animate-in slide-in-from-top-2 zoom-in-95 duration-200 pointer-events-auto max-h-[calc(100vh-100px)] md:max-h-none"
           style={{ backgroundColor: '#18181b', isolation: 'isolate' }}
         >
           {/* Description Section */}
           <div className="flex-1 flex flex-col max-h-[350px] sm:max-h-[350px] border-b sm:border-b-0 sm:border-r border-zinc-800" style={{ backgroundColor: '#18181b' }}>
-            <div className="px-4 py-3 border-b border-zinc-800 flex items-center gap-2 bg-zinc-900">
-              <span className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">
+            <div className="px-4 py-3 border-b border-zinc-800 flex flex-col gap-0.5 bg-zinc-900/50">
+              {name && (
+                <div className="mb-2">
+                  <h3 className="text-base font-bold text-white leading-tight">
+                    {name}
+                  </h3>
+                </div>
+              )}
+              <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">
                 {type === 'project' ? 'Project Description' : 'Collection Description'}
               </span>
             </div>
