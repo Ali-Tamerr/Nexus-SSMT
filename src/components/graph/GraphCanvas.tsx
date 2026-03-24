@@ -2619,6 +2619,40 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
     handleContainerMouseUpCapture(syntheticEvent);
   }, [handleContainerMouseUpCapture]);
 
+  const handleContainerDoubleClick = useCallback((e: React.MouseEvent) => {
+    if (!isSelectTool) return;
+    if (useGraphStore.getState().isConnectionPickerActive) return;
+
+    const rect = containerRef.current?.getBoundingClientRect();
+    if (!rect) return;
+
+    const screenX = e.clientX - rect.left;
+    const screenY = e.clientY - rect.top;
+    const worldPoint = screenToWorld(screenX, screenY);
+    const scale = graphRef.current?.zoom() || graphTransform.k || 1;
+
+    // Detect if we double-clicked on a text shape
+    const clickedTextShape = [...filteredShapes].reverse().find(s =>
+      s.type === 'text' && isPointNearShape(worldPoint, s, scale, 15)
+    );
+
+    if (clickedTextShape && graphRef.current) {
+      setEditingShapeId(clickedTextShape.id);
+      setTextInputValue(clickedTextShape.text || '');
+      setSelectedShapeIds(new Set([clickedTextShape.id]));
+      setSelectedNodeIds(new Set());
+
+      // Position input at shape anchor
+      const screenPos = graphRef.current.graph2ScreenCoords(clickedTextShape.points[0].x, clickedTextShape.points[0].y);
+      setTextInputPos({
+        x: screenPos.x + rect.left,
+        y: screenPos.y + rect.top,
+        worldX: clickedTextShape.points[0].x,
+        worldY: clickedTextShape.points[0].y
+      });
+    }
+  }, [isSelectTool, screenToWorld, filteredShapes, isPointNearShape, graphTransform.k]);
+
   const handleCanvasTouchStart = useCallback((e: React.TouchEvent) => {
     if (e.touches.length === 2) {
       // Start Pinch/Zoom
@@ -2733,6 +2767,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
       onMouseDownCapture={handleContainerMouseDownCapture}
       onMouseDown={handleSelectMouseDown}
       onMouseUpCapture={handleContainerMouseUpCapture}
+      onDoubleClick={handleContainerDoubleClick}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
