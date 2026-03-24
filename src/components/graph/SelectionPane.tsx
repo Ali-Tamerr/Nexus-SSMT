@@ -146,7 +146,7 @@ export function SelectionPane({
                                         onClick={() => onSelectNode(node.id)}
                                     >
                                         <span
-                                            className="w-3 h-3 rounded-full flex-shrink-0"
+                                            className="w-3 h-3 rounded-full shrink-0"
                                             style={{ backgroundColor: node.customColor || '#355ea1' }}
                                         />
                                         <span className="flex-1 truncate">{node.title || 'Untitled Node'}</span>
@@ -155,7 +155,7 @@ export function SelectionPane({
                                                 e.stopPropagation();
                                                 onLocateNode(node.id, node.x ?? 0, node.y ?? 0);
                                             }}
-                                            className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-zinc-700 transition-all"
+                                            className="opacity-100 sm:opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-zinc-700 transition-all text-zinc-400 hover:text-white"
                                             title="Locate"
                                         >
                                             <MapPin className="w-3.5 h-3.5" />
@@ -164,9 +164,11 @@ export function SelectionPane({
                                             <button
                                                 onClick={(e) => {
                                                     e.stopPropagation();
-                                                    onDeleteNode(node.id);
+                                                    if (window.confirm(`Are you sure you want to delete "${node.title || 'this node'}"?`)) {
+                                                        onDeleteNode(node.id);
+                                                    }
                                                 }}
-                                                className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-red-600 transition-all"
+                                                className="opacity-100 sm:opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-red-600 transition-all text-zinc-400 hover:text-white"
                                                 title="Delete"
                                             >
                                                 <Trash2 className="w-3.5 h-3.5" />
@@ -214,7 +216,7 @@ export function SelectionPane({
                                                     e.stopPropagation();
                                                     onLocateShape(shape.id, center.x, center.y);
                                                 }}
-                                                className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-zinc-700 transition-all"
+                                                className="opacity-100 sm:opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-zinc-700 transition-all text-zinc-400 hover:text-white"
                                                 title="Locate"
                                             >
                                                 <MapPin className="w-3.5 h-3.5" />
@@ -223,9 +225,11 @@ export function SelectionPane({
                                                 <button
                                                     onClick={(e) => {
                                                         e.stopPropagation();
-                                                        onDeleteShape(shape.id);
+                                                        if (window.confirm(`Are you sure you want to delete this drawing?`)) {
+                                                            onDeleteShape(shape.id);
+                                                        }
                                                     }}
-                                                    className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-red-600 transition-all"
+                                                    className="opacity-100 sm:opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-red-600 transition-all text-zinc-400 hover:text-white"
                                                     title="Delete"
                                                 >
                                                     <Trash2 className="w-3.5 h-3.5" />
@@ -237,6 +241,7 @@ export function SelectionPane({
                             )}
                         </div>
                     )}
+
                 </div>
             </div>
 
