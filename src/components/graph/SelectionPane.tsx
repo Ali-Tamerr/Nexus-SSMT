@@ -88,8 +88,8 @@ export function SelectionPane({
         div.addEventListener('touchmove', stopPropagation, { passive: false });
         div.addEventListener('touchstart', stopPropagation, { passive: false });
         div.addEventListener('touchend', stopPropagation, { passive: false });
-        div.addEventListener('mousedown', stopPropagation);
-        div.addEventListener('pointerdown', stopPropagation);
+        // div.addEventListener('mousedown', stopPropagation);
+        // div.addEventListener('pointerdown', stopPropagation);
 
         return () => {
             div.removeEventListener('wheel', stopPropagation);

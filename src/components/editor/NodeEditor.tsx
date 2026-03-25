@@ -62,6 +62,9 @@ export function NodeEditor() {
   const [showCustomColorPicker, setShowCustomColorPicker] = useState(false);
   const [tempCustomColor, setTempCustomColor] = useState('#355ea1');
   const [showUnsavedPopup, setShowUnsavedPopup] = useState(false);
+  const lastNodeIdRef = useRef<number | null>(null);
+
+  const [editingAttachmentId, setEditingAttachmentId] = useState<number | null>(null);
 
   // Buffer State for Deferred Saving & Revert
   const [pendingAttachments, setPendingAttachments] = useState<Attachment[]>([]);
@@ -92,14 +95,26 @@ export function NodeEditor() {
     }
   }, [connectionPickerResult, setConnectionPickerResult]);
 
+  const isTitleDirty = activeNode ? title !== activeNode.title : false;
+  const isContentDirty = activeNode ? content !== (activeNode.content || '') : false;
+
   useEffect(() => {
     if (activeNode) {
-      setTitle(activeNode.title);
-      setContent(activeNode.content || '');
-      // Ensure null becomes undefined for the state
+      // Vital: only update if local state isn't "dirty" OR if the node ID actually changed
+      // This prevents optimistic updates (like adding an attachment) from blowing away unsaved title/content
+      const isActuallyNewNode = activeNode.id !== lastNodeIdRef.current;
+      
+      if (isActuallyNewNode || !isTitleDirty) {
+        setTitle(activeNode.title);
+      }
+      if (isActuallyNewNode || !isContentDirty) {
+        setContent(activeNode.content || '');
+      }
+      
       setCustomColor(activeNode.customColor || undefined);
+      lastNodeIdRef.current = activeNode.id;
     }
-  }, [activeNode]);
+  }, [activeNode, isTitleDirty, isContentDirty]);
 
   // Capture original color when node/selection changes
   useEffect(() => {
@@ -248,8 +263,6 @@ export function NodeEditor() {
     }
   };
 
-  const isTitleDirty = activeNode ? title !== activeNode.title : false;
-  const isContentDirty = activeNode ? content !== (activeNode.content || '') : false;
   const isColorDirty = activeNode ? activeNode.customColor !== originalColorRef.current : false;
   const isAttachmentsDirty = pendingAttachments.length > 0 || deletedAttachments.size > 0;
   const isLinksDirty = pendingLinks.length > 0 || deletedLinks.size > 0 || editedLinks.size > 0;
@@ -297,26 +310,53 @@ export function NodeEditor() {
     let url = newAttachmentUrl.trim();
     if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
 
-    // Simple content type detection
-    let contentType = 'text/html';
-    const ext = url.split('.').pop()?.toLowerCase();
-    if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext || '')) contentType = 'image/' + (ext === 'jpg' ? 'jpeg' : ext);
-    else if (['mp4', 'webm'].includes(ext || '')) contentType = 'video/' + ext;
-    else if (ext === 'pdf') contentType = 'application/pdf';
+    const fileName = newAttachmentName.trim() || url.split('/').pop() || 'attachment.file';
+    const contentType = getContentTypeFromUrl(url);
 
-    const attachment: Attachment = {
-      id: -Date.now(),
-      nodeId: activeNode.id,
-      fileName: newAttachmentName.trim() || url.split('/').pop() || 'attachment.file',
-      fileUrl: url,
-      contentType,
-      createdAt: new Date().toISOString(),
-      fileSize: 0
-    };
+    if (editingAttachmentId !== null) {
+      // Update existing attachment
+      const id = editingAttachmentId;
+      const updatedAtt: Attachment = {
+        id,
+        nodeId: activeNode.id,
+        fileName,
+        fileUrl: url,
+        contentType,
+        createdAt: new Date().toISOString(),
+        fileSize: 0
+      };
 
-    setPendingAttachments(prev => [...prev, attachment]);
-    // Optimistic Update
-    addAttachmentToNode(activeNode.id, attachment);
+      if (id < 0) {
+        setPendingAttachments(prev => prev.map(a => a.id === id ? updatedAtt : a));
+      } else {
+        // For existing ones, we'll just treat it as a new pending one 
+        // and delete the old one on save, or better:
+        setPendingAttachments(prev => [...prev.filter(a => a.id !== id), updatedAtt]);
+        const oldAtt = activeNode.attachments?.find(a => a.id === id);
+        if (oldAtt) setDeletedAttachments(prev => new Map(prev).set(id, oldAtt));
+      }
+
+      // Optimistic Update in store
+      removeAttachmentFromNode(activeNode.id, id);
+      addAttachmentToNode(activeNode.id, updatedAtt);
+
+      setEditingAttachmentId(null);
+    } else {
+      // Add new attachment
+      const attachment: Attachment = {
+        id: -Date.now(),
+        nodeId: activeNode.id,
+        fileName,
+        fileUrl: url,
+        contentType,
+        createdAt: new Date().toISOString(),
+        fileSize: 0
+      };
+
+      setPendingAttachments(prev => [...prev, attachment]);
+      // Optimistic Update
+      addAttachmentToNode(activeNode.id, attachment);
+    }
 
     setNewAttachmentUrl('');
     setNewAttachmentName('');
@@ -325,6 +365,12 @@ export function NodeEditor() {
 
   const handleRemoveAttachment = (attachmentId: number) => {
     if (!activeNode) return;
+
+    if (attachmentId === editingAttachmentId) {
+      setEditingAttachmentId(null);
+      setNewAttachmentUrl('');
+      setNewAttachmentName('');
+    }
 
     if (attachmentId < 0) {
       setPendingAttachments(prev => prev.filter(a => a.id !== attachmentId));
@@ -336,6 +382,13 @@ export function NodeEditor() {
         removeAttachmentFromNode(activeNode.id, attachmentId);
       }
     }
+  };
+
+  const handleEditAttachment = (attachment: Attachment) => {
+    setEditingAttachmentId(attachment.id);
+    setNewAttachmentUrl(attachment.fileUrl);
+    setNewAttachmentName(attachment.fileName);
+    setShowAttachmentMenu(true);
   };
 
   const handleAddTag = async () => {
@@ -775,13 +828,26 @@ export function NodeEditor() {
                           className="mt-1 w-full rounded-lg bg-zinc-700 px-3 py-1.5 text-sm text-white placeholder-zinc-500 outline-none"
                         />
                       </div>
-                      <button
-                        onClick={handleAddAttachment}
-                        disabled={!newAttachmentUrl.trim()}
-                        className="w-full rounded-lg bg-[#355ea1] py-1.5 text-sm font-medium text-white transition-colors hover:bg-[#265fbd] disabled:opacity-50"
-                      >
-                        Add Attachment
-                      </button>
+                        <button
+                          onClick={handleAddAttachment}
+                          disabled={!newAttachmentUrl.trim()}
+                          className="w-full rounded-lg bg-[#355ea1] py-1.5 text-sm font-medium text-white transition-colors hover:bg-[#265fbd] disabled:opacity-50"
+                        >
+                          {editingAttachmentId !== null ? 'Update Attachment' : 'Add Attachment'}
+                        </button>
+                        {editingAttachmentId !== null && (
+                          <button
+                            onClick={() => {
+                              setEditingAttachmentId(null);
+                              setNewAttachmentUrl('');
+                              setNewAttachmentName('');
+                              setShowAttachmentMenu(false);
+                            }}
+                            className="w-full mt-2 rounded-lg bg-zinc-700 py-1.5 text-sm font-medium text-white transition-colors hover:bg-zinc-600"
+                          >
+                            Cancel Edit
+                          </button>
+                        )}
                     </div>
                   )}
                 </div>
@@ -794,7 +860,7 @@ export function NodeEditor() {
                   attachments.map((attachment) => (
                     <div
                       key={attachment.id}
-                      className="flex items-center justify-between rounded-lg bg-zinc-800 px-3 py-2"
+                      className={`flex items-center justify-between rounded-lg px-3 py-2 transition-colors ${editingAttachmentId === attachment.id ? 'bg-blue-600/20 ring-1 ring-blue-500/50' : 'bg-zinc-800'}`}
                     >
                       <div className="flex items-center gap-2 overflow-hidden">
                         <span className="text-zinc-400">{getAttachmentIcon(attachment.contentType)}</span>
@@ -810,8 +876,16 @@ export function NodeEditor() {
                           <ExternalLink className="h-3.5 w-3.5" />
                         </a>
                         <button
+                          onClick={() => handleEditAttachment(attachment)}
+                          className="rounded p-1 text-zinc-400 transition-colors hover:bg-zinc-700 hover:text-blue-400"
+                          title="Edit attachment"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </button>
+                        <button
                           onClick={() => handleRemoveAttachment(attachment.id)}
                           className="rounded p-1 text-zinc-400 transition-colors hover:bg-zinc-700 hover:text-red-400"
+                          title="Remove attachment"
                         >
                           <X className="h-3.5 w-3.5" />
                         </button>

@@ -2127,7 +2127,11 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
 
           const shapeUpdates = finalShapes
             .filter(s => selectedShapeIds.has(s.id))
-            .map(s => ({ ...shapeToApiDrawing(s, currentProject?.id || 0, activeGroupId ?? undefined), id: s.id }));
+            .map(s => {
+              const dto = shapeToApiDrawing(s, currentProject?.id || 0, activeGroupId ?? undefined);
+              // CRITICAL: Ensure we keep text/font properties for text elements
+              return { ...dto, id: s.id, text: s.text, fontSize: s.fontSize, fontFamily: s.fontFamily, textDir: s.textDir };
+            });
 
           if (shapeUpdates.length > 0) {
             try {
@@ -2540,6 +2544,13 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
       if (!e.shiftKey && !e.ctrlKey && !e.metaKey) {
         setSelectedShapeIds(new Set());
         setSelectedNodeIds(new Set());
+        
+        // Close selection pane and project info popup when clicking empty space
+        setShowSelectionPane(false);
+        // We can't directly set isOpen for ProjectInfoPopup because it's internal,
+        // but it has a mousedown listener on document. 
+        // Since we stopped propagation in some places, let's make sure it's closed.
+        // If it's the guest view / preview mode, we might need a more direct way.
       }
       isMarqueeSelectingRef.current = false;
       setIsMarqueeSelecting(false);
@@ -2550,6 +2561,18 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
   }, [isSelectTool, isHoveringNode, filteredShapes, selectedShapeIds, screenToWorld, graphTransform.k, getShapeBounds, pushToUndoStack, shapes, isPointNearShape]);
 
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    if (e.touches.length === 2) {
+      // 2-finger pan start
+      const t1 = e.touches[0];
+      const t2 = e.touches[1];
+      const center = {
+        x: (t1.clientX + t2.clientX) / 2,
+        y: (t1.clientY + t2.clientY) / 2,
+      };
+      lastPinchRef.current = { dist: 0, center };
+      return;
+    }
+
     if (e.touches.length !== 1) return;
     const touch = e.touches[0];
 
@@ -2558,7 +2581,12 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
     if (target.closest('.graph-ui-hide') || target.closest('button')) return;
 
     if (!isPanTool) {
-      e.preventDefault(); // Prevent scrolling while drawing/selecting
+      // Don't prevent default if it's a single touch in pan mode (allow browser pan if possible)
+      // but in other modes we might need to prevent it to allow drawing
+      // If we are in Select mode, we WANT 1-finger to select, not pan.
+      if (graphSettings.activeTool !== 'pan') {
+         e.preventDefault(); 
+      }
     }
 
     const syntheticEvent = {
@@ -2579,14 +2607,40 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
 
     handleContainerMouseDownCapture(syntheticEvent);
     handleSelectMouseDown(syntheticEvent);
-  }, [handleContainerMouseDownCapture, handleSelectMouseDown, isPanTool]);
+  }, [handleContainerMouseDownCapture, handleSelectMouseDown, isPanTool, graphSettings.activeTool]);
 
   const handleTouchMove = useCallback((e: React.TouchEvent) => {
-    if (e.touches.length !== 1) return;
-    const touch = e.touches[0];
+    if (e.touches.length === 2 && lastPinchRef.current && graphRef.current) {
+       e.preventDefault();
+       const t1 = e.touches[0];
+       const t2 = e.touches[1];
+       const currCenter = {
+         x: (t1.clientX + t2.clientX) / 2,
+         y: (t1.clientY + t2.clientY) / 2,
+       };
+       
+       const { center: startCenter } = lastPinchRef.current;
+       const zoom = graphRef.current.zoom();
+       
+       const dx = currCenter.x - startCenter.x;
+       const dy = currCenter.y - startCenter.y;
+       
+       if (Math.abs(dx) > 1 || Math.abs(dy) > 1) {
+         const currentCenter = graphRef.current.centerAt();
+         graphRef.current.centerAt(
+           currentCenter.x - dx / zoom,
+           currentCenter.y - dy / zoom,
+           0
+         );
+         lastPinchRef.current.center = currCenter;
+       }
+       return;
+    }
 
+    if (e.touches.length !== 1) return;
     if (!isPanTool) e.preventDefault();
 
+    const touch = e.touches[0];
     const syntheticEvent = {
       ...e,
       clientX: touch.clientX,
@@ -2617,6 +2671,12 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
     } as unknown as React.MouseEvent;
 
     handleContainerMouseUpCapture(syntheticEvent);
+    
+    // If it was a simple tap (no drag), close selection pane if clicking empty space
+    if (!wasGlobalDragRef.current) {
+       // The handleSelectMouseDown already handles empty space click for desktop,
+       // but for touch we might want to be explicit.
+    }
   }, [handleContainerMouseUpCapture]);
 
   const handleContainerDoubleClick = useCallback((e: React.MouseEvent) => {
@@ -2949,6 +3009,13 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
                 setActiveNode(null);
                 setSelectedNodeIds(new Set());
                 setSelectedShapeIds(new Set());
+                // Close selection pane
+                setShowSelectionPane(false);
+                
+                // For ProjectInfoPopup, it listens to mousedown on document.
+                // We ensure this click bubbles up or we can dispatch a custom event if needed.
+                // Given the user report, guest preview mode might have layers blocking it.
+                // Let's ensure we are not stopping propagation for background clicks.
               }}
               onZoom={handleZoom}
               onRenderFramePost={onRenderFramePost}
