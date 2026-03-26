@@ -3129,7 +3129,9 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
                 style={{
                   left: screenPos.x,
                   top: screenPos.y,
-                  transform: (editingShape?.textDir || graphSettings.textDir) === 'rtl' ? 'translateX(-100%)' : 'none',
+                  // transform: (editingShape?.textDir || graphSettings.textDir) === 'rtl' ? 'translateX(-100%)' : 'none', 
+                  // The translateX(-100%) was causing misalignment with the canvas textAlign='right'.
+                  // Keeping it at the natural position is more consistent with the top-right anchor.
                   pointerEvents: 'auto',
                   display: 'grid',
                   width: 'max-content'

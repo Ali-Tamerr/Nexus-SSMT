@@ -183,6 +183,7 @@ export function drawShapeOnContext(
           ctx.translate(points[0].x, points[0].y);
           ctx.rotate(angle);
           lines.forEach((line, index) => {
+            // For RTL with textAlign 'right', the line is already anchored at 0 on the x-axis
             ctx.fillText(line, 0, index * lineHeight);
           });
           ctx.restore();

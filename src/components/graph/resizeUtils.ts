@@ -72,19 +72,20 @@ export function getShapeBounds(
     const hx = -totalHeight * sin;
     const hy = totalHeight * cos;
 
-    // If text direction is RTL, the anchor point is the top-right corner.
-    // So the top-left corner is shifted by the width vector reversed.
-    const shiftX = shape.textDir === "rtl" ? -wx : 0;
-    const shiftY = shape.textDir === "rtl" ? -wy : 0;
+    // For RTL text rendered with textAlign 'right', the anchor p0 is the top-right corner.
+    // So the text extends to the "left" of p0.
+    // LTR (left anchor): extends along +width, +height
+    // RTL (right anchor): extends along -width, +height
+    const isRTL = shape.textDir === "rtl";
 
-    const x1 = p0.x + shiftX;
-    const y1 = p0.y + shiftY;
-    const x2 = p0.x + shiftX + wx;
-    const y2 = p0.y + shiftY + wy;
-    const x3 = p0.x + shiftX + wx + hx;
-    const y3 = p0.y + shiftY + wy + hy;
-    const x4 = p0.x + shiftX + hx;
-    const y4 = p0.y + shiftY + hy;
+    const x1 = p0.x;
+    const y1 = p0.y;
+    const x2 = p0.x + (isRTL ? -wx : wx);
+    const y2 = p0.y + (isRTL ? -wy : wy);
+    const x3 = p0.x + (isRTL ? -wx : wx) + hx;
+    const y3 = p0.y + (isRTL ? -wy : wy) + hy;
+    const x4 = p0.x + hx;
+    const y4 = p0.y + hy;
 
     const xs = [x1, x2, x3, x4];
     const ys = [y1, y2, y3, y4];

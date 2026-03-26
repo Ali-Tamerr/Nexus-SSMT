@@ -1064,7 +1064,7 @@ export function NodeEditor() {
       )}
 
       {showUnsavedPopup && (
-        <div className="fixed bottom-4 left-4 z-[60] w-80 rounded-lg border border-red-500/20 bg-zinc-900 p-4 shadow-2xl animate-in slide-in-from-bottom-2 fade-in duration-200">
+        <div className="fixed bottom-4 left-4 z-60 w-80 rounded-lg border border-red-500/20 bg-zinc-900 p-4 shadow-2xl animate-in slide-in-from-bottom-2 fade-in duration-200">
           <p className="text-sm font-medium text-zinc-200 mb-4">
             Do you want to leave unsaved changes?
           </p>
