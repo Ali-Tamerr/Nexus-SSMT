@@ -1,4 +1,5 @@
 import { DrawnShape } from "@/types/knowledge";
+import { getCanvasTextScale } from "./canvasTextScale";
 
 export type ResizeHandle =
   | "nw"
@@ -33,7 +34,11 @@ export function getShapeBounds(
   if (shape.points.length === 0) return null;
 
   if (shape.type === "text" && shape.text) {
-    const fontSize = shape.fontSize || 16;
+    const rawFontSize = shape.fontSize || 16;
+    // Compensate for mobile text scaling — same logic as drawShapeOnContext
+    const textScale = getCanvasTextScale();
+    const fontSize = textScale > 1.01 ? rawFontSize / textScale : rawFontSize;
+    
     const lines = shape.text.split("\n");
     const lineHeight = fontSize * 1.2;
     let textWidth = 0;

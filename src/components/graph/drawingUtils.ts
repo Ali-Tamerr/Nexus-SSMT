@@ -2,6 +2,7 @@
 
 import { DrawingTool, StrokeStyle, DrawnShape } from "@/types/knowledge";
 import { getShapeBounds } from "./resizeUtils";
+import { getCanvasTextScale } from "./canvasTextScale";
 
 export function drawShapeOnContext(
   ctx: CanvasRenderingContext2D,
@@ -161,7 +162,11 @@ export function drawShapeOnContext(
 
     case "text":
       if (shape.text && points.length > 0) {
-        const fontSize = shape.fontSize || 16;
+        const rawFontSize = shape.fontSize || 16;
+        // Compensate for mobile browsers rendering text wider than desktop
+        const textScale = getCanvasTextScale();
+        const fontSize = textScale > 1.01 ? rawFontSize / textScale : rawFontSize;
+        
         ctx.font = `${fontSize}px ${shape.fontFamily || "Inter"}, "Noto Sans Arabic", sans-serif`;
         ctx.fillStyle = shape.color;
         ctx.textBaseline = "top";
@@ -182,7 +187,6 @@ export function drawShapeOnContext(
           ctx.translate(points[0].x, points[0].y);
           ctx.rotate(angle);
           lines.forEach((line, index) => {
-            // For RTL with textAlign 'right', the line is already anchored at 0 on the x-axis
             ctx.fillText(line, 0, index * lineHeight);
           });
           ctx.restore();
