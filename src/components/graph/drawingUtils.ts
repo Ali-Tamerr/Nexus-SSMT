@@ -168,7 +168,9 @@ export function drawShapeOnContext(
         const autoDir = detectTextDir(shape.text);
         const currentDir = shape.textDir || autoDir;
         ctx.textAlign = currentDir === "rtl" ? "right" : "left";
-        ctx.direction = currentDir;
+        // ctx.direction can be problematic on some mobile browsers when used with textAlign; 
+        // textAlign + manual RTL detection is often more reliable
+        // ctx.direction = currentDir;
         const lineHeight = fontSize * 1.2;
         const lines = shape.text.split("\n");
 

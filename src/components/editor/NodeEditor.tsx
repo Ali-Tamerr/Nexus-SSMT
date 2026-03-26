@@ -616,6 +616,7 @@ export function NodeEditor() {
                 onChange={(e) => setContent(e.target.value)}
                 placeholder="Add content..."
                 rows={6}
+                dir="auto"
                 className="mt-2 w-full resize-none rounded-lg bg-zinc-800 px-4 py-2.5 text-sm text-white placeholder-zinc-500 outline-none ring-1 ring-zinc-700 transition-all  -[#265fbd]"
               />
             </div>

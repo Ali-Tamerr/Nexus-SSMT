@@ -44,10 +44,12 @@ export function getShapeBounds(
       textWidth = Math.max(
         ...lines.map((line) => tempCtx.measureText(line).width),
       );
+      // Small safety margin for mobile rendering inconsistencies
+      textWidth *= 1.05;
     } else {
       // Fallback
       textWidth =
-        Math.max(...lines.map((line) => line.length)) * fontSize * 0.6;
+        Math.max(...lines.map((line) => line.length)) * fontSize * 0.65;
     }
 
     const angle =
