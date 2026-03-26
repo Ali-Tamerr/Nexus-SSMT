@@ -45,12 +45,12 @@ export function getShapeBounds(
       textWidth = Math.max(
         ...lines.map((line) => tempCtx.measureText(line).width),
       );
-      // Increased safety margin (10%) for mobile font rendering discrepancies (wider glyphs)
-      textWidth *= 1.1;
+      // Even larger margin (30%) to handle mobile browsers with extreme font scaling (e.g. Samsung Internet)
+      textWidth *= 1.3;
     } else {
-      // Fallback: Use a slightly wider factor for safety
+      // Fallback: Use a very safe factor
       textWidth =
-        Math.max(...lines.map((line) => line.length)) * fontSize * 0.7;
+        Math.max(...lines.map((line) => line.length)) * fontSize * 0.9;
     }
 
     const angle =
