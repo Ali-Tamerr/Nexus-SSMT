@@ -35,7 +35,8 @@ export function getShapeBounds(
   if (shape.type === "text" && shape.text) {
     const fontSize = shape.fontSize || 16;
     const lines = shape.text.split("\n");
-    const lineHeight = fontSize * 1.2;
+    // Match the 1.4 lineHeight from the rendering logic in drawingUtils.ts
+    const lineHeight = fontSize * 1.4;
     let textWidth = 0;
     const totalHeight = lines.length * lineHeight;
 
@@ -44,12 +45,12 @@ export function getShapeBounds(
       textWidth = Math.max(
         ...lines.map((line) => tempCtx.measureText(line).width),
       );
-      // Small safety margin for mobile rendering inconsistencies
-      textWidth *= 1.05;
+      // Increased safety margin (10%) for mobile font rendering discrepancies (wider glyphs)
+      textWidth *= 1.1;
     } else {
-      // Fallback
+      // Fallback: Use a slightly wider factor for safety
       textWidth =
-        Math.max(...lines.map((line) => line.length)) * fontSize * 0.65;
+        Math.max(...lines.map((line) => line.length)) * fontSize * 0.7;
     }
 
     const angle =

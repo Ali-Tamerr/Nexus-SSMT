@@ -165,13 +165,16 @@ export function drawShapeOnContext(
         ctx.font = `${fontSize}px ${shape.fontFamily || "Inter"}, sans-serif`;
         ctx.fillStyle = shape.color;
         ctx.textBaseline = "top";
+        // Mobile browsers often render fonts slightly larger/wider or with different kerning.
+        // optimizeLegibility helps standardise this, but we also add a width buffer.
+        if ((ctx as any).textRendering) (ctx as any).textRendering = "optimizeLegibility";
+        
         const autoDir = detectTextDir(shape.text);
         const currentDir = shape.textDir || autoDir;
         ctx.textAlign = currentDir === "rtl" ? "right" : "left";
-        // ctx.direction can be problematic on some mobile browsers when used with textAlign; 
-        // textAlign + manual RTL detection is often more reliable
-        // ctx.direction = currentDir;
-        const lineHeight = fontSize * 1.2;
+        
+        // Increased line height for better mobile readability and to prevent clipping
+        const lineHeight = fontSize * 1.4;
         const lines = shape.text.split("\n");
 
         if (points.length >= 2) {
