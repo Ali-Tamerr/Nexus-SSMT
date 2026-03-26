@@ -3019,7 +3019,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
               }}
               onZoom={handleZoom}
               onRenderFramePost={onRenderFramePost}
-              enableNodeDrag={!graphSettings.lockAllMovement && !isDrawingTool}
+              enableNodeDrag={!graphSettings.lockAllMovement && !isDrawingTool && !isPanTool}
               enableZoomInteraction={isSelectTool || isPanTool}
               enablePanInteraction={isPanTool}
               cooldownTicks={isPreviewMode ? 100 : 0}
