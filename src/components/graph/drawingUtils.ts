@@ -165,15 +165,12 @@ export function drawShapeOnContext(
         ctx.font = `${fontSize}px ${shape.fontFamily || "Inter"}, sans-serif`;
         ctx.fillStyle = shape.color;
         ctx.textBaseline = "top";
-        // geometricPrecision is often more consistent across mobile browsers for character width
-        if ((ctx as any).textRendering) (ctx as any).textRendering = "geometricPrecision";
         
         const autoDir = detectTextDir(shape.text);
         const currentDir = shape.textDir || autoDir;
         ctx.textAlign = currentDir === "rtl" ? "right" : "left";
         
-        // Increased line height for better mobile readability and to prevent clipping
-        const lineHeight = fontSize * 1.4;
+        const lineHeight = fontSize * 1.2;
         const lines = shape.text.split("\n");
 
         if (points.length >= 2) {
