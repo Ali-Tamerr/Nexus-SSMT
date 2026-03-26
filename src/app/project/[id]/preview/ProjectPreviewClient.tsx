@@ -320,7 +320,7 @@ export default function ProjectPreviewClient({ params }: { params: Promise<{ id:
     ) => {
         const label = node.title || String(node.id);
         const fontSize = 10;
-        ctx.font = `500 ${fontSize}px Inter, system-ui, sans-serif`;
+        ctx.font = `500 ${fontSize}px Inter, "Noto Sans Arabic", system-ui, sans-serif`;
 
         const isMatch = !searchQuery || label.toLowerCase().includes(searchQuery.toLowerCase());
         const opacity = isMatch ? 1 : 0.1;

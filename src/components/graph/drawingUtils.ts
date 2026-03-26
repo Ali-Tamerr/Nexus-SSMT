@@ -162,7 +162,7 @@ export function drawShapeOnContext(
     case "text":
       if (shape.text && points.length > 0) {
         const fontSize = shape.fontSize || 16;
-        ctx.font = `${fontSize}px ${shape.fontFamily || "Inter"}, sans-serif`;
+        ctx.font = `${fontSize}px ${shape.fontFamily || "Inter"}, "Noto Sans Arabic", sans-serif`;
         ctx.fillStyle = shape.color;
         ctx.textBaseline = "top";
         

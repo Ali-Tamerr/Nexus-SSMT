@@ -492,7 +492,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
       const label = node.title || String(node.id);
       const nodeGroup = node.groupId ?? 0;
       const fontSize = 10;
-      ctx.font = `500 ${fontSize}px Inter, system-ui, sans-serif`;
+      ctx.font = `500 ${fontSize}px Inter, "Noto Sans Arabic", system-ui, sans-serif`;
 
       const nodeId = Number(node.id);
       const isActive = activeNode?.id === nodeId;
@@ -2887,7 +2887,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
                 const midY = (1 - t) * (1 - t) * source.y + 2 * (1 - t) * t * controlY + t * t * target.y;
 
                 const fontSize = Math.max(10 / globalScale, 2);
-                ctx.font = `${fontSize}px Inter, sans-serif`;
+                ctx.font = `${fontSize}px Inter, "Noto Sans Arabic", sans-serif`;
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
 

@@ -40,7 +40,7 @@ export function getShapeBounds(
     const totalHeight = lines.length * lineHeight;
 
     if (tempCtx) {
-      tempCtx.font = `${fontSize}px ${shape.fontFamily || "Inter"}, sans-serif`;
+      tempCtx.font = `${fontSize}px ${shape.fontFamily || "Inter"}, "Noto Sans Arabic", sans-serif`;
       textWidth = Math.max(
         ...lines.map((line) => tempCtx.measureText(line).width),
       );
