@@ -2,7 +2,7 @@
 
 import { DrawingTool, StrokeStyle, DrawnShape } from "@/types/knowledge";
 import { getShapeBounds } from "./resizeUtils";
-import { getCanvasTextScale } from "./canvasTextScale";
+import { getCanvasTextScale, detectTextDir } from "./canvasTextScale";
 
 export function drawShapeOnContext(
   ctx: CanvasRenderingContext2D,
@@ -167,13 +167,18 @@ export function drawShapeOnContext(
         const textScale = getCanvasTextScale();
         const fontSize = textScale > 1.01 ? rawFontSize / textScale : rawFontSize;
         
-        ctx.font = `${fontSize}px ${shape.fontFamily || "Inter"}, "Noto Sans Arabic", sans-serif`;
+        const baseFont = shape.fontFamily || "Inter";
+        // User prefers the "Amiri" (Serif) Arabic look even when using a Sans (Inter) base font for English.
+        const fallbacks = '"Amiri", "Segoe UI Arabic", "Noto Sans Arabic", "Times New Roman", Tahoma, Arial, sans-serif';
+        ctx.font = `${fontSize}px ${baseFont}, ${fallbacks}`;
         ctx.fillStyle = shape.color;
         ctx.textBaseline = "top";
         
         const autoDir = detectTextDir(shape.text);
         const currentDir = shape.textDir || autoDir;
         ctx.textAlign = currentDir === "rtl" ? "right" : "left";
+        // direction is key for properly reordering mixed LTR/RTL text (BiDi)
+        if ('direction' in ctx) ctx.direction = currentDir === "rtl" ? "rtl" : "ltr";
         
         const lineHeight = fontSize * 1.2;
         const lines = shape.text.split("\n");
@@ -422,15 +427,4 @@ export function drawMarquee(
   ctx.fillRect(x, y, width, height);
   ctx.strokeRect(x, y, width, height);
   ctx.restore();
-}
-
-/**
- * Detects if a string contains RTL characters (Arabic, Hebrew, etc.)
- */
-export function detectTextDir(text: string | null | undefined): "ltr" | "rtl" {
-  if (!text) return "ltr";
-  // Pattern for Arabic, Hebrew, etc.
-  const rtlPattern =
-    /[\u0591-\u07FF\uFB1D-\uFDFD\uFE70-\uFEFC\u08A0-\u08FF\u0590-\u05FF\u0600-\u06FF]/;
-  return rtlPattern.test(text) ? "rtl" : "ltr";
 }

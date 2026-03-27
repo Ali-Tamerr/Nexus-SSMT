@@ -18,6 +18,7 @@ import { PreviewNavbar } from '@/components/layout/PreviewNavbar';
 import { useGraphExport } from '@/hooks/useGraphExport';
 import { GroupsTabs } from '@/components/graph/GroupsTabs';
 import { SelectionPane } from '@/components/graph/SelectionPane';
+import { detectTextDir } from '@/components/graph/canvasTextScale';
 
 const ForceGraph2D = dynamic(() => import('react-force-graph-2d'), { ssr: false }) as any;
 
@@ -320,7 +321,7 @@ export default function ProjectPreviewClient({ params }: { params: Promise<{ id:
     ) => {
         const label = node.title || String(node.id);
         const fontSize = 10;
-        ctx.font = `500 ${fontSize}px Inter, "Noto Sans Arabic", system-ui, sans-serif`;
+        ctx.font = `500 ${fontSize}px Inter, "Segoe UI", "Noto Sans Arabic", system-ui, sans-serif`;
 
         const isMatch = !searchQuery || label.toLowerCase().includes(searchQuery.toLowerCase());
         const opacity = isMatch ? 1 : 0.1;
@@ -358,7 +359,14 @@ export default function ProjectPreviewClient({ params }: { params: Promise<{ id:
         ctx.textAlign = 'center';
         ctx.textBaseline = 'top';
         ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+        
+        // Add BiDi support
+        if ('direction' in ctx) {
+            ctx.direction = detectTextDir(label) === 'rtl' ? 'rtl' : 'ltr';
+        }
+        
         ctx.fillText(label, x, y + nodeRadius + 3);
+        if ('direction' in ctx) ctx.direction = 'ltr';
     }, [searchQuery]);
 
     const onRenderFramePost = useCallback((ctx: CanvasRenderingContext2D, globalScale: number) => {

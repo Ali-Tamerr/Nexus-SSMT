@@ -120,7 +120,7 @@ export interface GraphSettings {
   strokeStyle: StrokeStyle;
   fontSize: number;
   fontFamily: string;
-  textDir: "ltr" | "rtl";
+  textDir?: "ltr" | "rtl";
 }
 
 export interface PresenceState {

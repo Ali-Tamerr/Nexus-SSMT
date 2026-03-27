@@ -91,3 +91,14 @@ export function getCanvasTextScale(): number {
 
   return _canvasTextScale;
 }
+
+/**
+ * Detects if a string contains RTL characters (Arabic, Hebrew, etc.)
+ */
+export function detectTextDir(text: string | null | undefined): "ltr" | "rtl" {
+  if (!text) return "ltr";
+  // Pattern for Arabic, Hebrew, etc.
+  const rtlPattern =
+    /[\u0591-\u07FF\uFB1D-\uFDFD\uFE70-\uFEFC\u08A0-\u08FF\u0590-\u05FF\u0600-\u06FF]/;
+  return rtlPattern.test(text) ? "rtl" : "ltr";
+}

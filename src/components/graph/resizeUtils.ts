@@ -1,5 +1,5 @@
 import { DrawnShape } from "@/types/knowledge";
-import { getCanvasTextScale } from "./canvasTextScale";
+import { getCanvasTextScale, detectTextDir } from "./canvasTextScale";
 
 export type ResizeHandle =
   | "nw"
@@ -45,7 +45,11 @@ export function getShapeBounds(
     const totalHeight = lines.length * lineHeight;
 
     if (tempCtx) {
-      tempCtx.font = `${fontSize}px ${shape.fontFamily || "Inter"}, "Noto Sans Arabic", sans-serif`;
+      const isRTL = (shape.textDir || detectTextDir(shape.text)) === "rtl";
+      const baseFont = shape.fontFamily || "Inter";
+      const fallbacks = '"Amiri", "Segoe UI Arabic", "Noto Sans Arabic", "Times New Roman", Tahoma, Arial, sans-serif';
+      tempCtx.font = `${fontSize}px ${baseFont}, ${fallbacks}`;
+      if ('direction' in tempCtx) tempCtx.direction = isRTL ? "rtl" : "ltr";
       textWidth = Math.max(
         ...lines.map((line) => tempCtx.measureText(line).width),
       );
@@ -81,7 +85,7 @@ export function getShapeBounds(
     // So the text extends to the "left" of p0.
     // LTR (left anchor): extends along +width, +height
     // RTL (right anchor): extends along -width, +height
-    const isRTL = shape.textDir === "rtl";
+    const isRTL = (shape.textDir || detectTextDir(shape.text)) === "rtl";
 
     const x1 = p0.x;
     const y1 = p0.y;

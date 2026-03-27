@@ -6,8 +6,9 @@ import { useGraphStore, filterNodes } from '@/store/useGraphStore';
 import { useToast } from '@/context/ToastContext';
 import { DrawingProperties } from './DrawingProperties';
 import { ConnectionProperties } from './ConnectionProperties';
-import { drawShapeOnContext, isPointNearShape, drawSelectionBox, isShapeInMarquee, drawMarquee, detectTextDir } from './drawingUtils';
+import { drawShapeOnContext, isPointNearShape, drawSelectionBox, isShapeInMarquee, drawMarquee } from './drawingUtils';
 import { getShapeBounds, drawResizeHandles, getHandleAtPoint, resizeShape, rotateShape, getCursorForHandle, ResizeHandle, ShapeBounds, getResizeHandlePosition } from './resizeUtils';
+import { getCanvasTextScale, detectTextDir } from "./canvasTextScale";
 import { SelectionPane } from './SelectionPane';
 import { GroupsTabs, getNextGroupColor } from './GroupsTabs';
 import { DrawnShape } from '@/types/knowledge';
@@ -492,7 +493,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
       const label = node.title || String(node.id);
       const nodeGroup = node.groupId ?? 0;
       const fontSize = 10;
-      ctx.font = `500 ${fontSize}px Inter, "Noto Sans Arabic", system-ui, sans-serif`;
+      ctx.font = `500 ${fontSize}px "Noto Sans Arabic", "Segoe UI Arabic", "Segoe UI", Tahoma, Arial, system-ui, sans-serif`;
 
       const nodeId = Number(node.id);
       const isActive = activeNode?.id === nodeId;
@@ -558,7 +559,10 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
       ctx.textAlign = 'center';
       ctx.textBaseline = 'top';
       ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+      const nodeDir = detectTextDir(label);
+      if ('direction' in ctx) ctx.direction = nodeDir === 'rtl' ? 'rtl' : 'ltr';
       ctx.fillText(label, x, y + nodeRadius + 3);
+      if ('direction' in ctx) ctx.direction = 'ltr'; // reset
     },
     [activeNode, searchQuery, selectedNodeIds, groups]
   );
@@ -2937,8 +2941,8 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
                     let groupId = typeof activeGroupId === 'number' ? activeGroupId : 0;
                     if (groupId === 0) {
                       try {
-                        const bg = await api.groups.getByProject(projectId);
-                        if (bg && bg.length > 0) groupId = bg[0].id;
+                        const groups = await api.groups.getByProject(projectId);
+                        if (groups && groups.length > 0) groupId = groups[0].id;
                         else {
                           const ng = await api.groups.create({ name: 'Default', color: '#808080', order: 0, projectId });
                           if (ng) groupId = ng.id;
@@ -3125,13 +3129,11 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
               <div
                 ref={textAreaContainerRef}
                 key={currentEditingId || 'new'}
-                className="fixed z-50 text-area-container"
+                className="absolute z-50 text-area-container"
                 style={{
                   left: screenPos.x,
                   top: screenPos.y,
-                  // transform: (editingShape?.textDir || graphSettings.textDir) === 'rtl' ? 'translateX(-100%)' : 'none', 
-                  // The translateX(-100%) was causing misalignment with the canvas textAlign='right'.
-                  // Keeping it at the natural position is more consistent with the top-right anchor.
+                  transform: (editingShape?.textDir || graphSettings.textDir || detectTextDir(editingShape?.text || textInputValue)) === 'rtl' ? 'translateX(-100%)' : 'none',
                   pointerEvents: 'auto',
                   display: 'grid',
                   width: 'max-content'
@@ -3148,7 +3150,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
                     whiteSpace: 'pre',
                     wordBreak: 'normal',
                     fontSize: ((editingShape?.fontSize || graphSettings.fontSize || 16) * (graphTransform.k || 1)),
-                    fontFamily: editingShape?.fontFamily || graphSettings.fontFamily || 'Inter',
+                    fontFamily: `${editingShape?.fontFamily || graphSettings.fontFamily || 'Inter'}, "Amiri", "Segoe UI Arabic", "Noto Sans Arabic", "Times New Roman", Tahoma, Arial, sans-serif`,
                     lineHeight: 1.2,
                     minWidth: '50px',
                     padding: 0,
@@ -3160,7 +3162,6 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
                 </div>
                 <textarea
                   autoFocus
-                  dir={editingShape?.textDir || graphSettings.textDir || 'ltr'}
                   value={textInputValue}
                   onChange={(e) => {
                     setTextInputValue(e.target.value);
@@ -3191,7 +3192,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
                     const fallbackPos = textInputPos;
                     if (textInputValue.trim()) {
                       if (editingShapeId !== null) {
-                        const finalDir = editingShape?.textDir || graphSettings.textDir || 'ltr';
+                        const finalDir = editingShape?.textDir || graphSettings.textDir;
                         updateShape(editingShapeId, { text: textInputValue.trim(), textDir: finalDir, fontFamily: editingShape?.fontFamily || graphSettings.fontFamily });
                         api.drawings.update(editingShapeId, {
                           ...(editingShape ? shapeToApiDrawing(editingShape, currentProject?.id || 0, activeGroupId ?? undefined) : {}),
@@ -3212,7 +3213,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
                           text: textInputValue.trim(),
                           fontSize: graphSettings.fontSize || 16,
                           fontFamily: graphSettings.fontFamily || 'Inter',
-                          textDir: graphSettings.textDir || 'ltr',
+                          textDir: graphSettings.textDir,
                           groupId: activeGroupId ?? undefined,
                           synced: false,
                         };
@@ -3258,10 +3259,10 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
                     width: '100%',
                     height: '100%',
                     fontSize: ((editingShape?.fontSize || graphSettings.fontSize || 16) * (graphTransform.k || 1)),
-                    fontFamily: editingShape?.fontFamily || graphSettings.fontFamily || 'Inter',
+                    fontFamily: `${editingShape?.fontFamily || graphSettings.fontFamily || 'Inter'}, "Amiri", "Segoe UI Arabic", "Noto Sans Arabic", "Times New Roman", Tahoma, Arial, sans-serif`,
                     color: editingShape?.color || graphSettings.strokeColor,
                     lineHeight: 1.2,
-                    textAlign: (editingShape?.textDir || graphSettings.textDir) === 'rtl' ? 'right' : 'left',
+                    textAlign: (editingShape?.textDir || graphSettings.textDir || detectTextDir(editingShape?.text || textInputValue)) === 'rtl' ? 'right' : 'left',
                     whiteSpace: 'pre',
                     wordBreak: 'normal',
                     display: 'block',
@@ -3269,6 +3270,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
                     transform: 'translateZ(0)',
                   }}
                   placeholder="Type here..."
+                  dir={(editingShape?.textDir || graphSettings.textDir || detectTextDir(editingShape?.text || textInputValue)) === 'rtl' ? 'rtl' : 'ltr'}
                 />
               </div>
             );
