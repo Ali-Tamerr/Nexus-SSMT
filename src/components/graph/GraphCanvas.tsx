@@ -2458,7 +2458,59 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
     if (isMarqueeSelecting && marqueeStart && marqueeEnd) {
       drawMarquee(ctx, marqueeStart, marqueeEnd, globalScale);
     }
-  }, [filteredShapes, isDrawing, currentPoints, graphSettings.activeTool, graphSettings.strokeColor, graphSettings.strokeWidth, graphSettings.strokeStyle, selectedShapeIds, isMarqueeSelecting, marqueeStart, marqueeEnd, isResizing, resizeUpdateCounter, drawPreview, currentProject?.id, shapeToApiDrawing, addShape, editingShapeId, groupsReady]);
+
+    // Draw connection descriptions on top of everything
+    const linksData = links;
+    if (linksData) {
+      linksData.forEach((link: any) => {
+        if (!link.description) return;
+
+        // Resolve source/target objects if they are just IDs
+        const source = typeof link.source === 'object' ? link.source : nodes.find(n => n.id === link.source);
+        const target = typeof link.target === 'object' ? link.target : nodes.find(n => n.id === link.target);
+
+        if (!source || !target || typeof source.x !== 'number' || typeof target.x !== 'number') return;
+
+        const curvature = 0.1;
+        const dx = target.x - source.x;
+        const dy = target.y - source.y;
+        const l = Math.sqrt(dx * dx + dy * dy);
+        if (l === 0) return;
+
+        const straightMidX = (source.x + target.x) / 2;
+        const straightMidY = (source.y + target.y) / 2;
+        const controlPointOffset = curvature * l;
+        const controlX = straightMidX + dy / l * controlPointOffset;
+        const controlY = straightMidY - dx / l * controlPointOffset;
+
+        const t = 0.5;
+        const midX = (1 - t) * (1 - t) * source.x + 2 * (1 - t) * t * controlX + t * t * target.x;
+        const midY = (1 - t) * (1 - t) * source.y + 2 * (1 - t) * t * controlY + t * t * target.y;
+
+        const fontSize = 8; // Use constant graph units so it behaves like nodes/shapes
+        ctx.font = `${fontSize}px Inter, "Amiri", "Segoe UI Arabic", "Noto Sans Arabic", sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+
+        const padding = 4 / globalScale;
+        const nodeDir = detectTextDir(link.description);
+        if ('direction' in ctx) ctx.direction = nodeDir === 'rtl' ? 'rtl' : 'ltr';
+        const textWidth = ctx.measureText(link.description).width;
+
+        ctx.fillStyle = 'rgba(24, 24, 27, 0.9)';
+        ctx.beginPath();
+        // Background should STILL scale with globalScale OR or be constant graph units.
+        // If the font is constant graph unit, then the background should be too.
+        const boxPadding = 4; // graph units
+        ctx.roundRect(midX - textWidth / 2 - boxPadding, midY - fontSize / 2 - boxPadding, textWidth + boxPadding * 2, fontSize + boxPadding * 2, 3);
+        ctx.fill();
+
+        ctx.fillStyle = '#f8fafc';
+        ctx.fillText(link.description, midX, midY);
+        if ('direction' in ctx) ctx.direction = 'ltr';
+      });
+    }
+  }, [filteredShapes, isDrawing, currentPoints, graphSettings.activeTool, graphSettings.strokeColor, graphSettings.strokeWidth, graphSettings.strokeStyle, selectedShapeIds, isMarqueeSelecting, marqueeStart, marqueeEnd, isResizing, resizeUpdateCounter, drawPreview, currentProject?.id, shapeToApiDrawing, addShape, editingShapeId, groupsReady, links, nodes]);
 
   const handleSelectMouseDown = useCallback((e: React.MouseEvent) => {
     if (useGraphStore.getState().isConnectionPickerActive) return;
@@ -2865,47 +2917,6 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
               linkDirectionalArrowRelPos={1}
               linkCurvature={0.1}
               linkCanvasObjectMode={() => 'after'}
-              linkCanvasObject={(link: any, ctx: CanvasRenderingContext2D, globalScale: number) => {
-                if (!link.description) return;
-
-                const source = link.source;
-                const target = link.target;
-                if (!source?.x || !target?.x) return;
-
-                const curvature = 0.1;
-                const dx = target.x - source.x;
-                const dy = target.y - source.y;
-                const l = Math.sqrt(dx * dx + dy * dy);
-
-                if (l === 0) return;
-
-                const straightMidX = (source.x + target.x) / 2;
-                const straightMidY = (source.y + target.y) / 2;
-
-                const controlPointOffset = curvature * l;
-                const controlX = straightMidX + dy / l * controlPointOffset;
-                const controlY = straightMidY - dx / l * controlPointOffset;
-
-                const t = 0.5;
-                const midX = (1 - t) * (1 - t) * source.x + 2 * (1 - t) * t * controlX + t * t * target.x;
-                const midY = (1 - t) * (1 - t) * source.y + 2 * (1 - t) * t * controlY + t * t * target.y;
-
-                const fontSize = Math.max(10 / globalScale, 2);
-                ctx.font = `${fontSize}px Inter, "Noto Sans Arabic", sans-serif`;
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-
-                const padding = 3 / globalScale;
-                const textWidth = ctx.measureText(link.description).width;
-
-                ctx.fillStyle = 'rgba(24, 24, 27, 0.9)';
-                ctx.beginPath();
-                ctx.roundRect(midX - textWidth / 2 - padding, midY - fontSize / 2 - padding, textWidth + padding * 2, fontSize + padding * 2, 3 / globalScale);
-                ctx.fill();
-
-                ctx.fillStyle = '#a1a1aa';
-                ctx.fillText(link.description, midX, midY);
-              }}
               onNodeClick={(node: any, event: any) => {
                 const state = useGraphStore.getState();
                 if (state.isConnectionPickerActive) {
@@ -3011,6 +3022,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
                 }
 
                 setActiveNode(null);
+                setSelectedLink(null);
                 setSelectedNodeIds(new Set());
                 setSelectedShapeIds(new Set());
                 // Close selection pane

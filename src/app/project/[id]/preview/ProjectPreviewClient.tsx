@@ -373,7 +373,50 @@ export default function ProjectPreviewClient({ params }: { params: Promise<{ id:
         filteredShapes.forEach(shape => {
             drawShapeOnContext(ctx, shape, globalScale);
         });
-    }, [filteredShapes]);
+
+        // Draw connection descriptions on top of everything
+        links.forEach((link: any) => {
+            if (!link.description) return;
+
+            const source = typeof link.source === 'object' ? link.source : nodes.find(n => n.id === link.source);
+            const target = typeof link.target === 'object' ? link.target : nodes.find(n => n.id === link.target);
+            if (!source?.x || !target?.x) return;
+
+            const curvature = 0.1;
+            const dx = target.x - source.x;
+            const dy = target.y - source.y;
+            const l = Math.sqrt(dx * dx + dy * dy);
+            if (l === 0) return;
+
+            const straightMidX = (source.x + target.x) / 2;
+            const straightMidY = (source.y + target.y) / 2;
+            const controlPointOffset = curvature * l;
+            const controlX = straightMidX + dy / l * controlPointOffset;
+            const controlY = straightMidY - dx / l * controlPointOffset;
+
+            const t = 0.5;
+            const midX = (1 - t) * (1 - t) * source.x + 2 * (1 - t) * t * controlX + t * t * target.x;
+            const midY = (1 - t) * (1 - t) * source.y + 2 * (1 - t) * t * controlY + t * t * target.y;
+
+            const fontSize = 8;
+            ctx.font = `${fontSize}px Inter, "Amiri", "Segoe UI Arabic", "Noto Sans Arabic", sans-serif`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+
+            const boxPadding = 4;
+            if ('direction' in ctx) ctx.direction = detectTextDir(link.description) === 'rtl' ? 'rtl' : 'ltr';
+            const textWidth = ctx.measureText(link.description).width;
+
+            ctx.fillStyle = 'rgba(24, 24, 27, 0.9)';
+            ctx.beginPath();
+            ctx.roundRect(midX - textWidth / 2 - boxPadding, midY - fontSize / 2 - boxPadding, textWidth + boxPadding * 2, fontSize + boxPadding * 2, 3);
+            ctx.fill();
+
+            ctx.fillStyle = '#f8fafc';
+            ctx.fillText(link.description, midX, midY);
+            if ('direction' in ctx) ctx.direction = 'ltr';
+        });
+    }, [filteredShapes, links, nodes]);
 
     const handleNodeHover = useCallback((node: any) => {
         setIsHoveringNode(!!node);
