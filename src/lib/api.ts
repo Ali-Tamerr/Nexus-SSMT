@@ -554,10 +554,10 @@ export const api = {
 
   projectCollections: {
     getByUser: (userId: string) =>
-      fetchApi<ProjectCollection[]>(`/api/ProjectCollections?userId=${userId}`),
+      fetchApi<ProjectCollection[]>(`/api/projectcollections?userId=${userId}`),
 
     getById: (id: number) =>
-      fetchApi<ProjectCollection>(`/api/ProjectCollections/${id}`),
+      fetchApi<ProjectCollection>(`/api/projectcollections/${id}`),
 
     create: (data: {
       name: string;
@@ -567,7 +567,7 @@ export const api = {
       pinnedProjectIds?: number[];
     }) =>
       fetchApiWithBody<ProjectCollection>(
-        "/api/ProjectCollections",
+        "/api/projectcollections",
         "POST",
         data,
       ),
@@ -584,20 +584,20 @@ export const api = {
       },
     ) =>
       fetchApiWithBody<ProjectCollection>(
-        `/api/ProjectCollections/${id}`,
+        `/api/projectcollections/${id}`,
         "PUT",
         { ...data, id },
       ),
 
     delete: (id: number) =>
-      fetchApi<void>(`/api/ProjectCollections/${id}`, { method: "DELETE" }),
+      fetchApi<void>(`/api/projectcollections/${id}`, { method: "DELETE" }),
   },
   recentVisits: {
     getRecent: (userId: string) =>
-      fetchApi<RecentVisit[]>(`/api/RecentVisits?userId=${userId}`),
+      fetchApi<RecentVisit[]>(`/api/recentvisits?userId=${userId}`),
 
     trackVisit: (data: { userId: string; targetId: number; targetType: string }) =>
-      fetchApiWithBody<void>("/api/RecentVisits", "POST", data),
+      fetchApiWithBody<void>("/api/recentvisits", "POST", data),
   },
 };
 
