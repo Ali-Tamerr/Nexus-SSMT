@@ -17,6 +17,7 @@ interface ProjectInfoPopupProps {
   updatedAt?: string | null;
   name?: string | null;
   className?: string;
+  isPreviewMode?: boolean;
 }
 
 export const ProjectInfoPopup = forwardRef<{ open: () => void }, ProjectInfoPopupProps>(({
@@ -25,7 +26,8 @@ export const ProjectInfoPopup = forwardRef<{ open: () => void }, ProjectInfoPopu
   description,
   updatedAt,
   name,
-  className = ""
+  className = "",
+  isPreviewMode = false
 }, ref) => {
   const [isOpen, setIsOpen] = useState(false);
   const [members, setMembers] = useState<any[]>([]);
@@ -208,6 +210,9 @@ export const ProjectInfoPopup = forwardRef<{ open: () => void }, ProjectInfoPopu
                   <h3 className="text-base font-bold text-white leading-tight">
                     {name}
                   </h3>
+                  {isPreviewMode && (
+                    <p className="text-[10px] text-zinc-500 mt-0.5">Preview Mode</p>
+                  )}
                 </div>
               )}
               <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">

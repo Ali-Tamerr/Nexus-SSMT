@@ -309,12 +309,14 @@ export function PreviewNavbar({
                                 targetId={projectId}
                                 description={projectDescription}
                                 updatedAt={projectUpdatedAt}
+                                name={projectName}
+                                isPreviewMode={true}
                             />
                         )}
                     </div>
                 </div>
 
-                <div className="flex-1 min-w-0 mx-4 pointer-events-auto">
+                <div className="flex-1 min-w-0 mx-4 pointer-events-auto hidden sm:block">
                     <h1 className="text-xs sm:text-sm font-semibold text-white truncate">{projectName || 'Project'}</h1>
                     <p className="text-[10px] text-zinc-500">Preview Mode</p>
                 </div>
