@@ -32,7 +32,7 @@ export function RecentVisitsTab() {
     }
   };
 
-  const filteredVisits = recentVisits.filter(visit => 
+  const filteredVisits = recentVisits.filter(visit =>
     visit.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     (visit.description && visit.description.toLowerCase().includes(searchQuery.toLowerCase())) ||
     (visit.ownerName && visit.ownerName.toLowerCase().includes(searchQuery.toLowerCase()))
@@ -56,8 +56,8 @@ export function RecentVisitsTab() {
               <History className="h-4 w-4 text-zinc-500" />
               <span className="text-xs font-bold uppercase tracking-widest text-zinc-500">Your Activity</span>
             </div>
-            <button 
-              onClick={() => setIsOpen(false)} 
+            <button
+              onClick={() => setIsOpen(false)}
               className="rounded-full p-1 text-zinc-500 transition-colors hover:bg-zinc-800 hover:text-white"
             >
               <X className="h-4 w-4" />
@@ -76,53 +76,60 @@ export function RecentVisitsTab() {
             />
           </div>
 
-          <div className="max-h-[min(500px,70vh)] overflow-y-auto custom-scrollbar pr-1">
-            {recentVisits.length === 0 ? (
-              <div className="py-12 text-center text-zinc-600">
-                <Clock className="mx-auto mb-3 h-10 w-10 opacity-20" />
-                <p className="text-sm">No recent activity yet</p>
-                <p className="mt-1 text-xs opacity-50">Visit a project to track it here!</p>
-              </div>
-            ) : filteredVisits.length === 0 ? (
-              <div className="py-12 text-center text-zinc-600">
-                <Search className="mx-auto mb-3 h-10 w-10 opacity-20" />
-                <p className="text-sm">No results for "{searchQuery}"</p>
-              </div>
-            ) : (
-              <div className="grid gap-2">
-                {filteredVisits.map((visit) => (
-                  <button
-                    key={`${visit.targetType}-${visit.targetId}`}
-                    onClick={() => handleItemClick(visit)}
-                    className="group relative flex w-full items-center gap-4 rounded-xl p-3 text-left transition-all hover:bg-white/5"
-                  >
-                    <div 
-                      className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-zinc-800 group-hover:scale-105 transition-transform"
-                      style={{ borderLeft: visit.color ? `4px solid ${visit.color}` : 'none' }}
+          <div className="relative">
+            <div 
+              className="max-h-[min(500px,70vh)] overflow-x-auto overflow-y-auto custom-scrollbar [&::-webkit-scrollbar:horizontal]:hidden"
+              style={{ scrollbarWidth: 'thin' }}
+            >
+              {recentVisits.length === 0 ? (
+                <div className="py-12 text-center text-zinc-600">
+                  <Clock className="mx-auto mb-3 h-10 w-10 opacity-20" />
+                  <p className="text-sm">No recent activity yet</p>
+                  <p className="mt-1 text-xs opacity-50">Visit a project to track it here!</p>
+                </div>
+              ) : filteredVisits.length === 0 ? (
+                <div className="py-12 text-center text-zinc-600">
+                  <Search className="mx-auto mb-3 h-10 w-10 opacity-20" />
+                  <p className="text-sm">No results for "{searchQuery}"</p>
+                </div>
+              ) : (
+                <div className="flex flex-col divide-y divide-zinc-800/30 whitespace-nowrap w-max min-w-full">
+                  {filteredVisits.map((visit) => (
+                    <button
+                      key={`${visit.targetType}-${visit.targetId}`}
+                      onClick={() => handleItemClick(visit)}
+                      className="group relative flex w-full items-center gap-3 py-3 pr-6 text-left transition-all hover:bg-white/5"
                     >
-                      {visit.targetType === 'project' ? (
-                        <FolderKanban className="h-6 w-6 text-zinc-400 group-hover:text-blue-400" />
-                      ) : (
-                        <Layers className="h-6 w-6 text-zinc-400 group-hover:text-violet-400" />
-                      )}
-                    </div>
-                    <div className="flex flex-col min-w-0 flex-1">
-                      <div className="flex items-center justify-between gap-3">
-                        <span className="truncate text-base font-semibold text-zinc-200 group-hover:text-white">
-                          {visit.name}
-                        </span>
-                        <span className="text-xs text-zinc-600 whitespace-nowrap">
-                          {new Date(visit.visitedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                      <div 
+                        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-zinc-800 group-hover:scale-105 transition-transform"
+                        style={{ borderLeft: visit.color ? `3px solid ${visit.color}` : 'none' }}
+                      >
+                        {visit.targetType === 'project' ? (
+                          <FolderKanban className="h-5 w-5 text-zinc-400 group-hover:text-blue-400" />
+                        ) : (
+                          <Layers className="h-5 w-5 text-zinc-400 group-hover:text-violet-400" />
+                        )}
+                      </div>
+                      <div className="flex flex-col flex-1 min-w-0">
+                        <div className="flex items-center justify-between w-full">
+                          <span className="text-base font-semibold text-zinc-200 group-hover:text-white mr-12">
+                            {visit.name}
+                          </span>
+                          <span className="text-xs text-zinc-600 shrink-0 ml-auto">
+                            {new Date(visit.visitedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                          </span>
+                        </div>
+                        <span className="text-xs text-zinc-500">
+                          {visit.ownerName ? `by ${visit.ownerName}` : visit.description || 'No description provided'}
                         </span>
                       </div>
-                      <span className="truncate text-xs text-zinc-500">
-                        {visit.ownerName ? `by ${visit.ownerName}` : visit.description || 'No description provided'}
-                      </span>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            )}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            {/* Edge gradient indicator */}
+            <div className="absolute right-0 top-0 bottom-0 w-12 bg-linear-to-l from-zinc-900 via-transparent to-transparent pointer-events-none z-10" />
           </div>
         </div>
       )}
