@@ -34,6 +34,34 @@ export default function CollectionPreviewPage() {
     const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
     const { trackVisit } = useRecentVisits();
 
+    const resolveOwnerDisplayName = (profile: Profile | null): string => {
+        if (!profile) return 'Unknown User';
+
+        const emailLocalPart = profile.email?.split('@')[0]?.trim().toLowerCase() || '';
+        const candidates = [
+            profile.displayName,
+            (profile as any).fullName,
+            (profile as any).name,
+            (profile as any).display_name,
+            (profile as any).full_name,
+            (profile as any).userMetadata?.full_name,
+            (profile as any).userMetadata?.name,
+            (profile as any).user_metadata?.full_name,
+            (profile as any).user_metadata?.name,
+        ]
+            .map((value) => (typeof value === 'string' ? value.trim() : ''))
+            .filter(Boolean);
+
+        const nonEmailLike = candidates.find((value) => {
+            if (!emailLocalPart) return true;
+            return value.toLowerCase() !== emailLocalPart;
+        });
+
+        return nonEmailLike || candidates[0] || 'Unknown User';
+    };
+
+    const ownerDisplayName = resolveOwnerDisplayName(owner);
+
     const handleRequestAccess = async () => {
         if (!isAuthenticated || !user) {
             useAuthStore.getState().setReturnUrl(window.location.pathname);
@@ -114,7 +142,6 @@ export default function CollectionPreviewPage() {
         };
         fetchStatus();
     }, [isAuthenticated, user?.id, id]);
-
     useEffect(() => {
         if (collection?.name && id) {
             trackVisit({
@@ -171,33 +198,6 @@ export default function CollectionPreviewPage() {
         }
     };
 
-    const resolveOwnerDisplayName = (profile: Profile | null): string => {
-        if (!profile) return 'Unknown User';
-
-        const emailLocalPart = profile.email?.split('@')[0]?.trim().toLowerCase() || '';
-        const candidates = [
-            profile.displayName,
-            (profile as any).fullName,
-            (profile as any).name,
-            (profile as any).display_name,
-            (profile as any).full_name,
-            (profile as any).userMetadata?.full_name,
-            (profile as any).userMetadata?.name,
-            (profile as any).user_metadata?.full_name,
-            (profile as any).user_metadata?.name,
-        ]
-            .map((value) => (typeof value === 'string' ? value.trim() : ''))
-            .filter(Boolean);
-
-        const nonEmailLike = candidates.find((value) => {
-            if (!emailLocalPart) return true;
-            return value.toLowerCase() !== emailLocalPart;
-        });
-
-        return nonEmailLike || candidates[0] || 'Unknown User';
-    };
-
-    const ownerDisplayName = resolveOwnerDisplayName(owner);
 
     const ownerInitials = ownerDisplayName
         .split(' ')
