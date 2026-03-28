@@ -7,6 +7,8 @@ import { useGraphStore } from '@/store/useGraphStore';
 import { api } from '@/lib/api';
 import { ColorPicker } from '@/components/ui/ColorPicker';
 import { useToast } from '@/context/ToastContext';
+import { useAuthStore } from '@/store/useAuthStore';
+import { realtimeSync } from '@/lib/supabase/realtime';
 
 interface ConnectionPropertiesProps {
     link: Link | null;
@@ -17,6 +19,7 @@ export function ConnectionProperties({ link, onClose }: ConnectionPropertiesProp
     const nodes = useGraphStore((s) => s.nodes);
     const deleteLink = useGraphStore((s) => s.deleteLink);
     const addLink = useGraphStore((s) => s.addLink);
+    const user = useAuthStore((s) => s.user);
     const { showConfirmation } = useToast();
 
     const [isEditing, setIsEditing] = useState(false);
@@ -33,6 +36,9 @@ export function ConnectionProperties({ link, onClose }: ConnectionPropertiesProp
         try {
             await api.links.delete(link.id);
             deleteLink(link.id);
+            if (link.projectId && user?.id) {
+                realtimeSync.notifyUpdate(link.projectId, user.id);
+            }
             onClose();
         } catch (err) {
             // console.error('Failed to delete connection:', err);
@@ -52,6 +58,9 @@ export function ConnectionProperties({ link, onClose }: ConnectionPropertiesProp
 
             deleteLink(link.id);
             addLink(updatedLink);
+            if (link.projectId && user?.id) {
+                realtimeSync.notifyUpdate(link.projectId, user.id);
+            }
             setIsEditing(false);
         } catch (err) {
             // console.error('Failed to update connection:', err);

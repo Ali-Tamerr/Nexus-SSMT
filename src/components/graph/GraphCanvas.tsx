@@ -710,6 +710,9 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
           api.drawings.update(id, shapeToApiDrawing({ ...s, color: graphSettings.strokeColor }, currentProject?.id || 0, activeGroupId ?? undefined));
         }
       });
+      if (currentProject?.id && user?.id) {
+        realtimeSync.notifyUpdate(currentProject.id, user.id);
+      }
     }
   }, [graphSettings.strokeColor]);
 
@@ -722,6 +725,9 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
           api.drawings.update(id, shapeToApiDrawing({ ...s, width: graphSettings.strokeWidth }, currentProject?.id || 0, activeGroupId ?? undefined));
         }
       });
+      if (currentProject?.id && user?.id) {
+        realtimeSync.notifyUpdate(currentProject.id, user.id);
+      }
     }
   }, [graphSettings.strokeWidth]);
 
@@ -734,6 +740,9 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
           api.drawings.update(id, shapeToApiDrawing({ ...s, style: graphSettings.strokeStyle }, currentProject?.id || 0, activeGroupId ?? undefined));
         }
       });
+      if (currentProject?.id && user?.id) {
+        realtimeSync.notifyUpdate(currentProject.id, user.id);
+      }
     }
   }, [graphSettings.strokeStyle]);
 
@@ -746,6 +755,9 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
           api.drawings.update(id, shapeToApiDrawing({ ...s, fontSize: graphSettings.fontSize }, currentProject?.id || 0, activeGroupId ?? undefined));
         }
       });
+      if (currentProject?.id && user?.id) {
+        realtimeSync.notifyUpdate(currentProject.id, user.id);
+      }
     }
   }, [graphSettings.fontSize]);
 
@@ -758,6 +770,9 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
           api.drawings.update(id, shapeToApiDrawing({ ...s, fontFamily: graphSettings.fontFamily }, currentProject?.id || 0, activeGroupId ?? undefined));
         }
       });
+      if (currentProject?.id && user?.id) {
+        realtimeSync.notifyUpdate(currentProject.id, user.id);
+      }
     }
   }, [graphSettings.fontFamily]);
 
@@ -770,6 +785,9 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
           api.drawings.update(id, shapeToApiDrawing({ ...s, textDir: graphSettings.textDir }, currentProject?.id || 0, activeGroupId ?? undefined));
         }
       });
+      if (currentProject?.id && user?.id) {
+        realtimeSync.notifyUpdate(currentProject.id, user.id);
+      }
     }
   }, [graphSettings.textDir]);
 
@@ -1155,7 +1173,11 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
         setNodes(updatedNodes);
       }, 50);
     }
-  }, [undo, redo, setShapes, setNodes, currentProject?.id, activeGroupId, shapeToApiDrawing]);
+
+    if (currentProject?.id && user?.id) {
+      realtimeSync.notifyUpdate(currentProject.id, user.id);
+    }
+  }, [undo, redo, setShapes, setNodes, currentProject?.id, activeGroupId, shapeToApiDrawing, user?.id]);
 
   // Combined Keyboard Shortcut Handler
   useEffect(() => {
@@ -1208,6 +1230,10 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
             });
             setSelectedNodeIds(new Set());
             setActiveNode(null);
+          }
+
+          if (currentProject?.id && user?.id) {
+            realtimeSync.notifyUpdate(currentProject.id, user.id);
           }
         }
         return;
@@ -3240,6 +3266,11 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
                           textDir: finalDir,
                           fontFamily: editingShape?.fontFamily || graphSettings.fontFamily
                         } as any)
+                          .then(() => {
+                            if (currentProject?.id && user?.id) {
+                              realtimeSync.notifyUpdate(currentProject.id, user.id);
+                            }
+                          })
                           .catch();
                       } else if (fallbackPos) {
                         const newShape: DrawnShape = {
@@ -3277,6 +3308,9 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
                           saveText()
                             .then(createdDrawing => {
                               updateShape(newShape.id, { id: createdDrawing.id });
+                              if (currentProject?.id && user?.id) {
+                                realtimeSync.notifyUpdate(currentProject.id, user.id);
+                              }
                             })
                             .catch(() => { });
                         }
