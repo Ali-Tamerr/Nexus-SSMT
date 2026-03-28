@@ -172,9 +172,16 @@ export default function EditorPage() {
 
             // Subscribe to real-time changes
             if (user?.id) {
-                realtimeSync.subscribeToProject(projectId, user.id, () => {
-                    showToast('Some changes were made. Please refresh the page to see the latest version.', 'info', 0);
-                });
+                 realtimeSync.subscribeToProject(projectId, user.id, () => {
+                     showToast('Some changes were made. Please refresh the page to see the latest version.', 'info', 0);
+                 }, () => {
+                     // Access revoked
+                     showToast('Your edit access to this project has been removed.', 'error', 0);
+                     // Delay before redirecting to allow user to see the toast context
+                     setTimeout(() => {
+                         window.location.href = `/project/${projectId}/preview`;
+                     }, 2500);
+                 });
             }
         }
 

@@ -7,6 +7,7 @@ import { api } from '@/lib/api';
 import { collaborationApi } from '@/lib/supabase/collaboration';
 import { CollaborationRequest } from '@/types/collaboration';
 import { useToast } from '@/context/ToastContext';
+import { realtimeSync } from '@/lib/supabase/realtime';
 
 export function NotificationDropdown() {
     const { user, isAuthenticated } = useAuthStore();
@@ -110,6 +111,17 @@ export function NotificationDropdown() {
             loadNotifications();
         }
     }, [isAuthenticated, isOpen]);
+
+    useEffect(() => {
+        if (isAuthenticated && user?.id) {
+            realtimeSync.subscribeToUserNotifications(user.id, () => {
+                loadNotifications();
+            });
+        }
+        return () => {
+            realtimeSync.unsubscribeUserNotifications();
+        }
+    }, [isAuthenticated, user?.id]);
 
     useEffect(() => {
         if (isOpen) {

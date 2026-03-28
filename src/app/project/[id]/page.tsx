@@ -150,6 +150,13 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
         realtimeSync.subscribeToProject(id, user.id, () => {
           // 0 duration means it won't auto-close
           showToast('Some changes were made. Please refresh the page to see the latest version.', 'info', 0);
+        }, () => {
+          // Access revoked
+          showToast('Your edit access to this project has been removed.', 'error', 0);
+          // Delay before redirecting to allow user to see the toast context
+          setTimeout(() => {
+            window.location.href = `/project/${id}/preview`;
+          }, 2500);
         });
       }
     }

@@ -17,6 +17,7 @@ import { UserMenu } from '@/components/auth/UserMenu';
 import { NotificationDropdown } from './NotificationDropdown';
 import { EditRequestModal } from '@/components/ui/EditRequestModal';
 import { api } from '@/lib/api';
+import { realtimeSync } from '@/lib/supabase/realtime';
 
 interface PreviewNavbarProps {
     projectName: string;
@@ -31,6 +32,7 @@ interface PreviewNavbarProps {
     collectionId?: string | number | null;
     collectionName?: string;
     projectId?: number;
+    ownerId?: string;
 }
 
 const WALLPAPER_COLORS = [
@@ -53,7 +55,8 @@ export function PreviewNavbar({
     projectUpdatedAt,
     collectionId,
     collectionName,
-    projectId
+    projectId,
+    ownerId
 }: PreviewNavbarProps) {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [isSaveAsMenuOpen, setIsSaveAsMenuOpen] = useState(false);
@@ -157,6 +160,12 @@ export function PreviewNavbar({
             setRequestStatus('requested');
             setIsRequestModalOpen(false);
             showToast('Access request sent successfully.', 'success');
+            
+            // Real-time notification to owner
+            if (ownerId) {
+                realtimeSync.notifyUser(ownerId);
+            }
+
             // Refresh requests to get the ID for cancellation
             const requests = await collaborationApi.getMyRequests(user.id);
             const req = requests.find(r => r.targetId === targetId && r.type === type && r.status === 'pending');

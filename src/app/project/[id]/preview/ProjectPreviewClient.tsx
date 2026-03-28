@@ -64,6 +64,7 @@ export default function ProjectPreviewClient({ params }: { params: Promise<{ id:
     const [projectDescription, setProjectDescription] = useState('');
     const [projectUpdatedAt, setProjectUpdatedAt] = useState<string | undefined>();
     const [wallpaper, setWallpaper] = useState<string>('');
+    const [ownerId, setOwnerId] = useState<string | undefined>();
     const [searchQuery, setSearchQuery] = useState('');
     const [nodes, setNodes] = useState<Node[]>([]);
     const [links, setLinks] = useState<LinkType[]>([]);
@@ -127,6 +128,7 @@ export default function ProjectPreviewClient({ params }: { params: Promise<{ id:
                 setProjectDescription(project.description || '');
                 setProjectUpdatedAt(project.updatedAt);
                 setWallpaper(project.wallpaper || '');
+                setOwnerId(project.userId || (project as any).user_id);
 
                 if (collectionId) {
                     try {
@@ -413,8 +415,8 @@ export default function ProjectPreviewClient({ params }: { params: Promise<{ id:
             const midX = (1 - t) * (1 - t) * source.x + 2 * (1 - t) * t * controlX + t * t * target.x;
             const midY = (1 - t) * (1 - t) * source.y + 2 * (1 - t) * t * controlY + t * t * target.y;
 
-            const fontSize = 8;
-            ctx.font = `${fontSize}px Inter, "Amiri", "Segoe UI Arabic", "Noto Sans Arabic", sans-serif`;
+            const fontSize = 13;
+            ctx.font = `${fontSize}px "Amiri", "Segoe UI Arabic", "Noto Sans Arabic", "Times New Roman", Tahoma, Arial, sans-serif`;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
 
@@ -496,6 +498,7 @@ export default function ProjectPreviewClient({ params }: { params: Promise<{ id:
                 collectionId={collectionId}
                 collectionName={collectionName}
                 projectId={id}
+                ownerId={ownerId}
             />
 
             <div

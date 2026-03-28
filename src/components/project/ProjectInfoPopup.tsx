@@ -9,6 +9,7 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { useGraphStore } from '@/store/useGraphStore';
 import { useToast } from '@/context/ToastContext';
 import { Button } from '@/components/ui/Button';
+import { realtimeSync } from '@/lib/supabase/realtime';
 
 interface ProjectInfoPopupProps {
   type: 'project' | 'collection';
@@ -170,12 +171,15 @@ export const ProjectInfoPopup = forwardRef<{ open: () => void }, ProjectInfoPopu
       );
 
       if (actionType === 'leave') {
-        // Redirect to preview mode — user keeps view access but loses edit
         window.location.href = `/project/${targetId}/preview`;
         return;
       }
 
-      fetchMembers(); // Refresh list if kicked someone else
+      if (actionType === 'kick' && type === 'project') {
+        await realtimeSync.notifyAccessRevoked(targetId, memberId);
+      }
+
+      fetchMembers();
     } catch (err: any) {
       console.error('Action failed:', err);
       showToast(`Failed to complete action: ${err?.message || 'Unknown error'}`, 'error');
