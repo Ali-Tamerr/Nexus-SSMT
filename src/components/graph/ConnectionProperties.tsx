@@ -19,6 +19,7 @@ export function ConnectionProperties({ link, onClose }: ConnectionPropertiesProp
     const nodes = useGraphStore((s) => s.nodes);
     const deleteLink = useGraphStore((s) => s.deleteLink);
     const addLink = useGraphStore((s) => s.addLink);
+    const currentProject = useGraphStore((s) => s.currentProject);
     const user = useAuthStore((s) => s.user);
     const { showConfirmation } = useToast();
 
@@ -36,8 +37,8 @@ export function ConnectionProperties({ link, onClose }: ConnectionPropertiesProp
         try {
             await api.links.delete(link.id);
             deleteLink(link.id);
-            if (link.projectId && user?.id) {
-                realtimeSync.notifyUpdate(link.projectId, user.id);
+            if (currentProject?.id && user?.id) {
+                realtimeSync.notifyUpdate(currentProject.id, user.id);
             }
             onClose();
         } catch (err) {
@@ -58,8 +59,8 @@ export function ConnectionProperties({ link, onClose }: ConnectionPropertiesProp
 
             deleteLink(link.id);
             addLink(updatedLink);
-            if (link.projectId && user?.id) {
-                realtimeSync.notifyUpdate(link.projectId, user.id);
+            if (currentProject?.id && user?.id) {
+                realtimeSync.notifyUpdate(currentProject.id, user.id);
             }
             setIsEditing(false);
         } catch (err) {
