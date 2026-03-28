@@ -21,6 +21,7 @@ import { NodeEditor } from '@/components/editor/NodeEditor';
 import { CommandPalette } from '@/components/ui/CommandPalette';
 import { exportProjectAsNxus } from '@/lib/projectExport';
 import { ClassroomIntegration } from '@/components/classroom/ClassroomIntegration';
+import { useRecentVisits } from '@/hooks/useRecentVisits';
 
 export default function ProjectPage({ params }: { params: Promise<{ id: string }> }) {
   const graphCanvasRef = useRef<GraphCanvasHandle>(null);
@@ -31,6 +32,7 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
   const [error, setError] = useState<string | null>(null);
   const [isClassroomModalOpen, setIsClassroomModalOpen] = useState(false);
   const { showToast } = useToast();
+  const { trackVisit } = useRecentVisits();
 
   const { user, isAuthenticated, hasHydrated } = useAuthStore();
 
@@ -58,6 +60,19 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
   useEffect(() => {
     setIsMounted(true);
   }, []);
+
+  useEffect(() => {
+    if (currentProject?.name && id) {
+      trackVisit({
+        targetId: id,
+        targetType: 'project',
+        name: currentProject.name,
+        description: currentProject.description,
+        color: currentProject.color || '#3B82F6',
+        ownerName: currentProject.user?.displayName || ''
+      });
+    }
+  }, [id, currentProject?.name, currentProject?.description, currentProject?.color, currentProject?.user?.displayName, trackVisit]);
 
   useEffect(() => {
     if (hasHydrated && !isAuthenticated) {

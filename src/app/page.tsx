@@ -13,15 +13,19 @@ import { api } from '@/lib/api';
 import { getFriendlyErrorMessage } from '@/utils/errorUtils';
 
 import { LoadingScreen, LoadingOverlay } from '@/components/ui';
-import { Navbar, AuthNav } from '@/components/layout';
+import { Navbar } from '@/components/layout';
 import { ProjectGrid, ProjectsToolbar, CreateProjectModal, EditProjectModal } from '@/components/projects';
 import { CreateGroupModal } from '@/components/projects/CreateGroupModal';
 import { DeleteGroupModal } from '@/components/projects/DeleteGroupModal';
 import { GroupList } from '@/components/projects/GroupList';
+import { ProjectInfoPopup } from '@/components/project/ProjectInfoPopup';
 import { WelcomeHero } from '@/components/home/WelcomeHero';
+import { RecentVisitsTab } from '@/components/home/RecentVisitsTab';
 import { AuthModal } from '@/components/auth/AuthModal';
+import { useRecentVisits } from '@/hooks/useRecentVisits';
+import { ProjectCard } from '@/components/projects/ProjectCard';
 
-function AuthErrorHandlerContent({ onSetTab }: { onSetTab: (t: 'all' | 'groups') => void }) {
+function AuthErrorHandlerContent({ onSetTab }: { onSetTab: (t: 'all' | 'groups' | 'recent') => void }) {
   const searchParams = useSearchParams();
   const errorParam = searchParams.get('error');
   const tabParam = searchParams.get('tab');
@@ -42,7 +46,7 @@ function AuthErrorHandlerContent({ onSetTab }: { onSetTab: (t: 'all' | 'groups')
   return null;
 }
 
-function AuthErrorHandler({ onSetTab }: { onSetTab: (t: 'all' | 'groups') => void }) {
+function AuthErrorHandler({ onSetTab }: { onSetTab: (t: 'all' | 'groups' | 'recent') => void }) {
   return (
     <Suspense fallback={null}>
       <AuthErrorHandlerContent onSetTab={onSetTab} />
@@ -88,8 +92,9 @@ export default function HomePage() {
   const [editingProject, setEditingProject] = useState<Project | null>(null);
 
   // Group Features State
-  const [activeTab, setActiveTab] = useState<'all' | 'groups'>('all');
+  const [activeTab, setActiveTab] = useState<'all' | 'groups' | 'recent'>('all');
   const [isCreateGroupOpen, setIsCreateGroupOpen] = useState(false);
+  const { recentVisits, isLoading: isRecentLoading } = useRecentVisits();
 
 
   useEffect(() => {
@@ -316,7 +321,7 @@ export default function HomePage() {
           href="https://github.com/Ali-Tamerr/nexus--social-study-mapping-tool"
           target="_blank"
           rel="noopener noreferrer"
-          className="hidden md:flex items-center justify-center h-9 w-9 border border-zinc-400 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-full transition-colors"
+          className="flex items-center justify-center h-8 w-8 md:h-9 md:w-9 border border-zinc-400/50 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-full transition-all"
           title="View on GitHub"
         >
           <Github className="h-5 w-5" />
@@ -325,10 +330,15 @@ export default function HomePage() {
 
       <main className="mx-auto max-w-6xl px-6 py-8">
         {!isAuthenticated ? (
-          <WelcomeHero
-            onSignup={() => openAuth('signup')}
-            onLogin={() => openAuth('login')}
-          />
+          <>
+            <div className="mb-12">
+              <RecentVisitsTab />
+            </div>
+            <WelcomeHero
+              onSignup={() => openAuth('signup')}
+              onLogin={() => openAuth('login')}
+            />
+          </>
         ) : (
           <>
             <div className="mb-8">
@@ -349,7 +359,7 @@ export default function HomePage() {
               onCreateGroup={() => setIsCreateGroupOpen(true)}
             />
 
-            {isLoading || isGroupsLoading ? (
+            {isLoading || isGroupsLoading || (activeTab === 'recent' && isRecentLoading) ? (
               <LoadingOverlay message="Loading..." />
             ) : (
               <>
@@ -362,7 +372,7 @@ export default function HomePage() {
                     onProjectDelete={handleDeleteProject}
                     currentUserId={user?.id}
                   />
-                ) : (
+                ) : activeTab === 'groups' ? (
                   <GroupList
                     groups={filteredGroups}
                     onDelete={handleDeleteGroupClick}
@@ -370,6 +380,43 @@ export default function HomePage() {
                     viewMode={viewMode}
                     currentUserId={user?.id}
                   />
+                ) : (
+                  <div className={viewMode === 'grid' ? "grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3" : "flex flex-col gap-2"}>
+                    {recentVisits.map((visit) => {
+                      // Map RecentVisit to a semi-mock Project/Collection for the ProjectCard
+                      const mockProject: Project = {
+                        id: visit.targetId,
+                        name: visit.name,
+                        description: visit.description || '',
+                        color: visit.color || (visit.targetType === 'collection' ? '#8B5CF6' : '#3B82F6'),
+                        userId: user?.id || '',
+                        createdAt: visit.visitedAt,
+                        updatedAt: visit.visitedAt,
+                        user: visit.ownerName ? { displayName: visit.ownerName, avatarUrl: visit.avatarUrl } as any : null
+                      };
+
+                      return (
+                        <ProjectCard
+                          key={`${visit.targetType}-${visit.targetId}`}
+                          project={mockProject}
+                          onClick={() => {
+                            if (visit.targetType === 'project') {
+                              router.push(`/project/${visit.targetId}/preview`);
+                            } else {
+                              router.push(`/collections/${visit.targetId}/preview`);
+                            }
+                          }}
+                          viewMode={viewMode}
+                          isPinned={false}
+                        />
+                      );
+                    })}
+                    {recentVisits.length === 0 && !isRecentLoading && (
+                      <div className="col-span-full py-20 text-center text-zinc-500">
+                        No recent activity found. Explore some projects to see them here!
+                      </div>
+                    )}
+                  </div>
                 )}
               </>
             )}

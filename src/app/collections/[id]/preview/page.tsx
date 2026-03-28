@@ -13,6 +13,7 @@ import { AuthModal } from '@/components/auth/AuthModal';
 import { ProjectInfoPopup } from '@/components/project/ProjectInfoPopup';
 import { useToast } from '@/context/ToastContext';
 import { ShareModal } from '@/components/ui/ShareModal';
+import { useRecentVisits } from '@/hooks/useRecentVisits';
 
 export default function CollectionPreviewPage() {
     const params = useParams();
@@ -31,6 +32,7 @@ export default function CollectionPreviewPage() {
     const [requestStatus, setRequestStatus] = useState<'idle' | 'loading' | 'sent' | 'error' | 'accepted'>('idle');
     const [showAuthModal, setShowAuthModal] = useState(false);
     const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
+    const { trackVisit } = useRecentVisits();
 
     const handleRequestAccess = async () => {
         if (!isAuthenticated || !user) {
@@ -112,6 +114,18 @@ export default function CollectionPreviewPage() {
         };
         fetchStatus();
     }, [isAuthenticated, user?.id, id]);
+
+    useEffect(() => {
+        if (collection?.name && id) {
+            trackVisit({
+                targetId: id,
+                targetType: 'collection',
+                name: collection.name,
+                description: collection.description,
+                ownerName: ownerDisplayName
+            });
+        }
+    }, [id, collection?.name, collection?.description, ownerDisplayName, trackVisit]);
 
     const handleProjectClick = (project: Project) => {
         if (user?.id === collection?.userId || requestStatus === 'accepted') {
@@ -355,7 +369,7 @@ export default function CollectionPreviewPage() {
                         <div className="relative w-full max-w-md rounded-xl border border-zinc-800 bg-zinc-900 p-6 shadow-2xl">
                             <button
                                 onClick={() => setProjectInfo(null)}
-                                className="absolute top-4 right-4 rounded-lg p-1 text-zinc-400 hover:bg-zinc-800 hover:text-white"
+                                className="group relative flex w-full items-center gap-3 rounded-xl p-2.5 text-left transition-all hover:bg-white/3 hover:text-white"
                             >
                                 <X className="h-5 w-5" />
                             </button>

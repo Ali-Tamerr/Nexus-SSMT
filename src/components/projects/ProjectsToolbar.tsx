@@ -11,8 +11,8 @@ interface ProjectsToolbarProps {
   onViewModeChange: (mode: 'grid' | 'list') => void;
   onCreateProject: () => void;
   // New props
-  activeTab: 'all' | 'groups';
-  onTabChange: (tab: 'all' | 'groups') => void;
+  activeTab: 'all' | 'groups' | 'recent';
+  onTabChange: (tab: 'all' | 'groups' | 'recent') => void;
   selectionMode: boolean;
   onSelectionModeChange: (enabled: boolean) => void;
   selectedCount: number;
@@ -50,6 +50,13 @@ export function ProjectsToolbar({
               }`}
           >
             Collections
+          </button>
+          <button
+            onClick={() => onTabChange('recent')}
+            className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${activeTab === 'recent' ? 'bg-zinc-700 text-white' : 'text-zinc-400 hover:text-white'
+              }`}
+          >
+            Recent
           </button>
         </div>
 

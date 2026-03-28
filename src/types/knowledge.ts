@@ -171,6 +171,18 @@ export interface ProjectCollectionItem {
   project?: Project;
 }
 
+export interface RecentVisit {
+  id: number;
+  targetId: number;
+  targetType: 'project' | 'collection';
+  visitedAt: string;
+  name: string;
+  description?: string;
+  color?: string;
+  avatarUrl?: string;
+  ownerName?: string;
+}
+
 export {
   GROUP_COLORS,
   BRAND_COLOR,

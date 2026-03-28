@@ -19,6 +19,7 @@ import { useGraphExport } from '@/hooks/useGraphExport';
 import { GroupsTabs } from '@/components/graph/GroupsTabs';
 import { SelectionPane } from '@/components/graph/SelectionPane';
 import { detectTextDir } from '@/components/graph/canvasTextScale';
+import { useRecentVisits } from '@/hooks/useRecentVisits';
 
 const ForceGraph2D = dynamic(() => import('react-force-graph-2d'), { ssr: false }) as any;
 
@@ -39,6 +40,7 @@ export default function ProjectPreviewClient({ params }: { params: Promise<{ id:
     const collectionId = searchParams.get('collection');
     const { user, isAuthenticated } = useAuthStore();
     const [isMounted, setIsMounted] = useState(false);
+    const { trackVisit } = useRecentVisits();
 
     // Automatic redirect for owners/collaborators
     useEffect(() => {
@@ -100,6 +102,19 @@ export default function ProjectPreviewClient({ params }: { params: Promise<{ id:
         window.addEventListener('resize', updateDimensions);
         return () => window.removeEventListener('resize', updateDimensions);
     }, []);
+
+    useEffect(() => {
+        if (projectName && id) {
+            trackVisit({
+                targetId: id,
+                targetType: 'project',
+                name: projectName,
+                description: projectDescription,
+                color: '#3B82F6', // Default color for projects
+                ownerName: '' // Will be updated if we find it
+            });
+        }
+    }, [id, projectName, projectDescription, trackVisit]);
 
     useEffect(() => {
         const loadProjectData = async () => {

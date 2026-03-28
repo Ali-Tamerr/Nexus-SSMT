@@ -8,6 +8,7 @@ import type {
   RegisterRequest,
   DrawnShape,
   ProjectCollection,
+  RecentVisit,
 } from "@/types/knowledge";
 
 const RAW_API_URL =
@@ -590,6 +591,13 @@ export const api = {
 
     delete: (id: number) =>
       fetchApi<void>(`/api/ProjectCollections/${id}`, { method: "DELETE" }),
+  },
+  recentVisits: {
+    getRecent: (userId: string) =>
+      fetchApi<RecentVisit[]>(`/api/RecentVisits?userId=${userId}`),
+
+    trackVisit: (data: { userId: string; targetId: number; targetType: string }) =>
+      fetchApiWithBody<void>("/api/RecentVisits", "POST", data),
   },
 };
 

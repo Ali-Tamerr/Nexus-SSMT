@@ -17,6 +17,7 @@ import GoogleClassroomIcon from '@/assets/Icons/classroomLogo.png';
 import { collaborationApi } from '@/lib/supabase/collaboration';
 import { useToast } from '@/context/ToastContext';
 import { ProjectInfoPopup } from '@/components/project/ProjectInfoPopup';
+import { RecentVisitsTab } from '@/components/home/RecentVisitsTab';
 
 interface NavbarProps {
   showSearch?: boolean;
