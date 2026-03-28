@@ -275,6 +275,11 @@ export default function EditorPage() {
             }
 
             addNode(newNode);
+            
+            // Notify other collaborators
+            if (projectId && user.id) {
+              realtimeSync.notifyUpdate(projectId as number, user.id);
+            }
         } catch (err) {
             // console.error('Error creating node:', err);
             addNode(demoNode);

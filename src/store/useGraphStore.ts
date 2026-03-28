@@ -12,6 +12,7 @@ import type {
 } from "@/types/knowledge";
 import type { Group } from "@/components/graph/GroupsTabs";
 import { encodeWallpaper, decodeWallpaper } from "@/lib/imageUtils";
+import { realtimeSync } from "@/lib/supabase/realtime";
 
 interface AppState {
   projects: Project[];
@@ -214,6 +215,11 @@ export const useGraphStore = create<AppState>()(
                 s.currentProject?.id === id ? finalMerged : s.currentProject,
             };
           });
+
+          // Notify collaborators
+          if (id && state.currentUserId) {
+            realtimeSync.notifyUpdate(id, state.currentUserId);
+          }
         } catch (err) {
           // Revert optimistic update on failure
           const state = useGraphStore.getState();

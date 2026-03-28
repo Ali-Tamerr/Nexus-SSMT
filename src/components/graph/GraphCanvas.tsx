@@ -14,6 +14,7 @@ import { GroupsTabs, getNextGroupColor } from './GroupsTabs';
 import { DrawnShape } from '@/types/knowledge';
 import { api, ApiDrawing } from '@/lib/api';
 import { useAuthStore } from '@/store/useAuthStore';
+import { realtimeSync } from '@/lib/supabase/realtime';
 
 const ForceGraph2D = dynamic(() => import('react-force-graph-2d'), {
   ssr: false,
@@ -1411,6 +1412,11 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
             localStorage.setItem('nexus-graph-clipboard', JSON.stringify(nextClipboard));
 
             showToast(`Pasted ${nodeIds.length} nodes and ${shapeIds.length} drawings`, 'info');
+
+            // Notify collaborators
+            if (currentProject.id && currentUserId) {
+              realtimeSync.notifyUpdate(currentProject.id, currentUserId);
+            }
           })();
         } else {
           navigator.clipboard.readText().then(text => {
@@ -2120,6 +2126,9 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
         if (updatesToPush.length > 0) {
           try {
             await api.nodes.batchUpdate(updatesToPush);
+            if (currentProject?.id && user?.id) {
+              realtimeSync.notifyUpdate(currentProject.id, user.id);
+            }
           } catch { }
         }
 
@@ -2294,7 +2303,11 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
         setShapes(remaining);
         erasedShapes.forEach(s => {
           if (s.id > 0) {
-            api.drawings.delete(s.id).catch(
+            api.drawings.delete(s.id).then(() => {
+              if (currentProject?.id && user?.id) {
+                realtimeSync.notifyUpdate(currentProject.id, user.id);
+              }
+            }).catch(
               // err => console.error('Failed to delete drawing:', err)
             );
           }
@@ -2368,6 +2381,11 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
       saveDrawing()
         .then(createdDrawing => {
           updateShape(newShape.id, { id: createdDrawing.id, groupId: createdDrawing.groupId, synced: true });
+          
+          // Notify collaborators
+          if (currentProject?.id && user?.id) {
+            realtimeSync.notifyUpdate(currentProject.id, user.id);
+          }
           setSelectedShapeIds(prev => {
             const next = new Set(prev);
             if (next.has(newShape.id)) {
@@ -2977,6 +2995,11 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
                         if (newNodes && newNodes.length > 0) {
                           newNodes.forEach(n => addNode(n));
                           showToast(`Placed ${newNodes.length} nodes from Classroom`, 'success');
+                          
+                          // Notify collaborators
+                          if (projectId && user.id) {
+                            realtimeSync.notifyUpdate(projectId, user.id);
+                          }
                         }
                       } catch (e) {
                         showToast('Failed to place nodes', 'error');
@@ -3010,6 +3033,11 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
                           // toggleEditor(true); // Don't auto-open editor per UX preference for quick placement?
                           // Actually, the original Add Node did open. Let's keep it consistent.
                           useGraphStore.getState().toggleEditor(true);
+
+                          // Notify collaborators
+                          if (projectId && user.id) {
+                            realtimeSync.notifyUpdate(projectId, user.id);
+                          }
                         }
                       } catch (e) {
                         showToast('Failed to create node', 'error');
@@ -3333,6 +3361,9 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
                     setTextInputPos(null);
                   }
                   showToast("Deleted successfully");
+                  if (currentProject?.id && user?.id) {
+                    realtimeSync.notifyUpdate(currentProject.id, user.id);
+                  }
                 }
               }}
             />
@@ -3357,6 +3388,9 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
               const groupWithOrder = { ...newGroup, order: groups.length };
               addGroup(groupWithOrder);
               setActiveGroupId(newGroup.id);
+              if (user?.id) {
+                realtimeSync.notifyUpdate(currentProject?.id || 0, user.id);
+              }
             } catch (err: any) {
               // console.error("Failed to create group:", err.message);
               showToast("Failed to create group. Please try again.", "error");
@@ -3365,6 +3399,11 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
           onRenameGroup={(id, newName) => {
             updateGroup(id, { name: newName });
             api.groups.update(id, { name: newName })
+              .then(() => {
+                if (currentProject?.id && user?.id) {
+                  realtimeSync.notifyUpdate(currentProject.id, user.id);
+                }
+              })
               .catch(
               // rr => console.warn("Backend sync failed (Rename Group):", err.message)
             );
@@ -3407,6 +3446,9 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
             // Try backend delete silently, fall back to local hide
             try {
               await api.groups.delete(id);
+              if (currentProject?.id && user?.id) {
+                realtimeSync.notifyUpdate(currentProject.id, user.id);
+              }
             } catch {
               const hidden = JSON.parse(localStorage.getItem('nexus_hidden_groups') || '[]');
               if (!hidden.includes(id)) {
@@ -3418,6 +3460,11 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
           onReorderGroups={(newGroups) => {
             setGroups(newGroups);
             api.groups.reorder(newGroups.map(g => g.id))
+              .then(() => {
+                if (currentProject?.id && user?.id) {
+                  realtimeSync.notifyUpdate(currentProject.id, user.id);
+                }
+              })
               .catch(
               // err => console.warn("Backend sync failed (Reorder Groups):", err.message)
             );
@@ -3532,19 +3579,29 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
             }}
             onDeleteNode={(nodeId) => {
               const nodeToDelete = nodes.find(n => n.id === nodeId);
-              if (nodeToDelete) {
+              if (nodeToDelete && currentProject?.id) {
                 pushToUndoStack();
                 deleteNode(nodeId);
-                api.nodes.delete(nodeId).catch(() => { });
+                api.nodes.delete(nodeId).then(() => {
+                  if (user?.id) {
+                    realtimeSync.notifyUpdate(currentProject.id, user.id);
+                  }
+                }).catch(() => { });
                 setSelectedNodeIds(new Set());
                 setActiveNode(null);
               }
             }}
             onDeleteShape={(shapeId) => {
-              pushToUndoStack();
-              deleteShape(shapeId);
-              api.drawings.delete(shapeId).catch(() => { });
-              setSelectedShapeIds(new Set());
+              if (currentProject?.id) {
+                pushToUndoStack();
+                deleteShape(shapeId);
+                api.drawings.delete(shapeId).then(() => {
+                  if (user?.id) {
+                    realtimeSync.notifyUpdate(currentProject.id, user.id);
+                  }
+                }).catch(() => { });
+                setSelectedShapeIds(new Set());
+              }
             }}
           />
         </div>

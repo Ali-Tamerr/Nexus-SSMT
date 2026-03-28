@@ -9,6 +9,7 @@ import { useToast } from '@/context/ToastContext';
 import { Attachment, Tag as TagType, Link as LinkType, GROUP_COLORS } from '@/types/knowledge';
 import { api } from '@/lib/api';
 import { ColorPicker } from '@/components/ui/ColorPicker';
+import { realtimeSync } from '@/lib/supabase/realtime';
 
 export function NodeEditor() {
   const activeNode = useGraphStore((s) => s.activeNode);
@@ -235,6 +236,11 @@ export function NodeEditor() {
       setSearchQuery('');
       showToast('Node saved successfully');
       toggleEditor(false);
+
+      // Notify other collaborators
+      if (activeNode.projectId && user?.id) {
+        realtimeSync.notifyUpdate(activeNode.projectId, user.id);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save');
       showToast('Failed to save node', 'error');
@@ -254,6 +260,11 @@ export function NodeEditor() {
       deleteNode(activeNode.id);
       toggleEditor(false);
       showToast('Node deleted successfully',);
+
+      // Notify other collaborators
+      if (activeNode.projectId && user?.id) {
+        realtimeSync.notifyUpdate(activeNode.projectId, user.id);
+      }
     } catch (err) {
       // console.error('Failed to delete node:', err);
       setError(err instanceof Error ? err.message : 'Failed to delete');
