@@ -65,6 +65,7 @@ export default function ProjectPreviewClient({ params }: { params: Promise<{ id:
     const [projectUpdatedAt, setProjectUpdatedAt] = useState<string | undefined>();
     const [wallpaper, setWallpaper] = useState<string>('');
     const [ownerId, setOwnerId] = useState<string | undefined>();
+    const [publicId, setPublicId] = useState<string | undefined>();
     const [searchQuery, setSearchQuery] = useState('');
     const [nodes, setNodes] = useState<Node[]>([]);
     const [links, setLinks] = useState<LinkType[]>([]);
@@ -123,12 +124,26 @@ export default function ProjectPreviewClient({ params }: { params: Promise<{ id:
             setError(null);
 
             try {
-                const project = await api.projects.getById(id);
+                // Try fetching by PublicId (NanoID) first
+                let project;
+                try {
+                    project = await api.projects.getByPublicId(idParam);
+                } catch (e) {
+                    // Fallback for legacy numeric IDs
+                    if (/^\d+$/.test(idParam)) {
+                        project = await api.projects.getById(Number(idParam));
+                    } else {
+                        throw e;
+                    }
+                }
+                
+                const projectId = project.id;
                 setProjectName(project.name);
                 setProjectDescription(project.description || '');
                 setProjectUpdatedAt(project.updatedAt);
                 setWallpaper(project.wallpaper || '');
                 setOwnerId(project.userId || (project as any).user_id);
+                setPublicId(project.publicId);
 
                 if (collectionId) {
                     try {
@@ -139,7 +154,7 @@ export default function ProjectPreviewClient({ params }: { params: Promise<{ id:
                     }
                 }
 
-                let projectNodes = await api.nodes.getByProject(id);
+                let projectNodes = await api.nodes.getByProject(projectId);
 
                 const hashString = (numId: number) => {
                     const str = String(numId);
@@ -499,6 +514,7 @@ export default function ProjectPreviewClient({ params }: { params: Promise<{ id:
                 collectionName={collectionName}
                 projectId={id}
                 ownerId={ownerId}
+                publicId={publicId}
             />
 
             <div

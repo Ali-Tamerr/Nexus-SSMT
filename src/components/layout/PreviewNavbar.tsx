@@ -33,6 +33,7 @@ interface PreviewNavbarProps {
     collectionName?: string;
     projectId?: number;
     ownerId?: string;
+    publicId?: string;
 }
 
 const WALLPAPER_COLORS = [
@@ -56,7 +57,8 @@ export function PreviewNavbar({
     collectionId,
     collectionName,
     projectId,
-    ownerId
+    ownerId,
+    publicId
 }: PreviewNavbarProps) {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [isSaveAsMenuOpen, setIsSaveAsMenuOpen] = useState(false);
@@ -74,8 +76,8 @@ export function PreviewNavbar({
     const { isAuthenticated, user, setReturnUrl } = useAuthStore();
     const { showToast } = useToast();
 
-    const shareUrl = projectId
-        ? `${typeof window !== 'undefined' ? window.location.origin : ''}/project/${projectId}/preview`
+    const shareUrl = (publicId || projectId)
+        ? `${typeof window !== 'undefined' ? window.location.origin : ''}/project/${publicId || projectId}/preview`
         : '';
 
     useEffect(() => {

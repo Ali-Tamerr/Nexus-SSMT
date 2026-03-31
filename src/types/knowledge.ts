@@ -4,6 +4,7 @@ export interface Project {
   description?: string;
   color?: string;
   wallpaper?: string | null;
+  publicId?: string;
   userId: string; // UUID from auth.users.id
   createdAt: string;
   updatedAt: string;

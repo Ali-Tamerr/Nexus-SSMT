@@ -160,7 +160,10 @@ export const api = {
 
     getById: (id: number) => fetchApi<Project>(`/api/projects/${id}`),
 
-    create: (data: Omit<Project, "id" | "createdAt" | "updatedAt">) => {
+    getByPublicId: (publicId: string) =>
+      fetchApi<Project>(`/api/projects/p/${publicId}`),
+
+    create: (data: Omit<Project, "id" | "createdAt" | "updatedAt" | "publicId">) => {
       const payload = pick(
         data,
         "name",
