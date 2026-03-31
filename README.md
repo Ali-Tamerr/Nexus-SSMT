@@ -6,6 +6,8 @@ Nexus moves beyond linear folders and lists, allowing students to map logic, vis
 
 ![Status](https://img.shields.io/badge/Status-Active_Development-blue)
 ![Tech Stack](https://img.shields.io/badge/Tech-Next.js_15_%7C_D3.js_%7C_TypeScript-black)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Maintenance](https://img.shields.io/badge/Maintained%3F-yes-green.svg)](https://GitHub.com/Ali-Tamerr/Nexus-Knowledge-Graph/graphs/commit-activity)
 
 ---
 
