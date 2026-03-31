@@ -1,4 +1,4 @@
-# 🧠 Nexus: Social Study Mapping Tool
+# Nexus: Social Study Mapping Tool
 
 > **Transform scattered lecture notes into an interactive, visual Knowledge Graph.**
 
@@ -9,9 +9,13 @@ Nexus moves beyond linear folders and lists, allowing students to map logic, vis
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Maintenance](https://img.shields.io/badge/Maintained%3F-yes-green.svg)](https://GitHub.com/Ali-Tamerr/Nexus-Knowledge-Graph/graphs/commit-activity)
 
+<p align="center">
+  <img src="PATH_TO_IMAGE" alt="Nexus SSMT - Knowledge Graph + Draw tools preview" width="900" />
+</p>
+
 ---
 
-## 🎯 The Core Vision
+## The Core Vision
 
 **Nexus** is a **Social Study Mapping** tool designed for students who deal with complex, interconnected subjects (like Computer Science).
 
@@ -21,7 +25,7 @@ Instead of isolating information in separate files, Nexus lets you:
 - **Link** assignments directly to the specific lectures or resources required to solve them.
 - **Share** entire knowledge graphs via a simple link, replacing repetitive manual explanations.
 
-## 🛠️ The Problems We Solve
+## The Problems We Solve
 
 | Problem                          | The Nexus Solution                                                                         |
 | :------------------------------- | :----------------------------------------------------------------------------------------- |
@@ -30,13 +34,13 @@ Instead of isolating information in separate files, Nexus lets you:
 | **The "Where to Start" Barrier** | Provide a visual roadmap for new or struggling students to find their path immediately.    |
 | **Lack of Visual Context**       | Standard note-taking apps are linear. Nexus is spatial, showing logical dependencies.      |
 
-## 🌟 Key Features
+## Key Features
 
-- **🕸️ Interactive Knowledge Graphs**: Powered by **D3-force** physics for a dynamic, tactile feel. Nodes float, connect, and react to your touch.
-- **⚡ Modern Architecture**: Built on **Next.js 15 (App Router)** and **TypeScript** for high performance and stability.
-- **📝 Active Recall & Annotation**: Use drawing tools (pen, shapes) to annotate your graph manually, acting as a digital whiteboard.
-- **🔗 Roadmap as a Service**: Turn private study graphs into shareable URLs.
-- **📂 Custom `.nxgr` Support**: A dedicated file format for storing, exporting, and importing knowledge maps.
+- **Interactive Knowledge Graphs**: Powered by **D3-force** physics for a dynamic, tactile feel. Nodes float, connect, and react to your touch.
+- **Modern Architecture**: Built on **Next.js 15 (App Router)** and **TypeScript** for high performance and stability.
+- **Active Recall & Annotation**: Use drawing tools (pen, shapes) to annotate your graph manually, acting as a digital whiteboard.
+- **Roadmap as a Service**: Turn private study graphs into shareable URLs.
+- **Custom `.nxgr` Support**: A dedicated file format for storing, exporting, and importing knowledge maps.
 
 ## 📖 Key User Scenarios
 
@@ -55,12 +59,12 @@ _Action_: You create a central node for the exam topic and attach direct links t
 _Scenario_: You need to test your memory of a system architecture.
 _Action_: You create nodes for the components and use the **Draw Tool** to manually sketch the data flow lines between them, verifying your understanding through active recall.
 
-## 👥 Target Audience
+## Target Audience
 
 - **Primary**: Computer Science & Technology Students dealing with abstract, dependency-heavy concepts.
 - **Secondary**: Top-performing students and Study Groups who create high-value educational roadmaps.
 
-## 🏗️ Technology Stack
+## Technology Stack
 
 - **Framework**: Next.js 15 (App Router)
 - **Language**: TypeScript
