@@ -9,6 +9,7 @@ import { useToast } from '@/context/ToastContext';
 import { Attachment, Tag as TagType, Link as LinkType, GROUP_COLORS } from '@/types/knowledge';
 import { api } from '@/lib/api';
 import { ColorPicker } from '@/components/ui/ColorPicker';
+import { SizePicker } from '@/components/ui/SizePicker';
 import { realtimeSync } from '@/lib/supabase/realtime';
 
 export function NodeEditor() {
@@ -33,13 +34,14 @@ export function NodeEditor() {
   const isConnectionPickerActive = useGraphStore(s => s.isConnectionPickerActive);
   const setConnectionPickerActive = useGraphStore(s => s.setConnectionPickerActive);
   const connectionPickerResult = useGraphStore(s => s.connectionPickerResult);
-  const setConnectionPickerResult = useGraphStore(s => s.setConnectionPickerResult);
+  const setConnectionPickerResult = useGraphStore((s) => s.setConnectionPickerResult);
   const { user } = useAuthStore();
   const { showToast, showConfirmation } = useToast();
 
   const [title, setTitle] = useState('');
-  const [content, setContent] = useState('');
-  const [customColor, setCustomColor] = useState<string | undefined>(undefined);
+  const [content, setContent] = useState(activeNode?.content || '');
+  const [customColor, setCustomColor] = useState(activeNode?.customColor || undefined);
+  const [visualSize, setVisualSize] = useState(activeNode?.visualSize || 1.0);
   const [showAttachmentMenu, setShowAttachmentMenu] = useState(false);
   const [showTagMenu, setShowTagMenu] = useState(false);
   const [showConnectionMenu, setShowConnectionMenu] = useState(false);
@@ -113,6 +115,8 @@ export function NodeEditor() {
       }
       
       setCustomColor(activeNode.customColor || undefined);
+      setVisualSize(activeNode.visualSize || 1.0);
+      originalColorRef.current = activeNode.customColor || undefined;
       lastNodeIdRef.current = activeNode.id;
     }
   }, [activeNode, isTitleDirty, isContentDirty]);
@@ -165,13 +169,14 @@ export function NodeEditor() {
 
     try {
       // 1. Save Node Properties
-      if (title !== activeNode.title || content !== (activeNode.content || '') || customColor !== originalColorRef.current) {
+      if (title !== activeNode.title || content !== (activeNode.content || '') || customColor !== originalColorRef.current || visualSize !== activeNode.visualSize) {
         await api.nodes.update(activeNode.id, {
           id: activeNode.id,
           title,
           content: content || '',
           groupId: activeNode.groupId,
-          customColor,
+          customColor: customColor || undefined,
+          visualSize: visualSize,
           projectId: activeNode.projectId,
           userId: activeNode.userId,
           group: activeNode.group ? { id: activeNode.group.id, name: activeNode.group.name, color: activeNode.group.color, order: activeNode.group.order } : { id: activeNode.groupId ?? 0, name: 'Default', color: '#808080', order: 0 },
@@ -275,9 +280,10 @@ export function NodeEditor() {
   };
 
   const isColorDirty = activeNode ? activeNode.customColor !== originalColorRef.current : false;
+  const isSizeDirty = activeNode ? activeNode.visualSize !== visualSize : false;
   const isAttachmentsDirty = pendingAttachments.length > 0 || deletedAttachments.size > 0;
   const isLinksDirty = pendingLinks.length > 0 || deletedLinks.size > 0 || editedLinks.size > 0;
-  const isDirty = (isTitleDirty || isContentDirty || isColorDirty || isAttachmentsDirty || isLinksDirty);
+  const isDirty = (isTitleDirty || isContentDirty || isColorDirty || isSizeDirty || isAttachmentsDirty || isLinksDirty);
 
   const handleDiscardAndClose = () => {
     if (activeNode && activeNode.customColor !== originalColorRef.current) {
@@ -629,6 +635,24 @@ export function NodeEditor() {
                 rows={6}
                 dir="auto"
                 className="mt-2 w-full resize-none rounded-lg bg-zinc-800 px-4 py-2.5 text-sm text-white placeholder-zinc-500 outline-none ring-1 ring-zinc-700 transition-all  -[#265fbd]"
+              />
+            </div>
+
+            <div>
+              <SizePicker
+                label="Visual Size"
+                value={visualSize}
+                onChange={(val) => {
+                  setVisualSize(val);
+                  if (activeNode) {
+                    useGraphStore.getState().updateNode(activeNode.id, { visualSize: val });
+                  }
+                }}
+                min={0.5}
+                max={5.0}
+                step={0.25}
+                presets={[0.5, 0.75, 1.0, 1.25, 1.5, 2.0, 3.0, 4.0, 5.0]}
+                unit="x"
               />
             </div>
 

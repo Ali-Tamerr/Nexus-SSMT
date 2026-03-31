@@ -3,7 +3,8 @@
 import { useState, useRef, useEffect } from 'react';
 import { DrawingTool } from '@/types/knowledge';
 import { ColorPicker } from '@/components/ui/ColorPicker';
-import { X, Trash2, Minus, Plus, ChevronDown } from 'lucide-react';
+import { SizePicker } from '@/components/ui/SizePicker';
+import { X, Trash2 } from 'lucide-react';
 
 interface DrawingPropertiesProps {
     activeTool: DrawingTool;
@@ -60,8 +61,6 @@ export function DrawingProperties({
     const scrollContainerRef = useRef<HTMLDivElement>(null);
     const [showLeftShadow, setShowLeftShadow] = useState(false);
     const [showRightShadow, setShowRightShadow] = useState(false);
-    const [isSizeDropdownOpen, setIsSizeDropdownOpen] = useState(false);
-    const sizeDropdownRef = useRef<HTMLDivElement>(null);
 
     const checkScroll = () => {
         if (scrollContainerRef.current) {
@@ -70,21 +69,6 @@ export function DrawingProperties({
             setShowRightShadow(scrollLeft < scrollWidth - clientWidth - 1);
         }
     };
-
-    useEffect(() => {
-        const handleClickOutside = (event: MouseEvent) => {
-            if (sizeDropdownRef.current && !sizeDropdownRef.current.contains(event.target as Node)) {
-                setIsSizeDropdownOpen(false);
-            }
-        };
-
-        if (isSizeDropdownOpen) {
-            document.addEventListener('mousedown', handleClickOutside);
-        }
-        return () => {
-            document.removeEventListener('mousedown', handleClickOutside);
-        };
-    }, [isSizeDropdownOpen]);
 
     useEffect(() => {
         checkScroll();
@@ -171,79 +155,16 @@ export function DrawingProperties({
                                 </div>
                             )}
 
-                            <div className="space-y-2 shrink-0 w-48 md:w-64">
-                                <label className="text-xs text-zinc-500">Size</label>
-                                <div className="flex items-center bg-zinc-800/30 rounded-lg border border-zinc-700/50 h-9 p-0.5" ref={sizeDropdownRef}>
-                                    <div className="flex items-center px-1">
-                                        <button
-                                            onClick={() => onFontSizeChange(Math.max(1, fontSize - 1))}
-                                            className="p-1.5 rounded-md hover:bg-zinc-700 text-zinc-400 hover:text-white transition-colors"
-                                            title="Decrease size"
-                                        >
-                                            <Minus className="w-3.5 h-3.5" />
-                                        </button>
-                                    </div>
-
-                                    <div className="h-4 w-px bg-zinc-700/50" />
-
-                                    <div className="relative flex-1 flex items-center justify-center min-w-[60px]">
-                                        <input
-                                            type="text"
-                                            value={fontSize}
-                                            onFocus={() => setIsSizeDropdownOpen(true)}
-                                            onChange={(e) => {
-                                                const val = parseInt(e.target.value);
-                                                if (!isNaN(val)) onFontSizeChange(Math.max(1, val));
-                                            }}
-                                            className="w-full bg-transparent text-center text-xs font-bold text-white outline-none cursor-pointer hover:bg-zinc-700/30 rounded py-1 transition-colors"
-                                        />
-
-                                        {isSizeDropdownOpen && (
-                                            <div className="absolute top-full left-0 right-0 mt-1.5 py-1 bg-zinc-900 border border-zinc-700 rounded-lg shadow-2xl z-50 max-h-60 overflow-y-auto custom-scrollbar">
-                                                {fontSizes.map((size) => (
-                                                    <button
-                                                        key={size}
-                                                        onClick={() => {
-                                                            onFontSizeChange(size);
-                                                            setIsSizeDropdownOpen(false);
-                                                        }}
-                                                        className={`w-full px-4 py-1.5 text-xs text-left transition-colors flex items-center justify-between ${fontSize === size
-                                                            ? 'bg-[#355ea1] text-white'
-                                                            : 'hover:bg-zinc-800 text-zinc-400 hover:text-white'
-                                                            }`}
-                                                    >
-                                                        <span>{size}</span>
-                                                        {fontSize === size && <div className="w-1 h-1 rounded-full bg-white" />}
-                                                    </button>
-                                                ))}
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    <div className="h-4 w-px bg-zinc-700/50" />
-
-                                    <div className="flex items-center px-1">
-                                        <button
-                                            onClick={() => onFontSizeChange(fontSize + 1)}
-                                            className="p-1.5 rounded-md hover:bg-zinc-700 text-zinc-400 hover:text-white transition-colors"
-                                            title="Increase size"
-                                        >
-                                            <Plus className="w-3.5 h-3.5" />
-                                        </button>
-                                    </div>
-
-                                    <div className="h-4 w-px bg-zinc-700/50" />
-
-                                    <div className="flex items-center px-1">
-                                        <button
-                                            onClick={() => setIsSizeDropdownOpen(!isSizeDropdownOpen)}
-                                            className={`p-1.5 rounded-md hover:bg-zinc-700 transition-colors ${isSizeDropdownOpen ? 'bg-zinc-700 text-white' : 'text-zinc-500'}`}
-                                        >
-                                            <ChevronDown className="w-3.5 h-3.5" />
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
+                            <SizePicker
+                                label="Size"
+                                value={fontSize}
+                                onChange={onFontSizeChange}
+                                presets={fontSizes}
+                                min={1}
+                                max={500}
+                                unit="pt"
+                                className="shrink-0 w-48 md:w-64"
+                            />
                         </div>
                     )}
 

@@ -487,13 +487,14 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
 
   const nodeCanvasObject = useCallback(
     (
-      node: { id?: string | number; x?: number; y?: number; title?: string; groupId?: number; customColor?: string },
+      node: { id?: string | number; x?: number; y?: number; title?: string; groupId?: number; customColor?: string; visualSize?: number },
       ctx: CanvasRenderingContext2D,
       globalScale: number
     ) => {
       const label = node.title || '';
       const nodeGroup = node.groupId ?? 0;
-      const fontSize = 13;
+      const vSize = node.visualSize || 1.0;
+      const fontSize = 13 * Math.sqrt(vSize);
       ctx.font = `500 ${fontSize}px "Amiri", "Segoe UI Arabic", "Noto Sans Arabic", "Times New Roman", Tahoma, Arial, sans-serif`;
 
       const nodeId = Number(node.id);
@@ -504,13 +505,13 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
         label.toLowerCase().includes(searchQuery.toLowerCase());
 
       const baseColor = node.customColor || groups.find(g => g.order === nodeGroup)?.color || groups[0]?.color || '#8B5CF6';
-      const nodeRadius = isActive ? 8 : 6;
+      const nodeRadius = (isActive ? 8 : 6) * vSize;
       const x = node.x || 0;
       const y = node.y || 0;
 
       if (isSelected) {
         ctx.beginPath();
-        ctx.arc(x, y, nodeRadius + 5, 0, 2 * Math.PI);
+        ctx.arc(x, y, nodeRadius + (5 * vSize), 0, 2 * Math.PI);
         ctx.strokeStyle = '#355ea1';
         ctx.lineWidth = 2 / globalScale;
         ctx.setLineDash([4 / globalScale, 2 / globalScale]);

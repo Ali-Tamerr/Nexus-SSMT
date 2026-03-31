@@ -347,12 +347,13 @@ export default function ProjectPreviewClient({ params }: { params: Promise<{ id:
     }, [filteredNodes, links]);
 
     const nodeCanvasObject = useCallback((
-        node: { id?: string | number; x?: number; y?: number; title?: string; customColor?: string },
+        node: { id?: string | number; x?: number; y?: number; title?: string; customColor?: string; visualSize?: number },
         ctx: CanvasRenderingContext2D,
         globalScale: number
     ) => {
         const label = node.title || '';
-        const fontSize = 13;
+        const vSize = node.visualSize || 1.0;
+        const fontSize = 13 * Math.sqrt(vSize);
         ctx.font = `500 ${fontSize}px "Amiri", "Segoe UI Arabic", "Noto Sans Arabic", "Times New Roman", Tahoma, Arial, sans-serif`;
 
         const isMatch = !searchQuery || label.toLowerCase().includes(searchQuery.toLowerCase());
@@ -360,7 +361,7 @@ export default function ProjectPreviewClient({ params }: { params: Promise<{ id:
         ctx.globalAlpha = opacity;
 
         const baseColor = node.customColor || '#8B5CF6';
-        const nodeRadius = 6;
+        const nodeRadius = 6 * vSize;
         const x = node.x || 0;
         const y = node.y || 0;
 

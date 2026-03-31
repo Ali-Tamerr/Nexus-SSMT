@@ -49,6 +49,7 @@ export interface Node {
   userId?: string | null;
   x?: number | null;
   y?: number | null;
+  visualSize?: number | null;
   customColor?: string | null;
   createdAt: string;
   updatedAt: string;
