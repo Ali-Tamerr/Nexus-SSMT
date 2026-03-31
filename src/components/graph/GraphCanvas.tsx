@@ -491,10 +491,10 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
       ctx: CanvasRenderingContext2D,
       globalScale: number
     ) => {
-      const label = node.title || String(node.id);
+      const label = node.title || '';
       const nodeGroup = node.groupId ?? 0;
-      const fontSize = 10;
-      ctx.font = `500 ${fontSize}px "Noto Sans Arabic", "Segoe UI Arabic", "Segoe UI", Tahoma, Arial, system-ui, sans-serif`;
+      const fontSize = 13;
+      ctx.font = `500 ${fontSize}px "Amiri", "Segoe UI Arabic", "Noto Sans Arabic", "Times New Roman", Tahoma, Arial, sans-serif`;
 
       const nodeId = Number(node.id);
       const isActive = activeNode?.id === nodeId;

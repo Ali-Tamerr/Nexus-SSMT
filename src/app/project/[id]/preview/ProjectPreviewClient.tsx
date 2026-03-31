@@ -351,9 +351,9 @@ export default function ProjectPreviewClient({ params }: { params: Promise<{ id:
         ctx: CanvasRenderingContext2D,
         globalScale: number
     ) => {
-        const label = node.title || String(node.id);
-        const fontSize = 10;
-        ctx.font = `500 ${fontSize}px Inter, "Segoe UI", "Noto Sans Arabic", system-ui, sans-serif`;
+        const label = node.title || '';
+        const fontSize = 13;
+        ctx.font = `500 ${fontSize}px "Amiri", "Segoe UI Arabic", "Noto Sans Arabic", "Times New Roman", Tahoma, Arial, sans-serif`;
 
         const isMatch = !searchQuery || label.toLowerCase().includes(searchQuery.toLowerCase());
         const opacity = isMatch ? 1 : 0.1;
