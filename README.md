@@ -9,12 +9,11 @@ Nexus moves beyond linear folders and lists, allowing students to map logic, vis
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Maintenance](https://img.shields.io/badge/Maintained%3F-yes-green.svg)](https://GitHub.com/Ali-Tamerr/Nexus-Knowledge-Graph/graphs/commit-activity)
 
+
 <p align="center">
   <img src="src/assets/screenshots/Nexus_SSMT_Preview.png" alt="Nexus SSMT - Knowledge Graph + Draw tools preview" width="900" />
 </p>
-<p align="center">
-  <img src="src/assets/screenshots/Nexus_SSMT_Banner.png" alt="Nexus SSMT - Knowledge Graph + Draw tools preview" width="900" />
-</p>
+
 
 ---
 
