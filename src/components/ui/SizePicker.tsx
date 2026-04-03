@@ -82,7 +82,6 @@ export function SizePicker({
                             onChange={handleInputChange}
                             className="w-full bg-transparent text-center text-xs font-bold text-white outline-none cursor-pointer hover:bg-zinc-700/30 rounded py-1 transition-colors"
                         />
-                        {unit && <span className="text-[10px] text-zinc-500 ml-0.5 group-hover:text-zinc-400 transition-colors">{unit}</span>}
                     </div>
 
                     {isOpen && presets.length > 0 && (

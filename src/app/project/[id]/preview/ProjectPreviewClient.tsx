@@ -332,6 +332,7 @@ export default function ProjectPreviewClient({ params }: { params: Promise<{ id:
                 title: n.title,
                 groupId: n.groupId,
                 customColor: n.customColor,
+                visualSize: n.visualSize,
                 x: n.x,
                 y: n.y,
                 fx: n.x,

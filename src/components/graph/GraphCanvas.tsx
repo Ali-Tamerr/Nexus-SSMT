@@ -311,6 +311,9 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
   const shapeSaveTimeoutsRef = useRef<Map<string | number, any>>(new Map());
   const shapeStateSaveTimeoutRef = useRef<any>(null);
 
+  const graphDataObjRef = useRef<{ nodes: any[], links: any[] }>({ nodes: [], links: [] });
+  const lastDataChangeFitTimeRef = useRef<number>(0);
+
   const graphData = useMemo(() => {
     // 1. Process Nodes with Cache
     const nodeCache = nodeCacheRef.current;
@@ -330,6 +333,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
       cached.content = n.content;
       cached.groupId = n.groupId;
       cached.customColor = n.customColor;
+      cached.visualSize = n.visualSize;
       cached.attachments = n.attachments;
       cached.tags = n.tags;
 
@@ -375,7 +379,10 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
         return cached;
       });
 
-    return { nodes: graphNodes, links: graphLinks };
+    graphDataObjRef.current.nodes = graphNodes;
+    graphDataObjRef.current.links = graphLinks;
+
+    return graphDataObjRef.current;
   }, [filteredNodes, links]);
 
   const isNodeDraggingRef = useRef(false);
@@ -505,13 +512,13 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
         label.toLowerCase().includes(searchQuery.toLowerCase());
 
       const baseColor = node.customColor || groups.find(g => g.order === nodeGroup)?.color || groups[0]?.color || '#8B5CF6';
-      const nodeRadius = (isActive ? 8 : 6) * vSize;
+      const nodeRadius = 6 * vSize;
       const x = node.x || 0;
       const y = node.y || 0;
 
       if (isSelected) {
         ctx.beginPath();
-        ctx.arc(x, y, nodeRadius + (5 * vSize), 0, 2 * Math.PI);
+        ctx.arc(x, y, nodeRadius + 5, 0, 2 * Math.PI);
         ctx.strokeStyle = '#355ea1';
         ctx.lineWidth = 2 / globalScale;
         ctx.setLineDash([4 / globalScale, 2 / globalScale]);
@@ -2947,6 +2954,10 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
               height={dimensions.height}
               graphData={graphData}
               nodeId="id"
+              cooldownTicks={0}
+              enableNodeDrag={!graphSettings.isPreviewMode && !graphSettings.lockAllMovement}
+              enableZoomInteraction={true}
+              enablePanInteraction={true}
               nodeCanvasObject={nodeCanvasObject}
               nodePointerAreaPaint={(node: { x?: number; y?: number }, color: string, ctx: CanvasRenderingContext2D) => {
                 if (!node.x || !node.y) return;
@@ -3047,6 +3058,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
                         projectId,
                         groupId,
                         customColor: randomColor,
+                        visualSize: 1.0,
                         x: worldPoint.x,
                         y: worldPoint.y,
                         userId: user.id
@@ -3543,7 +3555,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
             const centerY = sumY / allPoints.length;
 
             graphRef.current.centerAt(centerX, centerY, 500);
-            graphRef.current.zoom(1, 500);
+            // graphRef.current.zoom(1, 500); // Removed to prevent automatic zooming/snapping
           }}
           onMouseDown={(e) => e.stopPropagation()}
           className="absolute bottom-[calc(1.5rem+env(safe-area-inset-bottom))] left-1/2 -translate-x-1/2 z-30 flex items-center gap-2 rounded-full bg-zinc-800/90 px-4 py-2 text-sm text-white shadow-lg backdrop-blur-sm border border-zinc-700 hover:bg-zinc-700 hover:border-zinc-600 transition-all graph-ui-hide"

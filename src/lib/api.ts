@@ -95,6 +95,10 @@ async function fetchApi<T>(
         console.error("[API] Backend error:", response.status, error);
       }
 
+      if (response.status === 401 || response.status === 403) {
+        throw new Error("Unauthorized");
+      }
+
       if (error.errors) {
         throw new Error(JSON.stringify(error.errors));
       }
@@ -266,6 +270,7 @@ export const api = {
           "x",
           "y",
           "customColor",
+          "visualSize",
         ),
       );
       return fetchApiWithBody<void>("/api/nodes/batch", "PUT", payload);

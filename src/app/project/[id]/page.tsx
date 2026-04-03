@@ -55,6 +55,7 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
     shapes,
     groups,
     toggleCommandPalette,
+    updateNode,
   } = useGraphStore();
 
   useEffect(() => {
@@ -193,8 +194,10 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
       userId: user?.id,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
+      visualSize: 1.0,
     };
 
+    addNode(demoNode);
     setLoading(true);
     try {
       let groupId = 0;
@@ -228,6 +231,7 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
         x: randomX,
         y: randomY,
         userId: user?.id,
+        visualSize: 1.0,
       });
 
       // If backend didn't return position/color, force update with full node object
@@ -243,6 +247,7 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
           projectId: newNode.projectId,
           userId: newNode.userId,
           customColor: randomColor,
+          visualSize: 1.0,
           x: randomX,
           y: randomY,
         }).catch(
@@ -250,9 +255,9 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
         );
       }
 
-      addNode(newNode);
+      updateNode(demoNode.id, newNode);
     } catch (err) {
-      addNode(demoNode);
+      // Error handled by demoNode already being in state
     } finally {
       setLoading(false);
     }

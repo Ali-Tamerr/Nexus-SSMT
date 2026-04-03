@@ -78,8 +78,9 @@ export function NodeEditor() {
   const [editedLinks, setEditedLinks] = useState<Map<number, LinkType>>(new Map());
   const [originalLinks, setOriginalLinks] = useState<Map<number, LinkType>>(new Map());
 
-  // Track original color to revert on cancel
+  // Track original color and size to revert on cancel
   const originalColorRef = useRef<string | undefined>(undefined);
+  const originalVisualSizeRef = useRef<number>(1.0);
 
   // Reset buffers when switching nodes
   useEffect(() => {
@@ -117,6 +118,7 @@ export function NodeEditor() {
       setCustomColor(activeNode.customColor || undefined);
       setVisualSize(activeNode.visualSize || 1.0);
       originalColorRef.current = activeNode.customColor || undefined;
+      originalVisualSizeRef.current = activeNode.visualSize || 1.0;
       lastNodeIdRef.current = activeNode.id;
     }
   }, [activeNode, isTitleDirty, isContentDirty]);
@@ -135,9 +137,15 @@ export function NodeEditor() {
 
     return () => {
       const currentNode = useGraphStore.getState().nodes.find(n => n.id === nodeId);
-      // If node exists and color is different from original, revert it
-      if (currentNode && currentNode.customColor !== originalColorRef.current) {
-        useGraphStore.getState().updateNode(nodeId, { customColor: originalColorRef.current });
+      // If node exists and properties are different from original, revert them
+      if (currentNode) {
+        const updates: any = {};
+        if (currentNode.customColor !== originalColorRef.current) updates.customColor = originalColorRef.current;
+        if (currentNode.visualSize !== originalVisualSizeRef.current) updates.visualSize = originalVisualSizeRef.current;
+        
+        if (Object.keys(updates).length > 0) {
+          useGraphStore.getState().updateNode(nodeId, updates);
+        }
       }
     };
   }, [activeNode?.id]);
@@ -169,7 +177,7 @@ export function NodeEditor() {
 
     try {
       // 1. Save Node Properties
-      if (title !== activeNode.title || content !== (activeNode.content || '') || customColor !== originalColorRef.current || visualSize !== activeNode.visualSize) {
+      if (title !== activeNode.title || content !== (activeNode.content || '') || customColor !== originalColorRef.current || visualSize !== originalVisualSizeRef.current) {
         await api.nodes.update(activeNode.id, {
           id: activeNode.id,
           title,
@@ -183,7 +191,7 @@ export function NodeEditor() {
           x: activeNode.x,
           y: activeNode.y,
         });
-        updateNode(activeNode.id, { title, content, customColor });
+        updateNode(activeNode.id, { title, content, customColor, visualSize });
       }
 
       // 2. Attachments
@@ -237,6 +245,7 @@ export function NodeEditor() {
 
       // Update Ref
       originalColorRef.current = customColor;
+      originalVisualSizeRef.current = visualSize;
 
       setSearchQuery('');
       showToast('Node saved successfully');
