@@ -114,21 +114,21 @@ export function NodeEditor() {
       if (isActuallyNewNode || !isContentDirty) {
         setContent(activeNode.content || '');
       }
-      
-      setCustomColor(activeNode.customColor || undefined);
-      setVisualSize(activeNode.visualSize || 1.0);
-      originalColorRef.current = activeNode.customColor || undefined;
-      originalVisualSizeRef.current = activeNode.visualSize || 1.0;
+
+      // Only reset color/size local state and original refs when opening a NEW node.
+      // Optimistic updates from SizePicker/ColorPicker change activeNode in the store,
+      // but we must NOT overwrite the original refs — otherwise the save condition
+      // (visualSize !== originalVisualSizeRef.current) becomes false and the API call is skipped.
+      if (isActuallyNewNode) {
+        setCustomColor(activeNode.customColor || undefined);
+        setVisualSize(activeNode.visualSize || 1.0);
+        originalColorRef.current = activeNode.customColor || undefined;
+        originalVisualSizeRef.current = activeNode.visualSize || 1.0;
+      }
+
       lastNodeIdRef.current = activeNode.id;
     }
   }, [activeNode, isTitleDirty, isContentDirty]);
-
-  // Capture original color when node/selection changes
-  useEffect(() => {
-    if (activeNode?.id) {
-      originalColorRef.current = activeNode.customColor || undefined;
-    }
-  }, [activeNode?.id]);
 
   // Revert changes on unmount/selection change if not saved
   useEffect(() => {
