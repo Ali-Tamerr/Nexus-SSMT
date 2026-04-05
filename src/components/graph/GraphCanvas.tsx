@@ -2953,11 +2953,6 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
               width={dimensions.width}
               height={dimensions.height}
               graphData={graphData}
-              nodeId="id"
-              cooldownTicks={0}
-              enableNodeDrag={!graphSettings.isPreviewMode && !graphSettings.lockAllMovement}
-              enableZoomInteraction={true}
-              enablePanInteraction={true}
               nodeCanvasObject={nodeCanvasObject}
               nodePointerAreaPaint={(node: { x?: number; y?: number }, color: string, ctx: CanvasRenderingContext2D) => {
                 if (!node.x || !node.y) return;
@@ -3100,6 +3095,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
                 // Given the user report, guest preview mode might have layers blocking it.
                 // Let's ensure we are not stopping propagation for background clicks.
               }}
+              nodeId="id"
               onZoom={handleZoom}
               onRenderFramePost={onRenderFramePost}
               enableNodeDrag={!graphSettings.lockAllMovement && !isDrawingTool && !isPanTool}

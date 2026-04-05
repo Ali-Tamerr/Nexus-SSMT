@@ -5,9 +5,10 @@ import "./globals.css";
 import { Providers } from "@/components/providers/Providers";
 
 const inter = Inter({
-  variable: "--font-geist-sans",
   subsets: ["latin"],
   display: "swap",
+  variable: "--font-inter",
+  preload: false,
 });
 
 const ka1 = localFont({
