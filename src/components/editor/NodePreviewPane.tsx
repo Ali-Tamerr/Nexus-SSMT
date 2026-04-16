@@ -1,6 +1,7 @@
 'use client';
 
-import { X, Link2, FileText, Image, Video, Paperclip } from 'lucide-react';
+import { useState } from 'react';
+import { X, Link2, FileText, Image, Video, Paperclip, Copy, Check } from 'lucide-react';
 import { useGraphStore } from '@/store/useGraphStore';
 import { Node, Link as LinkType } from '@/types/knowledge';
 
@@ -12,6 +13,8 @@ interface NodePreviewPaneContentProps {
 }
 
 export function NodePreviewPaneContent({ activeNode, nodes, links, onClose }: NodePreviewPaneContentProps) {
+    const [copiedId, setCopiedId] = useState<number | null>(null);
+    
     // console.log('[NodeEditPanelDebug]', { nodeId: activeNode.id, title: activeNode.title, customColor: activeNode.customColor });
     const attachments = activeNode.attachments || [];
     const nodeConnections = links.filter(l => l.sourceId === activeNode.id || l.targetId === activeNode.id);
@@ -19,6 +22,14 @@ export function NodePreviewPaneContent({ activeNode, nodes, links, onClose }: No
     const getConnectedNode = (link: typeof nodeConnections[0]) => {
         const connectedId = link.sourceId === activeNode.id ? link.targetId : link.sourceId;
         return nodes.find(n => n.id === connectedId);
+    };
+
+    const handleCopy = (e: React.MouseEvent, url: string, id: number) => {
+        e.preventDefault();
+        e.stopPropagation();
+        navigator.clipboard.writeText(url);
+        setCopiedId(id);
+        setTimeout(() => setCopiedId(null), 2000);
     };
 
     const getAttachmentIcon = (contentType?: string) => {
@@ -61,17 +72,24 @@ export function NodePreviewPaneContent({ activeNode, nodes, links, onClose }: No
                             </h4>
                             <div className="space-y-2">
                                 {attachments.map((attachment) => (
-                                    <a
-                                        key={attachment.id}
-                                        href={attachment.fileUrl}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="flex items-center gap-3 rounded-lg bg-zinc-800/50 p-3 text-sm text-zinc-300 transition-colors hover:bg-zinc-800 hover:text-white"
-                                    >
-                                        {getAttachmentIcon(attachment.contentType)}
-                                        <span className="flex-1 truncate">{attachment.fileName}</span>
-                                        <Link2 className="h-3.5 w-3.5 text-zinc-500" />
-                                    </a>
+                                    <div key={attachment.id} className="group relative flex items-center gap-2 rounded-lg bg-zinc-800/50 p-1 pr-2 transition-colors hover:bg-zinc-800">
+                                        <a
+                                            href={attachment.fileUrl}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="flex flex-1 items-center gap-3 p-2 text-sm text-zinc-300 hover:text-white"
+                                        >
+                                            {getAttachmentIcon(attachment.contentType)}
+                                            <span className="flex-1 truncate">{attachment.fileName}</span>
+                                        </a>
+                                        <button
+                                            onClick={(e) => handleCopy(e, attachment.fileUrl, attachment.id)}
+                                            className="rounded-md p-2 text-zinc-500 hover:bg-zinc-700 hover:text-white transition-colors"
+                                            title="Copy link"
+                                        >
+                                            {copiedId === attachment.id ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+                                        </button>
+                                    </div>
                                 ))}
                             </div>
                         </div>
