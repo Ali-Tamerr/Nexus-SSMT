@@ -149,6 +149,7 @@ export interface RegisterRequest {
   avatarUrl?: string;
   password: string;
   provider?: string;
+  verificationCode?: string;
 }
 
 export interface ProjectCollection {

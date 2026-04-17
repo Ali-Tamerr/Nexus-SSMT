@@ -151,6 +151,9 @@ export const api = {
   fetchApi,
   fetchApiWithBody,
   auth: {
+    requestVerification: (data: RegisterRequest) =>
+      fetchApiWithBody<void>("/api/auth/request-verification", "POST", data),
+
     register: (data: RegisterRequest) =>
       fetchApiWithBody<Profile>("/api/auth/register", "POST", data),
 

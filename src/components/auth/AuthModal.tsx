@@ -16,9 +16,10 @@ interface AuthModalProps {
 }
 
 export function AuthModal({ isOpen, onClose, initialMode = 'login' }: AuthModalProps) {
-  const [mode, setMode] = useState<'login' | 'signup'>(initialMode);
+  const [mode, setMode] = useState<'login' | 'signup' | 'verify'>(initialMode);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [verificationCode, setVerificationCode] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -60,26 +61,44 @@ export function AuthModal({ isOpen, onClose, initialMode = 'login' }: AuthModalP
     e.preventDefault();
     setError(null);
 
-    if (!validateEmail(email)) {
-      setError('Please enter a valid email address');
-      return;
-    }
-
-    if (!validatePassword(password)) {
-      setError('Password must be at least 6 characters with letters and numbers');
-      return;
+    // If verifying, we already validated email and password
+    if (mode === 'verify') {
+      if (verificationCode.length !== 6) {
+        setError('Please enter the 6-digit code');
+        return;
+      }
+    } else {
+      if (!validateEmail(email)) {
+        setError('Please enter a valid email address');
+        return;
+      }
+      if (!validatePassword(password)) {
+        setError('Password must be at least 6 characters with letters and numbers');
+        return;
+      }
     }
 
     setIsSubmitting(true);
 
     try {
       if (mode === 'signup') {
-        // For signup, we still register manually first to create the account in backend
-        const profile = await api.auth.register({
+        // Step 1: Request Verification code
+        await api.auth.requestVerification({
           email,
           password,
           displayName: displayName || undefined,
           provider: 'email',
+        });
+        setMode('verify');
+        return;
+      } else if (mode === 'verify') {
+        // Step 2: Validate code and register
+        await api.auth.register({
+          email,
+          password,
+          displayName: displayName || undefined,
+          provider: 'email',
+          verificationCode
         });
 
         // Then sign in automatically
@@ -115,12 +134,12 @@ export function AuthModal({ isOpen, onClose, initialMode = 'login' }: AuthModalP
 
       const friendlyMsg = getFriendlyErrorMessage(err);
 
-      if (mode === 'signup' && (friendlyMsg.includes('409') || friendlyMsg.toLowerCase().includes('already exists') || friendlyMsg.toLowerCase().includes('email already'))) {
+      if ((mode === 'signup' || mode === 'verify') && (friendlyMsg.includes('409') || friendlyMsg.toLowerCase().includes('already exists') || friendlyMsg.toLowerCase().includes('email already'))) {
         setError('An account with this email already exists. Please sign in instead.');
         setMode('login');
       } else if (friendlyMsg.includes('404') && mode === 'login') {
         setError('We couldn\'t find an account with that email. Please sign up.');
-      } else if (friendlyMsg.includes('404') && mode === 'signup') {
+      } else if (friendlyMsg.includes('404') && (mode === 'signup' || mode === 'verify')) {
         setError('Registration service unavailable (404). Please try again later.');
       } else {
         setError(friendlyMsg);
@@ -134,6 +153,7 @@ export function AuthModal({ isOpen, onClose, initialMode = 'login' }: AuthModalP
     setEmail('');
     setPassword('');
     setDisplayName('');
+    setVerificationCode('');
     setError(null);
   };
 
@@ -164,11 +184,13 @@ export function AuthModal({ isOpen, onClose, initialMode = 'login' }: AuthModalP
             <Image src={NexusLogo} alt="Nexus Logo" fill className="object-contain" />
           </div>
           <h2 className="text-2xl font-bold text-white">
-            {mode === 'login' ? 'Welcome back' : 'Create account'}
+            {mode === 'login' ? 'Welcome back' : mode === 'verify' ? 'Verify your email' : 'Create account'}
           </h2>
           <p className="mt-2 text-sm text-zinc-400">
             {mode === 'login'
               ? 'Sign in to access your social study projects'
+              : mode === 'verify'
+              ? 'Enter the 6-digit code sent to ' + email
               : 'Start building your social study projects today'}
           </p>
         </div>
@@ -180,7 +202,24 @@ export function AuthModal({ isOpen, onClose, initialMode = 'login' }: AuthModalP
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {mode === 'signup' && (
+          {mode === 'verify' && (
+            <div>
+              <label className="block text-sm font-medium text-zinc-300">Verification Code</label>
+              <div className="relative mt-2">
+                <input
+                  type="text"
+                  maxLength={6}
+                  value={verificationCode}
+                  onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, ''))}
+                  placeholder="123456"
+                  className="w-full text-center text-xl tracking-widest rounded-lg bg-zinc-800 py-3 px-4 text-white placeholder-zinc-500 outline-none ring-1 ring-zinc-700 transition-all  -[#265fbd]"
+                  required
+                />
+              </div>
+            </div>
+          )}
+
+          {mode !== 'verify' && mode === 'signup' && (
             <div>
               <label className="block text-sm font-medium text-zinc-300">Display Name</label>
               <div className="relative mt-2">
@@ -211,6 +250,7 @@ export function AuthModal({ isOpen, onClose, initialMode = 'login' }: AuthModalP
             </div>
           </div>
 
+          {mode !== 'verify' && (
           <div>
             <label className="block text-sm font-medium text-zinc-300">Password</label>
             <div className="relative mt-2">
@@ -237,6 +277,7 @@ export function AuthModal({ isOpen, onClose, initialMode = 'login' }: AuthModalP
               </p>
             )}
           </div>
+          )}
 
           <button
             type="submit"
@@ -246,10 +287,10 @@ export function AuthModal({ isOpen, onClose, initialMode = 'login' }: AuthModalP
             {isSubmitting ? (
               <>
                 <Loader2 className="h-5 w-5 animate-spin" />
-                {mode === 'login' ? 'Signing in...' : 'Creating account...'}
+                {mode === 'login' ? 'Signing in...' : mode === 'verify' ? 'Verifying...' : 'Creating account...'}
               </>
             ) : (
-              mode === 'login' ? 'Sign in' : 'Create account'
+              mode === 'login' ? 'Sign in' : mode === 'verify' ? 'Verify & Continue' : 'Create account'
             )}
           </button>
         </form>
