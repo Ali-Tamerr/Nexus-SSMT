@@ -161,10 +161,11 @@ export default function CollectionPreviewPage() {
     }, [numericId, idParam, collection?.name, collection?.description, ownerDisplayName, trackVisit]);
 
     const handleProjectClick = (project: Project) => {
+        const projectSlug = project.publicId || project.id;
         if (user?.id === collection?.userId || requestStatus === 'accepted') {
-            router.push(`/project/${project.publicId || project.id}`);
+            router.push(`/project/${projectSlug}`);
         } else {
-            router.push(`/project/${project.publicId || project.id}/preview?collection=${idParam}`);
+            router.push(`/project/${projectSlug}/preview?collection=${idParam}`);
         }
     };
 

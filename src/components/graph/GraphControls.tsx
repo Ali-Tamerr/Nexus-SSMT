@@ -361,7 +361,10 @@ export function GraphControls({ settings, onSettingsChange }: GraphControlsProps
 
           <div className="h-6 w-px bg-zinc-700" />
 
-          <ShareControl projectId={currentProject?.id} />
+          <ShareControl 
+            projectId={currentProject?.id} 
+            publicId={currentProject?.publicId}
+          />
         </div>
 
         {!settings.isPreviewMode && (
@@ -431,13 +434,14 @@ function PreviewControl({ enabled, onToggle }: PreviewControlProps) {
 
 interface ShareControlProps {
   projectId?: number;
+  publicId?: string;
 }
 
-function ShareControl({ projectId }: ShareControlProps) {
+function ShareControl({ projectId, publicId }: ShareControlProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const shareUrl = projectId
-    ? `${typeof window !== 'undefined' ? window.location.origin : ''}/project/${projectId}/preview`
+  const shareUrl = (publicId || projectId)
+    ? `${typeof window !== 'undefined' ? window.location.origin : ''}/project/${publicId || projectId}/preview`
     : '';
 
   return (

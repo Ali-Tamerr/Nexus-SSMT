@@ -508,7 +508,7 @@ export default function ProjectPreviewClient({ params }: { params: Promise<{ id:
                 projectUpdatedAt={projectUpdatedAt}
                 collectionId={collectionId}
                 collectionName={collectionName}
-                projectId={id}
+                projectId={numericId || 0}
                 ownerId={ownerId}
                 publicId={publicId}
             />
