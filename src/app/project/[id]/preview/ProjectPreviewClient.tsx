@@ -199,7 +199,7 @@ export default function ProjectPreviewClient({ params }: { params: Promise<{ id:
                 );
                 setLinks(projectLinks);
 
-                const drawings = await api.drawings.getByProject(id);
+                const drawings = await api.drawings.getByProject(projectId);
                 const loadedShapes: DrawnShape[] = drawings.map((d: ApiDrawing) => ({
                     id: d.id,
                     projectId: d.projectId,
@@ -215,7 +215,7 @@ export default function ProjectPreviewClient({ params }: { params: Promise<{ id:
                 }));
                 setShapes(loadedShapes);
 
-                const projectGroups = await api.groups.getByProject(id);
+                const projectGroups = await api.groups.getByProject(projectId);
                 const sortedGroups = projectGroups.sort((a: Group, b: Group) => (a.order ?? 0) - (b.order ?? 0));
                 setGroups(sortedGroups);
                 if (typeof window !== 'undefined') {
@@ -242,12 +242,14 @@ export default function ProjectPreviewClient({ params }: { params: Promise<{ id:
         };
 
         loadProjectData();
-    }, [id]);
+    }, [idParam, isAuthenticated, user?.id, router, trackVisit, collectionId]);
 
     const handleWallpaperChange = async (newWallpaper: string) => {
         setWallpaper(newWallpaper);
         try {
-            await api.projects.update(id, { wallpaper: newWallpaper });
+            if (numericId) {
+                await api.projects.update(numericId, { wallpaper: newWallpaper });
+            }
         } catch (e) {
         }
     };
