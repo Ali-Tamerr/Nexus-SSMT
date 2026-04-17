@@ -228,7 +228,7 @@ export function ProjectGrid({
   }
 
   const handleShare = (project: Project) => {
-    const url = `${window.location.origin}/project/${project.id}/preview`;
+    const url = `${window.location.origin}/project/${project.publicId}/preview`;
     setShareUrl(url);
   };
 

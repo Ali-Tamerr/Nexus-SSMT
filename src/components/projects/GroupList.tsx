@@ -32,12 +32,12 @@ export function GroupList({ groups, onDelete, onEdit, viewMode, currentUserId }:
     const handleShare = (e: React.MouseEvent, group: ProjectCollection) => {
         e.preventDefault();
         e.stopPropagation();
-        const url = `${window.location.origin}/collections/${group.id}/preview`;
+        const url = `${window.location.origin}/collections/${group.publicId || group.id}/preview`;
         setShareUrl(url);
     };
 
     const handleOpenGroup = (group: ProjectCollection) => {
-        router.push(`/collections/${group.id}/preview`);
+        router.push(`/collections/${group.publicId || group.id}/preview`);
     };
 
     return (

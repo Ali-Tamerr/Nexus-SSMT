@@ -401,9 +401,9 @@ export default function HomePage() {
                           project={mockProject}
                           onClick={() => {
                             if (visit.targetType === 'project') {
-                              router.push(`/project/${visit.targetId}/preview`);
+                              router.push(`/project/${visit.publicId}/preview`);
                             } else {
-                              router.push(`/collections/${visit.targetId}/preview`);
+                              router.push(`/collections/${visit.publicId}/preview`);
                             }
                           }}
                           viewMode={viewMode}

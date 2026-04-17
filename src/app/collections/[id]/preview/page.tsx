@@ -18,7 +18,8 @@ import { useRecentVisits } from '@/hooks/useRecentVisits';
 export default function CollectionPreviewPage() {
     const params = useParams();
     const router = useRouter();
-    const id = Number(params?.id);
+    const { id: idParam } = params as { id: string };
+    const [numericId, setNumericId] = useState<number | null>(null);
 
     const [collection, setCollection] = useState<ProjectCollection | null>(null);
     const [loading, setLoading] = useState(true);
@@ -72,7 +73,7 @@ export default function CollectionPreviewPage() {
 
         try {
             setRequestStatus('loading');
-            await collaborationApi.requestAccess('collection', id, user.id);
+            await collaborationApi.requestAccess('collection', numericId!, user.id);
             setRequestStatus('sent');
         } catch (err: any) {
             console.error('Failed to request access:', err);
@@ -82,11 +83,15 @@ export default function CollectionPreviewPage() {
 
     useEffect(() => {
         const fetchCollection = async () => {
-            if (!id) return;
+            if (!idParam) return;
 
             try {
-                const data = await api.projectCollections.getById(id);
+                if (/^\d+$/.test(idParam)) {
+                    throw new Error("Unauthorized");
+                }
+                const data = await api.projectCollections.getByPublicId(idParam);
                 setCollection(data);
+                setNumericId(data.id);
                 // If the backend returns populated projects, use them. 
                 // Otherwise we might need to fetch them if only IDs are returned.
                 // Assuming backend returns populated projects as per spec:
@@ -115,14 +120,14 @@ export default function CollectionPreviewPage() {
         };
 
         fetchCollection();
-    }, [id]);
+    }, [idParam]);
 
     useEffect(() => {
         const fetchStatus = async () => {
-             if (!isAuthenticated || !user?.id || !id) return;
+             if (!isAuthenticated || !user?.id || !numericId) return;
              try {
                  // Check unified access (owner or collaborator)
-                 const hasAccess = await collaborationApi.hasCollectionAccess(id, user.id);
+                 const hasAccess = await collaborationApi.hasCollectionAccess(numericId, user.id);
                  if (hasAccess) {
                      setRequestStatus('accepted');
                      return;
@@ -130,7 +135,7 @@ export default function CollectionPreviewPage() {
 
                  // Check for pending request
                  const requests = await collaborationApi.getMyRequests(user.id);
-                 const req = requests.find(r => r.targetId === id && r.type === 'collection');
+                 const req = requests.find(r => r.targetId === numericId && r.type === 'collection');
                  
                  if (req) {
                      if (req.status === 'pending') setRequestStatus('sent');
@@ -141,24 +146,25 @@ export default function CollectionPreviewPage() {
              }
         };
         fetchStatus();
-    }, [isAuthenticated, user?.id, id]);
+    }, [isAuthenticated, user?.id, numericId]);
     useEffect(() => {
-        if (collection?.name && id) {
+        if (collection?.name && numericId && idParam) {
             trackVisit({
-                targetId: id,
+                targetId: numericId,
+                publicId: idParam,
                 targetType: 'collection',
                 name: collection.name,
                 description: collection.description,
                 ownerName: ownerDisplayName
             });
         }
-    }, [id, collection?.name, collection?.description, ownerDisplayName, trackVisit]);
+    }, [numericId, idParam, collection?.name, collection?.description, ownerDisplayName, trackVisit]);
 
     const handleProjectClick = (project: Project) => {
         if (user?.id === collection?.userId || requestStatus === 'accepted') {
-            router.push(`/project/${project.id}`);
+            router.push(`/project/${project.publicId || project.id}`);
         } else {
-            router.push(`/project/${project.id}/preview?collection=${id}`);
+            router.push(`/project/${project.publicId || project.id}/preview?collection=${idParam}`);
         }
     };
 
@@ -271,7 +277,8 @@ export default function CollectionPreviewPage() {
 
                             <ProjectInfoPopup
                                 type="collection"
-                                targetId={id}
+                                targetId={numericId || 0}
+                                publicId={idParam}
                                 name={collection.name}
                                 description={collection.description}
                                 updatedAt={collection.updatedAt}

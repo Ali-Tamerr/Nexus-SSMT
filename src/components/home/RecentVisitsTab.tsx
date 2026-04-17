@@ -26,9 +26,9 @@ export function RecentVisitsTab() {
   const handleItemClick = (visit: RecentVisit) => {
     setIsOpen(false);
     if (visit.targetType === 'project') {
-      router.push(`/project/${visit.targetId}/preview`);
+      router.push(`/project/${visit.publicId}/preview`);
     } else {
-      router.push(`/collection/${visit.targetId}/preview`);
+      router.push(`/collection/${visit.publicId}/preview`);
     }
   };
 

@@ -34,30 +34,13 @@ function adjustBrightness(hex: string, percent: number): string {
 
 export default function ProjectPreviewClient({ params }: { params: Promise<{ id: string }> }) {
     const { id: idParam } = use(params);
-    const id = Number(idParam);
     const router = useRouter();
     const searchParams = useSearchParams();
     const collectionId = searchParams.get('collection');
     const { user, isAuthenticated } = useAuthStore();
     const [isMounted, setIsMounted] = useState(false);
     const { trackVisit } = useRecentVisits();
-
-    // Automatic redirect for owners/collaborators
-    useEffect(() => {
-        if (isMounted && isAuthenticated && user?.id) {
-            // Check both access AND edit access. 
-            // If they can't edit (e.g. they left collaborator status but are in the collection),
-            // we should NOT redirect them to the editor, as the editor will just redirect them back here.
-            Promise.all([
-                collaborationApi.hasProjectAccess(id, user.id),
-                collaborationApi.hasProjectEditAccess(id, user.id)
-            ]).then(([hasAccess, canEdit]) => {
-                if (hasAccess && canEdit) {
-                    router.replace(`/project/${id}`);
-                }
-            });
-        }
-    }, [id, isAuthenticated, user?.id, isMounted, router]);
+    const [numericId, setNumericId] = useState<number | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [projectName, setProjectName] = useState('');
@@ -106,9 +89,10 @@ export default function ProjectPreviewClient({ params }: { params: Promise<{ id:
     }, []);
 
     useEffect(() => {
-        if (projectName && id) {
+        if (projectName && numericId && idParam) {
             trackVisit({
-                targetId: id,
+                targetId: numericId,
+                publicId: idParam,
                 targetType: 'project',
                 name: projectName,
                 description: projectDescription,
@@ -116,7 +100,7 @@ export default function ProjectPreviewClient({ params }: { params: Promise<{ id:
                 ownerName: '' // Will be updated if we find it
             });
         }
-    }, [id, projectName, projectDescription, trackVisit]);
+    }, [numericId, projectName, projectDescription, trackVisit]);
 
     useEffect(() => {
         const loadProjectData = async () => {
@@ -124,20 +108,30 @@ export default function ProjectPreviewClient({ params }: { params: Promise<{ id:
             setError(null);
 
             try {
-                // Try fetching by PublicId (NanoID) first
-                let project;
-                try {
-                    project = await api.projects.getByPublicId(idParam);
-                } catch (e) {
-                    // Fallback for legacy numeric IDs
-                    if (/^\d+$/.test(idParam)) {
-                        project = await api.projects.getById(Number(idParam));
-                    } else {
-                        throw e;
+                if (/^\d+$/.test(idParam)) {
+                    throw new Error("Unauthorized");
+                }
+                const project = await api.projects.getByPublicId(idParam);
+                const fetchedNumericId = project.id;
+                setNumericId(fetchedNumericId);
+
+                // Automatic redirect for owners/collaborators
+                if (isAuthenticated && user?.id) {
+                    try {
+                        const [hasAccess, canEdit] = await Promise.all([
+                            collaborationApi.hasProjectAccess(fetchedNumericId, user.id),
+                            collaborationApi.hasProjectEditAccess(fetchedNumericId, user.id)
+                        ]);
+                        if (hasAccess && canEdit) {
+                            router.replace(`/project/${idParam}`);
+                            return;
+                        }
+                    } catch (e) {
+                        // proceed to preview mode
                     }
                 }
                 
-                const projectId = project.id;
+                const projectId = fetchedNumericId;
                 setProjectName(project.name);
                 setProjectDescription(project.description || '');
                 setProjectUpdatedAt(project.updatedAt);

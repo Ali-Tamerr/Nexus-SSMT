@@ -26,7 +26,6 @@ import { useRecentVisits } from '@/hooks/useRecentVisits';
 export default function ProjectPage({ params }: { params: Promise<{ id: string }> }) {
   const graphCanvasRef = useRef<GraphCanvasHandle>(null);
   const { id: idParam } = use(params);
-  const id = Number(idParam);
   const router = useRouter();
   const [isMounted, setIsMounted] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -63,9 +62,10 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
   }, []);
 
   useEffect(() => {
-    if (currentProject?.name && id) {
+    if (currentProject?.name && currentProject?.id && currentProject.publicId === idParam) {
       trackVisit({
-        targetId: id,
+        targetId: currentProject.id,
+        publicId: idParam,
         targetType: 'project',
         name: currentProject.name,
         description: currentProject.description,
@@ -73,7 +73,7 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
         ownerName: currentProject.user?.displayName || ''
       });
     }
-  }, [id, currentProject?.name, currentProject?.description, currentProject?.color, currentProject?.user?.displayName, trackVisit]);
+  }, [idParam, currentProject?.id, currentProject?.name, currentProject?.description, currentProject?.color, currentProject?.user?.displayName, trackVisit]);
 
   useEffect(() => {
     if (hasHydrated && !isAuthenticated) {
@@ -92,27 +92,32 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
       setError(null);
 
       try {
-        const project = await api.projects.getById(id);
+        if (/^\d+$/.test(idParam)) {
+          throw new Error("Unauthorized");
+        }
+
+        const project = await api.projects.getByPublicId(idParam);
+        const fetchedNumericId = project.id;
 
         // View Access Check
-        const hasAccess = await collaborationApi.hasProjectAccess(id, user?.id || '');
+        const hasAccess = await collaborationApi.hasProjectAccess(fetchedNumericId, user?.id || '');
         if (!hasAccess) {
           throw new Error("Unauthorized");
         }
 
         // Edit Access Check (checks per-project exclusions)
-        const canEditProject = await collaborationApi.hasProjectEditAccess(id, user?.id || '');
+        const canEditProject = await collaborationApi.hasProjectEditAccess(fetchedNumericId, user?.id || '');
         if (!canEditProject) {
           // User can view but not edit — redirect to preview mode
           setCanEdit(false);
-          router.replace(`/project/${id}/preview`);
+          router.replace(`/project/${idParam}/preview`);
           return;
         }
         setCanEdit(true);
 
         setCurrentProject(project);
 
-        const projectNodes = await api.nodes.getByProject(id);
+        const projectNodes = await api.nodes.getByProject(fetchedNumericId);
         setNodes(projectNodes);
 
         const allLinks = await api.links.getAll();
@@ -128,7 +133,8 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
         }
 
         setCurrentProject({
-          id,
+          id: -1,
+          publicId: idParam,
           name: 'Project',
           description: '',
           color: '#355ea1',
@@ -145,28 +151,25 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
 
     if (hasHydrated && isAuthenticated) {
       loadProjectData();
+    }
+  }, [idParam, hasHydrated, isAuthenticated, setCurrentProject, setNodes, setLinks, setLoading, user?.id, showToast, router, setCanEdit]);
 
-      // Subscribe to real-time changes
-      if (user?.id) {
-        realtimeSync.subscribeToProject(id, user.id, () => {
-          // 0 duration means it won't auto-close
-          showToast('Some changes were made. Please refresh the page to see the latest version.', 'info', 0);
-        }, () => {
-          // Access revoked
-          showToast('Your edit access to this project has been removed.', 'error', 0);
-          // Delay before redirecting to allow user to see the toast context
-          setTimeout(() => {
-            window.location.href = `/project/${id}/preview`;
-          }, 2500);
-        });
-      }
+  useEffect(() => {
+    if (currentProject?.id && user?.id && currentProject.publicId === idParam) {
+      realtimeSync.subscribeToProject(currentProject.id, user.id, () => {
+        showToast('Some changes were made. Please refresh the page to see the latest version.', 'info', 0);
+      }, () => {
+        showToast('Your edit access to this project has been removed.', 'error', 0);
+        setTimeout(() => {
+          window.location.href = `/project/${idParam}/preview`;
+        }, 2500);
+      });
     }
 
     return () => {
-      dataLoadedRef.current = false;
       realtimeSync.unsubscribe();
     };
-  }, [id, hasHydrated, isAuthenticated, setCurrentProject, setNodes, setLinks, setLoading, user?.id, showToast]);
+  }, [currentProject?.id, currentProject?.publicId, idParam, user?.id, showToast]);
 
   const handleCreateNode = async () => {
     if (!currentProject) return;
@@ -186,7 +189,7 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
       id: Date.now() * -1,
       title: 'New Node',
       content: '',
-      projectId: id,
+      projectId: currentProject.id,
       groupId: 0,
       customColor: randomColor,
       x: randomX,
@@ -225,7 +228,7 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
       let newNode = await api.nodes.create({
         title: 'New Node',
         content: '',
-        projectId: id,
+        projectId: currentProject.id,
         groupId: groupId,
         customColor: randomColor,
         x: randomX,
@@ -265,7 +268,7 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
 
   const filteredNodes = filterNodes(nodes, searchQuery);
 
-  if (!hasHydrated || !isMounted || !isAuthenticated || !currentProject || currentProject.id !== id) {
+  if (!hasHydrated || !isMounted || !isAuthenticated || !currentProject || currentProject.publicId !== idParam) {
     return <LoadingScreen />;
   }
 

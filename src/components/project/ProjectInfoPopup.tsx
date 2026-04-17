@@ -19,6 +19,7 @@ interface ProjectInfoPopupProps {
   name?: string | null;
   className?: string;
   isPreviewMode?: boolean;
+  publicId?: string;
 }
 
 export const ProjectInfoPopup = forwardRef<{ open: () => void }, ProjectInfoPopupProps>(({
@@ -28,7 +29,8 @@ export const ProjectInfoPopup = forwardRef<{ open: () => void }, ProjectInfoPopu
   updatedAt,
   name,
   className = "",
-  isPreviewMode = false
+  isPreviewMode = false,
+  publicId
 }, ref) => {
   const [isOpen, setIsOpen] = useState(false);
   const [members, setMembers] = useState<any[]>([]);
@@ -171,7 +173,7 @@ export const ProjectInfoPopup = forwardRef<{ open: () => void }, ProjectInfoPopu
       );
 
       if (actionType === 'leave') {
-        window.location.href = `/project/${targetId}/preview`;
+        window.location.href = `/${type === 'collection' ? 'collections' : 'project'}/${publicId || targetId}/preview`;
         return;
       }
 

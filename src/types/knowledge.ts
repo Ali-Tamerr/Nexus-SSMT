@@ -153,6 +153,7 @@ export interface RegisterRequest {
 
 export interface ProjectCollection {
   id: number;
+  publicId: string;
   name: string;
   description?: string;
   userId: string;
@@ -176,13 +177,14 @@ export interface ProjectCollectionItem {
 export interface RecentVisit {
   id: number;
   targetId: number;
+  publicId: string;
   targetType: 'project' | 'collection';
-  visitedAt: string;
   name: string;
   description?: string;
   color?: string;
-  avatarUrl?: string;
-  ownerName?: string;
+  visitedAt: string;
+  avatarUrl?: string; // Owner avatar
+  ownerName?: string; // Owner name
 }
 
 export {

@@ -570,6 +570,9 @@ export const api = {
     getById: (id: number) =>
       fetchApi<ProjectCollection>(`/api/projectcollections/${id}`),
 
+    getByPublicId: (publicId: string) =>
+      fetchApi<ProjectCollection>(`/api/projectcollections/p/${publicId}`),
+
     create: (data: {
       name: string;
       description?: string;
