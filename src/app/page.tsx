@@ -259,7 +259,6 @@ export default function HomePage() {
   // Debug helper for group projects
   const getGroupProjectIds = (g: any) => {
     if (g.projectIds && g.projectIds.length > 0) {
-      console.log('[Page] Using projectIds:', g.projectIds, 'Type:', typeof g.projectIds[0]);
       return g.projectIds.map((id: any) => Number(id));
     }
     // Priority 2: Items (from relationship)

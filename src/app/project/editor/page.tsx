@@ -15,12 +15,15 @@ import { LoadingScreen, LoadingOverlay } from '@/components/ui';
 import { SearchInput } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { ProjectNavbar } from '@/components/layout';
-import { GraphCanvas, GraphCanvasHandle } from '@/components/graph/GraphCanvas';
 import { GraphControls } from '@/components/graph/GraphControls';
-import { NodeEditor } from '@/components/editor/NodeEditor';
-import { NodePreviewPane } from '@/components/editor/NodePreviewPane';
-import { CommandPalette } from '@/components/ui/CommandPalette';
-import { ClassroomIntegration } from '@/components/classroom/ClassroomIntegration';
+import type { GraphCanvasHandle } from '@/components/graph/GraphCanvas';
+import dynamic from 'next/dynamic';
+
+const GraphCanvas = dynamic(() => import('@/components/graph/GraphCanvas').then(mod => mod.GraphCanvas), { ssr: false });
+const NodeEditor = dynamic(() => import('@/components/editor/NodeEditor').then(mod => mod.NodeEditor), { ssr: false });
+const NodePreviewPane = dynamic(() => import('@/components/editor/NodePreviewPane').then(mod => mod.NodePreviewPane), { ssr: false });
+const CommandPalette = dynamic(() => import('@/components/ui/CommandPalette').then(mod => mod.CommandPalette), { ssr: false });
+const ClassroomIntegration = dynamic(() => import('@/components/classroom/ClassroomIntegration').then(mod => mod.ClassroomIntegration), { ssr: false });
 
 export default function EditorPage() {
     const router = useRouter();

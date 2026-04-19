@@ -35,21 +35,18 @@ export const realtimeSync = {
         activeChannel
             .on('broadcast', { event: 'state-changed' }, (payload) => {
                 const { userId } = payload.payload;
-                console.log(`[Realtime] Received update from user ${userId}, current is ${currentUserId}`);
                 if (userId && userId !== currentUserId) {
                     onUpdateReceived();
                 }
             })
             .on('broadcast', { event: 'access-revoked' }, (payload) => {
                 const { userId } = payload.payload;
-                console.log(`[Realtime] Access revoked for user ${userId}, current is ${currentUserId}`);
                 if (userId === currentUserId) {
                     onAccessRevoked?.();
                 }
             })
             .subscribe((status) => {
                 if (status === 'SUBSCRIBED') {
-                    console.log(`[Realtime] Subscribed to project ${projectId} realtime sync`);
                 }
             });
     },
@@ -74,12 +71,10 @@ export const realtimeSync = {
         
         userChannel
             .on('broadcast', { event: 'new-notification' }, () => {
-                console.log(`[Realtime] Received new notification for user ${userId}`);
                 onNotification();
             })
             .subscribe((status) => {
                 if (status === 'SUBSCRIBED') {
-                    console.log(`[Realtime] Subscribed to user notifications for ${userId}`);
                 }
             });
     },
@@ -104,7 +99,6 @@ export const realtimeSync = {
                     event: 'new-notification'
                 });
                 supabase.removeChannel(channel);
-                console.log(`[Realtime] Sent global notification to user ${userId}`);
             }
         });
     },
@@ -124,18 +118,16 @@ export const realtimeSync = {
                         payload: { userId }
                     });
                     supabase.removeChannel(fallbackChannel);
-                    console.log(`[Realtime] Sent fallback update notification for project ${projectId}`);
                 }
             });
             return;
         }
         
-        const res = await activeChannel.send({
+        await activeChannel.send({
             type: 'broadcast',
             event: 'state-changed',
             payload: { userId }
         });
-        console.log(`[Realtime] Sent update notification for project ${projectId}`, res);
     },
 
     notifyAccessRevoked: async (projectId: number, userId: string) => {
@@ -160,6 +152,5 @@ export const realtimeSync = {
             event: 'access-revoked',
             payload: { userId }
         });
-        console.log(`[Realtime] Sent access-revoked notification for user ${userId} in project ${projectId}`);
     }
 };

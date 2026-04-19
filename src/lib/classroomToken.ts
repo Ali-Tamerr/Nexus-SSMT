@@ -18,12 +18,6 @@ export function getClassroomToken(): string | null {
 
   if (!token || !expiresAt) {
     if (token || expiresAt) {
-      console.log(
-        "[ClassroomToken] Missing one of token/expiresAt, clearing. Token:",
-        !!token,
-        "ExpiresAt:",
-        !!expiresAt,
-      );
       clearClassroomToken();
     }
     return null;
@@ -41,7 +35,6 @@ export function getClassroomToken(): string | null {
   }
 
   if (now > expiresAtMs - buffer) {
-    console.log("[ClassroomToken] Access token expired or near expiry.");
     // If we have a refresh token, we don't necessarily want to clear everything yet
     // But we'll return null to signal that current access token is not valid
     return null;

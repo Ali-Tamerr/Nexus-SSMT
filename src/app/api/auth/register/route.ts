@@ -27,11 +27,6 @@ export async function POST(req: Request) {
       process.env.NEXT_PUBLIC_API_URL?.trim() ||
       "https://localhost:7007";
 
-    console.log("Registration route: Attempting to register user", {
-      email,
-      provider,
-      apiUrl,
-    });
 
     const response = await fetch(`${apiUrl}/api/auth/register`, {
       method: "POST",
@@ -46,7 +41,6 @@ export async function POST(req: Request) {
     });
 
     if (response.status === 409) {
-      console.log("Registration route: User already exists");
       return NextResponse.json(
         { message: "Email already exists" },
         { status: 409 },

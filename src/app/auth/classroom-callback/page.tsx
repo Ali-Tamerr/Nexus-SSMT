@@ -30,7 +30,6 @@ function ClassroomCallbackContent() {
       }
 
       try {
-        console.log('Exchanging code for token...');
 
         // Exchange the code for an access token
         const response = await fetch('/api/auth/classroom-token', {
@@ -42,7 +41,6 @@ function ClassroomCallbackContent() {
           }),
         });
 
-        console.log('Token exchange response status:', response.status);
 
         if (!response.ok) {
           const data = await response.json();
@@ -52,7 +50,6 @@ function ClassroomCallbackContent() {
 
         const { accessToken, refreshToken, expiresAt } = await response.json();
 
-        console.log('Token received, storing in localStorage...');
 
         // Store the tokens in localStorage
         localStorage.setItem('classroom_access_token', accessToken);
@@ -61,7 +58,6 @@ function ClassroomCallbackContent() {
           localStorage.setItem('classroom_refresh_token', refreshToken);
         }
 
-        console.log('Tokens stored successfully');
 
         setStatus('success');
 

@@ -541,29 +541,15 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
         ctx.stroke();
       }
 
-      const gradient = ctx.createRadialGradient(
-        x - nodeRadius / 3,
-        y - nodeRadius / 3,
-        0,
-        x,
-        y,
-        nodeRadius
-      );
-      gradient.addColorStop(0, baseColor);
-      gradient.addColorStop(1, adjustBrightness(baseColor, -30));
-
       ctx.beginPath();
       ctx.arc(x, y, nodeRadius, 0, 2 * Math.PI);
-      ctx.fillStyle = gradient;
+      ctx.fillStyle = baseColor;
       ctx.fill();
 
-      ctx.shadowColor = baseColor;
-      ctx.shadowBlur = 10;
-      ctx.beginPath();
-      ctx.arc(x, y, nodeRadius, 0, 2 * Math.PI);
-      ctx.fillStyle = 'transparent';
-      ctx.fill();
-      ctx.shadowBlur = 0;
+      // Subtle border instead of shadow
+      ctx.strokeStyle = adjustBrightness(baseColor, -20);
+      ctx.lineWidth = 1.5 / globalScale;
+      ctx.stroke();
 
       ctx.textAlign = 'center';
       ctx.textBaseline = 'top';
@@ -3101,9 +3087,9 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
               enableNodeDrag={!graphSettings.lockAllMovement && !isDrawingTool && !isPanTool}
               enableZoomInteraction={isSelectTool || isPanTool}
               enablePanInteraction={isPanTool}
-              cooldownTicks={isPreviewMode ? 100 : 0}
-              d3AlphaDecay={isPreviewMode ? 0.02 : 1}
-              d3VelocityDecay={isPreviewMode ? 0.3 : 0.9}
+              cooldownTicks={100}
+              d3AlphaDecay={0.05}
+              d3VelocityDecay={0.4}
               backgroundColor="transparent"
             />
             <style>{`

@@ -310,7 +310,6 @@ export const config = {
 
       // Access token has expired, try to update it
       if (token.provider === "google" && token.refreshToken) {
-        console.log("Auth: Access token expired, refreshing...");
         return await refreshAccessToken(token);
       }
 

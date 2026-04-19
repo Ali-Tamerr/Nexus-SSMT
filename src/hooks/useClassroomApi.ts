@@ -44,19 +44,14 @@ function useClassroomAccessToken() {
     if (!token && typeof window !== "undefined") {
       const refreshToken = localStorage.getItem("classroom_refresh_token");
       if (refreshToken) {
-        console.log(
-          "[useClassroomAccessToken] Access token missing/expired, attempting refresh...",
-        );
         const { refreshClassroomToken } = await import("@/lib/classroomToken");
         const newToken = await refreshClassroomToken();
         if (newToken) {
           token = newToken;
-          console.log("[useClassroomAccessToken] Token refreshed successfully");
         }
       }
     }
 
-    console.log("Refreshing classroom token, found:", token ? "yes" : "no");
     setStoredToken(token);
     setRefreshKey((prev) => prev + 1);
   }, []);
@@ -77,7 +72,6 @@ function useClassroomAccessToken() {
 
     // Listen for custom event from popup
     const handleClassroomAuth = () => {
-      console.log("classroom-auth-success event received");
       refreshTokenAction();
     };
 
@@ -215,7 +209,6 @@ export function useHasClassroomAccess() {
 
   const checkStoredToken = useCallback(() => {
     const hasToken = hasValidClassroomToken();
-    console.log("Checking stored token:", hasToken);
     setHasStoredToken(hasToken);
   }, []);
 
@@ -232,7 +225,6 @@ export function useHasClassroomAccess() {
 
     // Listen for custom event from popup
     const handleClassroomAuth = () => {
-      console.log("Classroom auth success event received");
       checkStoredToken();
     };
 
