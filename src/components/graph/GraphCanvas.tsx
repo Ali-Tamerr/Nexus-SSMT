@@ -403,7 +403,8 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
       }
 
       // Check drag state flags
-      if (wasGlobalDragRef.current || isNodeDraggingRef.current || Date.now() - lastDragTimeRef.current < 300) return;
+      // wasGlobalDragRef accurately tracks if the movement was > 5px
+      if (wasGlobalDragRef.current) return;
 
       // Check drag distance (safeguard against drag events not firing or clearing too fast)
       if (dragStartPosRef.current && event.clientX !== undefined && event.clientY !== undefined) {
@@ -1993,10 +1994,10 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
     if (dragStartPosRef.current) {
       const dx = e.clientX - dragStartPosRef.current.x;
       const dy = e.clientY - dragStartPosRef.current.y;
-      if (Math.sqrt(dx * dx + dy * dy) > 5) {
+      if (Math.sqrt(dx * dx + dy * dy) > 7) { // Increased threshold slightly for mobile stability
         wasGlobalDragRef.current = true;
         // Clear the flag after a short delay to allow click handlers to read it
-        setTimeout(() => { wasGlobalDragRef.current = false; }, 100);
+        setTimeout(() => { wasGlobalDragRef.current = false; }, 200);
       }
     }
     dragStartPosRef.current = null;
@@ -2675,10 +2676,10 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
     if (target.closest('.graph-ui-hide') || target.closest('button')) return;
 
     if (!isPanTool) {
-      // Don't prevent default if it's a single touch in pan mode (allow browser pan if possible)
-      // but in other modes we might need to prevent it to allow drawing
-      // If we are in Select mode, we WANT 1-finger to select, not pan.
-      if (graphSettings.activeTool !== 'pan') {
+      // Don't prevent default if it's a single touch in pan mode or select mode 
+      // to allow the browser to generate click events/allow D3 to see the interaction properly.
+      // touch-action: none on the container already prevents browser scrolling/zooming.
+      if (graphSettings.activeTool !== 'pan' && graphSettings.activeTool !== 'select') {
          e.preventDefault(); 
       }
     }
