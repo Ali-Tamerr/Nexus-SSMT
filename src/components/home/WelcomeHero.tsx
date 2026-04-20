@@ -5,7 +5,7 @@ import NexusLogo from '@/assets/Logo/Logo with no circle.svg';
 
 export function WelcomeHero({ onSignup, onLogin }: { onSignup: () => void; onLogin: () => void }) {
   return (
-    <div className="flex min-h-[calc(100vh-15rem)] flex-col items-center justify-center">
+    <div className="flex flex-col items-center justify-center">
       <div className="relative mb-4 h-24 w-24">
         <div className="absolute -inset-1 rounded-ful" />
         <Image src={NexusLogo} alt="Nexus Logo" fill className="object-contain" />

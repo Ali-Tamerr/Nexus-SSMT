@@ -327,10 +327,10 @@ export default function HomePage() {
         </a>
       </Navbar>
 
-      <main className="mx-auto max-w-6xl px-6 py-8">
+      <main className={`mx-auto max-w-6xl px-6 py-8 ${!isAuthenticated ? 'relative min-h-[calc(100vh-64px)] flex flex-col justify-center' : ''}`}>
         {!isAuthenticated ? (
           <>
-            <div className="mb-12">
+            <div className="absolute top-8 left-6 z-10">
               <RecentVisitsTab />
             </div>
             <WelcomeHero
