@@ -5,7 +5,7 @@ import { useRouter, useParams } from 'next/navigation';
 import { ArrowLeft, Loader2, Link2, ExternalLink, Info, X, Check, Share2 } from 'lucide-react';
 import { ProjectCollection, Project, ProjectCollectionItem, Profile } from '@/types/knowledge';
 import { api } from '@/lib/api';
-import { Navbar } from '@/components/layout';
+import { Navbar } from '@/components/layout/Navbar';
 import { ProjectCard } from '@/components/projects/ProjectCard';
 import { useAuthStore } from '@/store/useAuthStore';
 import { collaborationApi } from '@/lib/supabase/collaboration';

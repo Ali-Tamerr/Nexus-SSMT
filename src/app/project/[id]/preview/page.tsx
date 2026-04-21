@@ -2,7 +2,7 @@ import { Metadata, ResolvingMetadata } from 'next';
 import { api } from '@/lib/api';
 import ProjectPreviewClient from './ProjectPreviewClient';
 import { Suspense } from 'react';
-import { LoadingScreen } from '@/components/ui';
+import { LoadingScreen } from '@/components/ui/Loading';
 
 type Props = {
     params: Promise<{ id: string }>;

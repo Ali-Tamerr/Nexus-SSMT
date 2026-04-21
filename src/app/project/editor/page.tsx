@@ -11,10 +11,10 @@ import { decodeWallpaper } from '@/lib/imageUtils';
 import { realtimeSync } from '@/lib/supabase/realtime';
 import { useToast } from '@/context/ToastContext';
 
-import { LoadingScreen, LoadingOverlay } from '@/components/ui';
+import { LoadingScreen, LoadingOverlay } from '@/components/ui/Loading';
 import { SearchInput } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
-import { ProjectNavbar } from '@/components/layout';
+import { ProjectNavbar } from '@/components/layout/Navbar';
 import { GraphControls } from '@/components/graph/GraphControls';
 import type { GraphCanvasHandle } from '@/components/graph/GraphCanvas';
 import dynamic from 'next/dynamic';

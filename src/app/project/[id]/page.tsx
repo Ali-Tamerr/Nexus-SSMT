@@ -8,10 +8,10 @@ import { useGraphStore, filterNodes } from '@/store/useGraphStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { api } from '@/lib/api';
 
-import { LoadingScreen, LoadingOverlay } from '@/components/ui';
+import { LoadingScreen, LoadingOverlay } from '@/components/ui/Loading';
 import { SearchInput } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
-import { ProjectNavbar } from '@/components/layout';
+import { ProjectNavbar } from '@/components/layout/Navbar';
 import { collaborationApi } from '@/lib/supabase/collaboration';
 import { realtimeSync } from '@/lib/supabase/realtime';
 import { useToast } from '@/context/ToastContext';

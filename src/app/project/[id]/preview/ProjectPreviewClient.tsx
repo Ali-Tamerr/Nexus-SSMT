@@ -10,7 +10,7 @@ import { api, ApiDrawing } from '@/lib/api';
 import { collaborationApi } from '@/lib/supabase/collaboration';
 import { useAuthStore } from '@/store/useAuthStore';
 import { NODE_COLORS } from '@/lib/constants';
-import { LoadingScreen } from '@/components/ui';
+import { LoadingScreen } from '@/components/ui/Loading';
 import { Node, Link as LinkType, DrawnShape, Group } from '@/types/knowledge';
 import { NodePreviewPaneContent } from '@/components/editor/NodePreviewPane';
 import { drawShapeOnContext } from '@/components/graph/drawingUtils';

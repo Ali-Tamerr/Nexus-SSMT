@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { Navbar } from '@/components/layout';
+import { Navbar } from '@/components/layout/Navbar';
 
 function ErrorMessage() {
     const searchParams = useSearchParams();
