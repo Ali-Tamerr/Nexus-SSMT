@@ -22,6 +22,10 @@ const ForceGraph2D = dynamic(() => import('react-force-graph-2d'), {
 
 import { forwardRef, useImperativeHandle } from 'react';
 import { LoadingOverlay } from '../ui';
+import { useGraphExportLogic } from '@/hooks/useGraphExportLogic';
+import { useMapZoom } from '@/hooks/useMapZoom';
+import { useGraphKeyboardShortcuts } from '@/hooks/useGraphKeyboardShortcuts';
+import { useGraphDrawingHandlers } from '@/hooks/useGraphDrawingHandlers';
 
 export type GraphCanvasHandle = {
   exportToPNG: () => void;
@@ -34,157 +38,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
   const [isMounted, setIsMounted] = useState(false);
 
-  const processExport = async (type: 'png' | 'jpg') => {
-    const graphCanvas = containerRef.current?.querySelector('canvas');
-    if (!graphCanvas || !graphRef.current) return;
-
-    // 1. Save View
-    const prevZoom = graphRef.current.zoom() || 1;
-    const prevCenter = graphRef.current.centerAt() || { x: 0, y: 0 };
-
-    // 2. Get Data State
-    const state = useGraphStore.getState();
-    const { nodes, shapes, activeGroupId, searchQuery, currentProject } = state;
-
-    // 3. Calc Bounds
-    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-
-    // Filtered Nodes
-    let exportNodes = filterNodes(nodes, searchQuery);
-    if (activeGroupId !== null && activeGroupId !== undefined) {
-      exportNodes = exportNodes.filter(n => n.groupId === activeGroupId);
-    }
-
-    exportNodes.forEach(n => {
-      const x = n.x || 0, y = n.y || 0;
-      const r = 20;
-      minX = Math.min(minX, x - r);
-      maxX = Math.max(maxX, x + r);
-      minY = Math.min(minY, y - r);
-      maxY = Math.max(maxY, y + r);
-    });
-
-    // Filtered Shapes
-    let exportShapes = shapes;
-    if (activeGroupId !== null && activeGroupId !== undefined) {
-      exportShapes = exportShapes.filter(s => s.groupId === activeGroupId);
-    }
-
-    exportShapes.forEach(s => {
-      try {
-        const pts = s.points;
-        const padding = 5;
-        pts.forEach((p: any) => {
-          minX = Math.min(minX, p.x - padding);
-          maxX = Math.max(maxX, p.x + padding);
-          minY = Math.min(minY, p.y - padding);
-          maxY = Math.max(maxY, p.y + padding);
-        });
-      } catch (e) { }
-    });
-
-    // 4. Apply Zoom to Fit
-    if (minX !== Infinity) {
-      const PADDING = 50;
-      const rect = containerRef.current!.getBoundingClientRect();
-      const width = rect.width;
-      const height = rect.height;
-      if (width && height) {
-        const contentW = maxX - minX;
-        const contentH = maxY - minY;
-        if (contentW > 0 && contentH > 0) {
-          const kx = (width - PADDING * 2) / contentW;
-          const ky = (height - PADDING * 2) / contentH;
-          const k = Math.min(kx, ky, 2);
-          const cx = (minX + maxX) / 2;
-          const cy = (minY + maxY) / 2;
-
-          graphRef.current.zoom(k, 0);
-          graphRef.current.centerAt(cx, cy, 0);
-        }
-      }
-    }
-
-    // Capture Screen Coords for Crop
-    await new Promise(r => setTimeout(r, 100)); // Wait for render
-
-    // We need to calculate screen bounds AFTER the zoom
-    const tl = graphRef.current.graph2ScreenCoords(minX, minY);
-    const tr = graphRef.current.graph2ScreenCoords(maxX, minY);
-    const bl = graphRef.current.graph2ScreenCoords(minX, maxY);
-    const br = graphRef.current.graph2ScreenCoords(maxX, maxY);
-
-    // Find bounding box in screen pixels
-    const screenMinX = Math.min(tl.x, tr.x, bl.x, br.x);
-    const screenMaxX = Math.max(tl.x, tr.x, bl.x, br.x);
-    const screenMinY = Math.min(tl.y, tr.y, bl.y, br.y);
-    const screenMaxY = Math.max(tl.y, tr.y, bl.y, br.y);
-
-    const dpr = window.devicePixelRatio || 1;
-    const cropPadding = 20;
-
-    const sx = (screenMinX - cropPadding) * dpr;
-    const sy = (screenMinY - cropPadding) * dpr;
-    const sw = (screenMaxX - screenMinX + cropPadding * 2) * dpr;
-    const sh = (screenMaxY - screenMinY + cropPadding * 2) * dpr;
-
-    // 5. Draw & Download
-    const tempCanvas = document.createElement('canvas');
-    tempCanvas.width = sw;
-    tempCanvas.height = sh;
-    const ctx = tempCanvas.getContext('2d');
-
-    const download = () => {
-      const a = document.createElement('a');
-      a.download = `nexus-graph-${currentProject?.name || 'export'}.${type}`;
-      a.href = tempCanvas.toDataURL(`image/${type}`);
-      a.click();
-
-      // Restore
-      graphRef.current.zoom(prevZoom, 0);
-      graphRef.current.centerAt(prevCenter.x, prevCenter.y, 0);
-    };
-
-    if (ctx) {
-      const drawGraph = () => {
-        ctx.drawImage(graphCanvas, sx, sy, sw, sh, 0, 0, sw, sh);
-      };
-
-      if (type === 'jpg') {
-        const wallpaper = currentProject?.wallpaper;
-        const drawBg = (color?: string | CanvasImageSource) => {
-          if (typeof color === 'string') {
-            ctx.fillStyle = color;
-            ctx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
-          } else if (color) {
-            ctx.drawImage(color as CanvasImageSource, 0, 0, tempCanvas.width, tempCanvas.height);
-          }
-          drawGraph();
-          download();
-        };
-
-        if (wallpaper) {
-          if (wallpaper.startsWith('#')) {
-            drawBg(wallpaper);
-          } else {
-            const img = new Image();
-            img.crossOrigin = 'anonymous';
-            img.onload = () => drawBg(img);
-            img.onerror = () => drawBg('#09090b');
-            img.src = wallpaper.startsWith('data:') ? wallpaper : `data:image/png;base64,${wallpaper}`;
-          }
-        } else {
-          drawBg('#09090b');
-        }
-      } else {
-        drawGraph();
-        download();
-      }
-    } else {
-      graphRef.current.zoom(prevZoom, 0);
-      graphRef.current.centerAt(prevCenter.x, prevCenter.y, 0);
-    }
-  };
+  const { processExport } = useGraphExportLogic({ containerRef, graphRef });
 
   useImperativeHandle(ref, () => ({
     exportToPNG: () => processExport('png'),
@@ -628,31 +482,6 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
     };
   }, []);
 
-  const shapeToApiDrawing = useCallback((s: DrawnShape, projectId: number, groupId?: number) => ({
-    projectId,
-    groupId: groupId ?? s.groupId ?? undefined,
-    type: s.type,
-    points: s.points,
-    color: s.color,
-    width: s.width,
-    style: s.style,
-    text: s.text ?? undefined,
-    fontSize: s.fontSize ?? undefined,
-    fontFamily: s.fontFamily ?? undefined,
-    textDir: s.textDir ?? undefined,
-    direction: s.textDir ?? undefined,
-  }), []);
-
-  useEffect(() => {
-    if (!currentProject?.id) return;
-
-    api.drawings.getByProject(currentProject.id)
-      .then(drawings => {
-        const loadedShapes = drawings.map(apiDrawingToShape);
-        setShapes(loadedShapes);
-      })
-      .catch(() => { });
-  }, [currentProject?.id, apiDrawingToShape, setShapes]);
 
   const lastLoadedProjectIdRef = useRef<number | null>(null);
 
@@ -972,48 +801,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
     return () => clearTimeout(timeoutId);
   }, [isMarqueeSelecting, isDraggingSelection, isMiddleMousePanning, isNodeDragging, isResizing]);
 
-  useEffect(() => {
-    const handleWheel = (e: WheelEvent) => {
-      // Prevent browser zooming/scrolling
-      e.preventDefault();
-      e.stopPropagation(); // Stop propagation to D3/ForceGraph
-
-      if (e.ctrlKey || e.metaKey) {
-        // Zoom Logic (Pinch or Ctrl+Scroll)
-        const zoomFactor = e.deltaY > 0 ? 0.88 : 1.12;
-        const currentZoom = graphRef.current?.zoom() || 1;
-        const newZoom = Math.max(0.1, Math.min(10, currentZoom * zoomFactor));
-
-        graphRef.current?.zoom(newZoom, 0);
-      } else {
-        // Pan Logic (Trackpad Swipe / Mouse Wheel)
-        // User wants Swipe to Pan
-        const scale = graphTransform.k || 1;
-        const panX = e.deltaX / scale; // Adjust sensitivity if needed?
-        const panY = e.deltaY / scale;
-
-        const currentCenter = graphRef.current?.centerAt();
-        if (currentCenter) {
-          graphRef.current.centerAt(
-            currentCenter.x + panX,
-            currentCenter.y + panY,
-            0
-          );
-        }
-      }
-    };
-
-    const container = containerRef.current;
-    if (container) {
-      container.addEventListener('wheel', handleWheel, { passive: false, capture: true });
-    }
-
-    return () => {
-      if (container) {
-        container.removeEventListener('wheel', handleWheel, { capture: true });
-      }
-    };
-  }, [graphTransform.k]);
+  useMapZoom({ containerRef, graphRef, graphTransform });
 
   // Handle Undo/Redo and Delete shortcuts
   // Filter shapes strictly by active group (match node filtering)
@@ -1077,473 +865,31 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
     }
   }, [activeGroupId, editingShapeId, textInputPos ? true : false]);
 
-  const syncUndoRedo = useCallback(async (isUndo: boolean) => {
-    const state = useGraphStore.getState();
-    const oldShapes = state.shapes;
-    const oldNodes = state.nodes;
-    const stack = isUndo ? state.undoStack : state.redoStack;
-    if (stack.length === 0) return;
+  const shapeToApiDrawing = useCallback((s: DrawnShape, projectId: number, groupId?: number) => ({
+    projectId,
+    groupId: groupId ?? s.groupId ?? undefined,
+    type: s.type,
+    points: s.points,
+    color: s.color,
+    width: s.width,
+    style: s.style,
+    text: s.text ?? undefined,
+    fontSize: s.fontSize ?? undefined,
+    fontFamily: s.fontFamily ?? undefined,
+    textDir: s.textDir ?? undefined,
+    direction: s.textDir ?? undefined,
+  }), []);
 
-    const targetSnapshot = stack[stack.length - 1];
-    const targetShapes = targetSnapshot.shapes;
-    const targetNodes = targetSnapshot.nodes;
-
-    if (isUndo) {
-      undo();
-    } else {
-      redo();
-    }
-
-    // Sync Shapes
-    const oldShapeIds = new Set(oldShapes.map(s => s.id));
-    const newShapeIds = new Set(targetShapes.map(s => s.id));
-
-    const reappearedShapes = targetShapes.filter(s => !oldShapeIds.has(s.id));
-    const disappearedShapes = oldShapes.filter(s => !newShapeIds.has(s.id));
-
-    for (const shape of disappearedShapes) {
-      try { await api.drawings.delete(shape.id); } catch { }
-    }
-
-    const shapeIdMap = new Map<number, number>();
-    for (const shape of reappearedShapes) {
-      try {
-        const payload = shapeToApiDrawing(shape, currentProject?.id || 0, activeGroupId ?? undefined);
-        const newShape = await api.drawings.create(payload);
-        shapeIdMap.set(shape.id, newShape.id);
-      } catch { }
-    }
-
-    // Sync Nodes
-    const oldNodeIds = new Set(oldNodes.map(n => n.id));
-    const newNodeIds = new Set(targetNodes.map(n => n.id));
-
-    const reappearedNodes = targetNodes.filter(n => !oldNodeIds.has(n.id));
-    const disappearedNodes = oldNodes.filter(n => !newNodeIds.has(n.id));
-
-    for (const node of disappearedNodes) {
-      try { await api.nodes.delete(node.id); } catch { }
-    }
-
-    const nodeIdMap = new Map<number, number>();
-    for (const node of reappearedNodes) {
-      try {
-        const payload = {
-          title: node.title,
-          content: node.content || '',
-          projectId: node.projectId,
-          groupId: node.groupId,
-          userId: node.userId,
-          customColor: node.customColor,
-          x: node.x,
-          y: node.y
-        };
-        const newNode = await api.nodes.create(payload);
-        nodeIdMap.set(node.id, newNode.id);
-      } catch { }
-    }
-
-    // Apply ID mappings if items were re-created with new IDs
-    if (shapeIdMap.size > 0 || nodeIdMap.size > 0) {
-      setTimeout(() => {
-        const currentState = useGraphStore.getState();
-        let updatedShapes = currentState.shapes;
-        let updatedNodes = currentState.nodes;
-
-        if (shapeIdMap.size > 0) {
-          updatedShapes = updatedShapes.map(s => {
-            const newId = shapeIdMap.get(s.id);
-            return newId !== undefined ? { ...s, id: newId } : s;
-          });
-        }
-
-        if (nodeIdMap.size > 0) {
-          updatedNodes = updatedNodes.map(n => {
-            const newId = nodeIdMap.get(n.id);
-            return newId !== undefined ? { ...n, id: newId } : n;
-          });
-        }
-
-        setShapes(updatedShapes);
-        setNodes(updatedNodes);
-      }, 50);
-    }
-
-    if (currentProject?.id && user?.id) {
-      realtimeSync.notifyUpdate(currentProject.id, user.id);
-    }
-  }, [undo, redo, setShapes, setNodes, currentProject?.id, activeGroupId, shapeToApiDrawing, user?.id]);
-
-  // Combined Keyboard Shortcut Handler
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // 0. Focus Check
-      const target = e.target as HTMLElement;
-      if (target.tagName === 'INPUT' ||
-        target.tagName === 'TEXTAREA' ||
-        target.isContentEditable) {
-        return;
-      }
+    if (!currentProject?.id) return;
 
-      // Handle Modifier Keys (Ctrl/Meta)
-      const mod = e.ctrlKey || e.metaKey;
-
-      // 1. Undo/Redo
-      if (mod && e.key === 'z' && !e.shiftKey) {
-        e.preventDefault();
-        syncUndoRedo(true);
-        return;
-      }
-      if (mod && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
-        e.preventDefault();
-        syncUndoRedo(false);
-        return;
-      }
-
-      // 2. Delete / Backspace
-      if (e.key === 'Delete' || e.key === 'Backspace') {
-        const hasSelectedShapes = selectedShapeIdsRef.current.size > 0;
-        const hasSelectedNodes = selectedNodeIdsRefForDelete.current.size > 0;
-
-        if (hasSelectedShapes || hasSelectedNodes) {
-          e.preventDefault();
-          // Delete selected shapes
-          if (hasSelectedShapes) {
-            pushToUndoStack();
-            const toDelete = shapesRef.current.filter(s => selectedShapeIdsRef.current.has(s.id));
-            const remaining = shapesRef.current.filter(s => !selectedShapeIdsRef.current.has(s.id));
-            setShapes(remaining);
-            toDelete.forEach(s => api.drawings.delete(s.id).catch(() => { }));
-            setSelectedShapeIds(new Set());
-          }
-          // Delete selected nodes
-          if (hasSelectedNodes) {
-            const deleteNode = useGraphStore.getState().deleteNode;
-            selectedNodeIdsRefForDelete.current.forEach(nodeId => {
-              deleteNode(nodeId);
-              api.nodes.delete(nodeId).catch(() => { });
-            });
-            setSelectedNodeIds(new Set());
-            setActiveNode(null);
-          }
-
-          if (currentProject?.id && user?.id) {
-            realtimeSync.notifyUpdate(currentProject.id, user.id);
-          }
-        }
-        return;
-      }
-
-      // 3. Copy / Paste
-      if (mod && e.key.toLowerCase() === 'c') {
-        const selectedNodes = graphDataRef.current.nodes.filter((n: any) => selectedNodeIdsRef.current.has(Number(n.id)));
-        const selectedShapes = shapesRef.current.filter(s => selectedShapeIdsRef.current.has(s.id));
-
-        if (selectedNodes.length === 0 && selectedShapes.length === 1 && selectedShapes[0].type === 'text' && selectedShapes[0].text) {
-          navigator.clipboard.writeText(selectedShapes[0].text).catch(() => { });
-        }
-
-
-        if (selectedNodes.length > 0 || selectedShapes.length > 0) {
-          e.preventDefault();
-          const data = {
-            nodes: selectedNodes.map((n: any) => ({
-              title: n.title,
-              content: n.content,
-              customColor: n.customColor,
-              x: n.x,
-              y: n.y,
-              groupId: n.groupId,
-              attachments: n.attachments?.map((a: any) => ({
-                fileName: a.fileName,
-                fileUrl: a.fileUrl
-              })) || [],
-              tags: n.tags?.map((t: any) => ({
-                name: t.name,
-                color: t.color
-              })) || []
-            })),
-            shapes: selectedShapes.map(s => ({
-              type: s.type,
-              points: [...s.points],
-              color: s.color,
-              width: s.width,
-              style: s.style,
-              text: s.text,
-              fontSize: s.fontSize,
-              fontFamily: s.fontFamily,
-              textDir: s.textDir,
-              groupId: s.groupId
-            }))
-          };
-          clipboardRef.current = data;
-          localStorage.setItem('nexus-graph-clipboard', JSON.stringify(data));
-          showToast(`Copied ${data.nodes.length} nodes and ${data.shapes.length} drawings`, 'success');
-        }
-        return;
-      }
-
-      if (mod && e.key.toLowerCase() === 'v') {
-        const { currentProject, currentUserId, graphSettings, addShape, activeGroupId, tags: allProjectTags } = useGraphStore.getState();
-        if (!currentProject) return;
-
-        e.preventDefault();
-
-        let cpNodes = [];
-        let cpShapes = [];
-
-        // Try clipboardRef first (in-memory, faster), then localStorage (cross-project)
-        if (clipboardRef.current && (clipboardRef.current.nodes.length > 0 || clipboardRef.current.shapes.length > 0)) {
-          cpNodes = clipboardRef.current.nodes;
-          cpShapes = clipboardRef.current.shapes;
-        } else {
-          const raw = localStorage.getItem('nexus-graph-clipboard');
-          if (raw) {
-            try {
-              const parsed = JSON.parse(raw);
-              cpNodes = parsed.nodes || [];
-              cpShapes = parsed.shapes || [];
-            } catch (err) { }
-          }
-        }
-
-        if (cpNodes.length > 0 || cpShapes.length > 0) {
-          setSelectedNodeIds(new Set());
-          setSelectedShapeIds(new Set());
-          const offset = 50;
-
-          (async () => {
-            // Paste Nodes
-            const nodeIds: number[] = [];
-            if (cpNodes.length > 0) {
-              const payloads = cpNodes.map((n: any) => ({
-                title: n.title,
-                content: n.content || '',
-                projectId: currentProject.id,
-                groupId: activeGroupId !== null ? activeGroupId : (n.groupId || 0),
-                userId: currentUserId || n.userId,
-                customColor: n.customColor,
-                x: (n.x || 0) + offset,
-                y: (n.y || 0) + offset,
-              }));
-
-              let createdNodes: any[] = [];
-              try {
-                createdNodes = await api.nodes.batchCreate(payloads);
-              } catch (err) {
-                // Fallback to sequential
-                for (const p of payloads) {
-                  try {
-                    const node = await api.nodes.create(p);
-                    createdNodes.push(node);
-                  } catch (e) { }
-                }
-              }
-
-              // Post-process nodes (add to store, handle attachments, handle tags)
-              for (let i = 0; i < createdNodes.length; i++) {
-                const node = createdNodes[i];
-                const originalNodeData = cpNodes[i];
-
-                // Add to store
-                useGraphStore.getState().addNode(node);
-                nodeIds.push(node.id);
-
-                // Create attachments if any
-                if (originalNodeData.attachments && originalNodeData.attachments.length > 0) {
-                  for (const att of originalNodeData.attachments) {
-                    try {
-                      await api.attachments.create({
-                        nodeId: node.id,
-                        fileName: att.fileName,
-                        fileUrl: att.fileUrl
-                      });
-                    } catch (err) { }
-                  }
-                }
-
-                // Handle tags
-                if (originalNodeData.tags && originalNodeData.tags.length > 0) {
-                  for (const tagData of originalNodeData.tags) {
-                    try {
-                      // Find if tag already exists in current project or globally for user
-                      let tag = allProjectTags.find(t => t.name.toLowerCase() === tagData.name.toLowerCase());
-                      if (!tag) {
-                        // Create tag
-                        tag = await api.tags.create({
-                          name: tagData.name,
-                          color: tagData.color,
-                          userId: currentUserId || undefined
-                        });
-                        useGraphStore.getState().setTags([...allProjectTags, tag]);
-                      }
-                      // Add tag to node
-                      await api.nodes.addTag(node.id, tag.id);
-                    } catch (err) { }
-                  }
-                }
-
-                // Refresh node if needed to show attachments/tags
-                if ((originalNodeData.attachments?.length > 0) || (originalNodeData.tags?.length > 0)) {
-                  try {
-                    const updatedNode = await api.nodes.getById(node.id);
-                    useGraphStore.getState().updateNode(node.id, updatedNode);
-                  } catch (err) { }
-                }
-              }
-            }
-
-            // Paste Shapes
-            const shapeIds: number[] = [];
-            for (const s of cpShapes) {
-              try {
-                const newPoints = (s.points || []).map((p: any) => ({ x: (p.x || 0) + offset, y: (p.y || 0) + offset }));
-                const payload = {
-                  projectId: currentProject.id,
-                  type: s.type,
-                  points: newPoints,
-                  color: s.color,
-                  width: s.width,
-                  style: s.style,
-                  text: s.text,
-                  fontSize: s.fontSize,
-                  fontFamily: s.fontFamily,
-                  textDir: s.textDir,
-                  direction: s.textDir,
-                  groupId: activeGroupId !== null ? activeGroupId : s.groupId
-                };
-                const newShape = await api.drawings.create(payload);
-                useGraphStore.getState().addShape(newShape);
-                shapeIds.push(newShape.id);
-              } catch (err) { }
-            }
-
-            setSelectedNodeIds(new Set(nodeIds));
-            setSelectedShapeIds(new Set(shapeIds));
-
-            // Update clipboard for next paste (cumulative offset)
-            const nextClipboard = {
-              nodes: cpNodes.map((n: any) => ({ ...n, x: (n.x || 0) + offset, y: (n.y || 0) + offset })),
-              shapes: cpShapes.map((s: any) => ({
-                ...s,
-                points: (s.points || []).map((p: any) => ({ x: (p.x || 0) + offset, y: (p.y || 0) + offset }))
-              })),
-            };
-            clipboardRef.current = nextClipboard;
-            localStorage.setItem('nexus-graph-clipboard', JSON.stringify(nextClipboard));
-
-            showToast(`Pasted ${nodeIds.length} nodes and ${shapeIds.length} drawings`, 'info');
-
-            // Notify collaborators
-            if (currentProject.id && currentUserId) {
-              realtimeSync.notifyUpdate(currentProject.id, currentUserId);
-            }
-          })();
-        } else {
-          navigator.clipboard.readText().then(text => {
-            if (!text || text.trim() === '') return;
-            const center = graphRef.current?.centerAt() || { x: 0, y: 0 };
-            const payload = {
-              projectId: currentProject.id,
-              type: 'text',
-              points: [{ x: center.x, y: center.y }],
-              color: graphSettings.strokeColor || '#355ea1',
-              width: graphSettings.strokeWidth || 2,
-              style: graphSettings.strokeStyle || 'solid',
-              text: text.trim(),
-              fontSize: graphSettings.fontSize || 16,
-              fontFamily: graphSettings.fontFamily || 'Inter',
-              textDir: graphSettings.textDir || 'ltr',
-              direction: graphSettings.textDir || 'ltr',
-              groupId: activeGroupId ?? undefined
-            };
-            api.drawings.create(payload).then(newShape => {
-              addShape(newShape);
-              setSelectedShapeIds(new Set([newShape.id]));
-              setSelectedNodeIds(new Set());
-            }).catch(() => { });
-          }).catch(() => { });
-        }
-        return;
-      }
-
-      // 4. Arrow Key Movement
-      const isArrowKey = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key);
-      if (isArrowKey && !graphSettings.isPreviewMode) {
-        const scale = graphTransform.k || 1;
-        const step = (e.shiftKey ? 2 : 1) / scale;
-        let dx = 0, dy = 0;
-        if (e.key === 'ArrowUp') dy = -step;
-        if (e.key === 'ArrowDown') dy = step;
-        if (e.key === 'ArrowLeft') dx = -step;
-        if (e.key === 'ArrowRight') dx = step;
-
-        if (dx !== 0 || dy !== 0) {
-          e.preventDefault();
-          const selectedNodeIds = selectedNodeIdsRef.current;
-          const selectedShapeIds = selectedShapeIdsRef.current;
-
-          // Move Nodes
-          if (selectedNodeIds.size > 0) {
-            const cache = nodeCacheRef.current;
-            selectedNodeIds.forEach(id => {
-              const cachedNode = cache.get(id);
-              if (cachedNode) {
-                cachedNode.fx = (cachedNode.fx ?? cachedNode.x ?? 0) + dx;
-                cachedNode.fy = (cachedNode.fy ?? cachedNode.y ?? 0) + dy;
-                const timeouts = nodeSaveTimeoutsRef.current;
-                if (timeouts.has(id)) clearTimeout(timeouts.get(id));
-                timeouts.set(id, setTimeout(() => {
-                  const fullNode = useGraphStore.getState().nodes.find(n => n.id === id);
-                  if (fullNode) api.nodes.update(id, { ...fullNode, x: cachedNode.fx, y: cachedNode.fy }).catch(() => { });
-                  timeouts.delete(id);
-                }, 300));
-              }
-            });
-            if (graphRef.current?.d3ReheatSimulation) graphRef.current.d3ReheatSimulation();
-          }
-
-          // Move Shapes
-          if (selectedShapeIds.size > 0 && shapesRef.current) {
-            let updated = false;
-            const { currentProject, activeGroupId } = useGraphStore.getState();
-            const newShapes = shapesRef.current.map(s => {
-              if (selectedShapeIds.has(s.id)) {
-                updated = true;
-                const newPoints = s.points.map(p => ({ x: p.x + dx, y: p.y + dy }));
-                const timeouts = shapeSaveTimeoutsRef.current;
-                if (timeouts.has(s.id)) clearTimeout(timeouts.get(s.id));
-                timeouts.set(s.id, setTimeout(() => {
-                  const dto = shapeToApiDrawing({ ...s, points: newPoints }, currentProject?.id || 0, activeGroupId ?? undefined);
-                  api.drawings.update(s.id, dto).catch(() => { });
-                  timeouts.delete(s.id);
-                }, 300));
-                return { ...s, points: newPoints };
-              }
-              return s;
-            });
-            if (updated) {
-              shapesRef.current = newShapes;
-              if (shapeStateSaveTimeoutRef.current) clearTimeout(shapeStateSaveTimeoutRef.current);
-              shapeStateSaveTimeoutRef.current = setTimeout(() => setShapes(newShapes), 300);
-              if (graphRef.current?.d3ReheatSimulation) graphRef.current.d3ReheatSimulation();
-            }
-          }
-        }
-        return;
-      }
-
-      // 5. General Controls
-      if (e.key === 'Escape') {
-        setSelectedShapeIds(new Set());
-        setSelectedNodeIds(new Set());
-        return;
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [undo, redo, pushToUndoStack, setShapes, setActiveNode, graphTransform, graphSettings.isPreviewMode]);
+    api.drawings.getByProject(currentProject.id)
+      .then(drawings => {
+        const loadedShapes = drawings.map(apiDrawingToShape);
+        setShapes(loadedShapes);
+      })
+      .catch(() => { });
+  }, [currentProject?.id, apiDrawingToShape, setShapes]);
 
 
 
@@ -1567,6 +913,27 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
   // selectedShapeIdsRef is already defined above
   const graphDataRef = useRef(graphData);
   graphDataRef.current = graphData; // Update immediately in render body
+  useGraphKeyboardShortcuts({
+    shapesRef,
+    selectedShapeIdsRef,
+    selectedNodeIdsRef,
+    selectedNodeIdsRefForDelete,
+    clipboardRef,
+    graphDataRef,
+    nodeCacheRef,
+    nodeSaveTimeoutsRef,
+    shapeSaveTimeoutsRef,
+    shapeStateSaveTimeoutRef,
+    graphRef,
+    graphTransform,
+    shapeToApiDrawing,
+    setShapes,
+    setNodes,
+    setSelectedShapeIds,
+    setSelectedNodeIds,
+    setActiveNode
+  });
+
 
   /* Sync Refs for Render Loop */
   const editingShapeIdRef = useRef(editingShapeId);
@@ -1602,6 +969,43 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
     const coords = graphRef.current.screen2GraphCoords(screenX, screenY);
     return { x: coords.x, y: coords.y };
   }, [graphTransform]);
+
+  const {
+    drawPreview,
+    handleCanvasMouseDown,
+    handleCanvasMouseMove,
+    handleCanvasMouseUp,
+    onRenderFramePost,
+  } = useGraphDrawingHandlers({
+    graphRef,
+    containerRef,
+    previewCanvasRef,
+    shapesRef,
+    editingShapeIdRef,
+    resizingShapeIdRef,
+    currentResizingShapeRef,
+    textInputPosRef,
+    textAreaContainerRef,
+    graphTransform,
+    screenToWorld,
+    isDrawing,
+    setIsDrawing,
+    startPoint,
+    setStartPoint,
+    currentPoints,
+    setCurrentPoints,
+    filteredShapes,
+    isMarqueeSelecting,
+    marqueeStart,
+    marqueeEnd,
+    selectedShapeIds,
+    isResizing,
+    resizeUpdateCounter,
+    editingShapeId,
+    groupsReady,
+    shapeToApiDrawing,
+    setSelectedShapeIds,
+  });
 
   const handleContainerMouseMove = useCallback((e: React.MouseEvent) => {
     // 1. Middle Mouse Pan (High Priority)
@@ -2203,353 +1607,8 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
   /* End Manual Refs */
 
 
-  const handleCanvasMouseDown = useCallback((e: React.MouseEvent) => {
-    if (!isDrawingTool || e.button !== 0) return;
 
-    if (graphSettings.activeTool === 'eraser') {
-      setIsDrawing(true);
-            pushToUndoStack();
-      return;
-    }
 
-    const rect = e.currentTarget.getBoundingClientRect();
-    const screenX = e.clientX - rect.left;
-    const screenY = e.clientY - rect.top;
-    const worldPoint = screenToWorld(screenX, screenY);
-
-    setIsDrawing(true);
-    setStartPoint(worldPoint);
-    setCurrentPoints([worldPoint]);
-  }, [isDrawingTool, screenToWorld, graphSettings.activeTool, shapes, pushToUndoStack]);
-
-  const drawPreview = useCallback((points: { x: number; y: number }[]) => {
-    const canvas = previewCanvasRef.current;
-    if (!canvas) return;
-
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    if (points.length === 0) return;
-
-    const screenPoints = points.map(p => ({
-      x: p.x * graphTransform.k + graphTransform.x,
-      y: p.y * graphTransform.k + graphTransform.y,
-    }));
-
-    ctx.strokeStyle = graphSettings.strokeColor;
-    ctx.lineWidth = graphSettings.strokeWidth;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-    ctx.setLineDash([5, 5]);
-
-    if (screenPoints.length < 2 && graphSettings.activeTool !== 'pen') return;
-
-    ctx.beginPath();
-
-    switch (graphSettings.activeTool) {
-      case 'pen':
-        if (screenPoints.length === 0) break;
-        ctx.moveTo(screenPoints[0].x, screenPoints[0].y);
-        for (let i = 1; i < screenPoints.length; i++) {
-          ctx.lineTo(screenPoints[i].x, screenPoints[i].y);
-        }
-        ctx.stroke();
-        break;
-      case 'line':
-        ctx.moveTo(screenPoints[0].x, screenPoints[0].y);
-        ctx.lineTo(screenPoints[1].x, screenPoints[1].y);
-        ctx.stroke();
-        break;
-      case 'arrow':
-        const [start, end] = [screenPoints[0], screenPoints[1]];
-        const angle = Math.atan2(end.y - start.y, end.x - start.x);
-        const headLen = 15;
-        ctx.moveTo(start.x, start.y);
-        ctx.lineTo(end.x, end.y);
-        ctx.stroke();
-        ctx.beginPath();
-        ctx.moveTo(end.x, end.y);
-        ctx.lineTo(end.x - headLen * Math.cos(angle - Math.PI / 6), end.y - headLen * Math.sin(angle - Math.PI / 6));
-        ctx.moveTo(end.x, end.y);
-        ctx.lineTo(end.x - headLen * Math.cos(angle + Math.PI / 6), end.y - headLen * Math.sin(angle + Math.PI / 6));
-        ctx.stroke();
-        break;
-      case 'rectangle':
-        ctx.strokeRect(screenPoints[0].x, screenPoints[0].y, screenPoints[1].x - screenPoints[0].x, screenPoints[1].y - screenPoints[0].y);
-        break;
-      case 'circle':
-        const radiusX = Math.abs(screenPoints[1].x - screenPoints[0].x) / 2;
-        const radiusY = Math.abs(screenPoints[1].y - screenPoints[0].y) / 2;
-        const centerX = screenPoints[0].x + (screenPoints[1].x - screenPoints[0].x) / 2;
-        const centerY = screenPoints[0].y + (screenPoints[1].y - screenPoints[0].y) / 2;
-        ctx.ellipse(centerX, centerY, Math.max(0.1, radiusX), Math.max(0.1, radiusY), 0, 0, 2 * Math.PI);
-        ctx.stroke();
-        break;
-      case 'diamond':
-        const midX = (screenPoints[0].x + screenPoints[1].x) / 2;
-        const midY = (screenPoints[0].y + screenPoints[1].y) / 2;
-        ctx.moveTo(midX, screenPoints[0].y);
-        ctx.lineTo(screenPoints[1].x, midY);
-        ctx.lineTo(midX, screenPoints[1].y);
-        ctx.lineTo(screenPoints[0].x, midY);
-        ctx.closePath();
-        ctx.stroke();
-        break;
-    }
-  }, [graphTransform, graphSettings.activeTool, graphSettings.strokeColor, graphSettings.strokeWidth]);
-
-  const handleCanvasMouseMove = useCallback((e: React.MouseEvent) => {
-    if (!isDrawing) return;
-
-    const rect = e.currentTarget.getBoundingClientRect();
-    const screenX = e.clientX - rect.left;
-    const screenY = e.clientY - rect.top;
-    const worldPoint = screenToWorld(screenX, screenY);
-
-    if (graphSettings.activeTool === 'eraser') {
-      const scale = graphTransform.k || 1;
-      const erasedShapes = filteredShapes.filter(s => isPointNearShape(worldPoint, s, scale));
-      // Keep shapes from other groups and shapes that weren't erased
-      const remaining = shapes.filter(s => {
-        // Keep shapes from other groups
-        if (activeGroupId !== null && s.groupId !== activeGroupId && s.groupId !== undefined) {
-          return true;
-        }
-        // For shapes in current group, check if they should be erased
-        return !isPointNearShape(worldPoint, s, scale);
-      });
-      if (remaining.length !== shapes.length) {
-        setShapes(remaining);
-        erasedShapes.forEach(s => {
-          if (s.id > 0) {
-            api.drawings.delete(s.id).then(() => {
-              if (currentProject?.id && user?.id) {
-                realtimeSync.notifyUpdate(currentProject.id, user.id);
-              }
-            }).catch(
-              // err => console.error('Failed to delete drawing:', err)
-            );
-          }
-        });
-      }
-      return;
-    }
-
-    if (!startPoint) return;
-
-    let newPoints: { x: number; y: number }[];
-    if (graphSettings.activeTool === 'pen') {
-      newPoints = [...currentPoints, worldPoint];
-    } else {
-      newPoints = [startPoint, worldPoint];
-    }
-
-    setCurrentPoints(newPoints);
-
-    if (graphRef.current) {
-      const z = graphRef.current.zoom();
-      graphRef.current.zoom(z * 1.00001, 0);
-      graphRef.current.zoom(z, 0);
-    }
-  }, [isDrawing, startPoint, screenToWorld, graphSettings.activeTool, currentPoints, shapes, setShapes, graphTransform]);
-
-  const handleCanvasMouseUp = useCallback(() => {
-    if (!isDrawing) return;
-
-    if (graphSettings.activeTool === 'eraser') {
-      setIsDrawing(false);
-      return;
-    }
-
-    if (currentPoints.length === 0) {
-      setIsDrawing(false);
-      return;
-    }
-
-    const newShape: DrawnShape = {
-      id: Date.now() * -1,
-      projectId: currentProject?.id || 0,
-      type: graphSettings.activeTool,
-      points: [...currentPoints],
-      color: graphSettings.strokeColor,
-      width: graphSettings.strokeWidth,
-      style: graphSettings.strokeStyle,
-      groupId: activeGroupId ?? undefined,
-      synced: false,
-    };
-
-    addShape(newShape);
-
-    if (currentProject?.id) {
-      const saveDrawing = async () => {
-        let groupId = activeGroupId;
-        if (!groupId || groupId === 0) {
-          try {
-            const groups = await api.groups.getByProject(currentProject.id);
-            if (groups && groups.length > 0) groupId = groups[0].id;
-            else {
-              const newGroup = await api.groups.create({ name: 'Default', color: '#808080', order: 0, projectId: currentProject.id });
-              if (newGroup) groupId = newGroup.id;
-            }
-          } catch (e) { }
-        }
-
-        return api.drawings.create(shapeToApiDrawing(newShape, currentProject.id, groupId ?? undefined));
-      };
-
-      saveDrawing()
-        .then(createdDrawing => {
-          updateShape(newShape.id, { id: createdDrawing.id, groupId: createdDrawing.groupId, synced: true });
-          
-          // Notify collaborators
-          if (currentProject?.id && user?.id) {
-            realtimeSync.notifyUpdate(currentProject.id, user.id);
-          }
-          setSelectedShapeIds(prev => {
-            const next = new Set(prev);
-            if (next.has(newShape.id)) {
-              next.delete(newShape.id);
-              next.add(createdDrawing.id);
-            }
-            return next;
-          });
-        })
-        .catch(
-        // err => console.error('Failed to save drawing:', err)
-      );
-    }
-
-    setIsDrawing(false);
-    setStartPoint(null);
-    setCurrentPoints([]);
-    setSelectedShapeIds(new Set([newShape.id]));
-    drawPreview([]);
-
-    setTimeout(() => {
-      if (graphRef.current) {
-        const currentZoom = graphRef.current.zoom();
-        graphRef.current.zoom(currentZoom * 1.0001, 0);
-        setTimeout(() => graphRef.current.zoom(currentZoom, 0), 20);
-      }
-    }, 10);
-  }, [isDrawing, currentPoints, graphSettings.activeTool, graphSettings.strokeColor, graphSettings.strokeWidth, graphSettings.strokeStyle, drawPreview, currentProject?.id, shapeToApiDrawing, addShape]);
-
-  const onRenderFramePost = useCallback((ctx: CanvasRenderingContext2D, globalScale: number) => {
-    if (!groupsReady) return;
-
-    const currentEditingId = editingShapeIdRef.current;
-    const resizingId = resizingShapeIdRef.current;
-    const resizingShape = currentResizingShapeRef.current;
-
-    // Move textarea to match canvas if editing
-    if (textAreaContainerRef.current && textInputPosRef.current && graphRef.current && containerRef.current) {
-      const rect = containerRef.current.getBoundingClientRect();
-      const pos = graphRef.current.graph2ScreenCoords(textInputPosRef.current.worldX, textInputPosRef.current.worldY);
-      textAreaContainerRef.current.style.left = `${pos.x + rect.left}px`;
-      textAreaContainerRef.current.style.top = `${pos.y + rect.top}px`;
-    }
-
-    const shapesToRender = shapesRef.current;
-
-    shapesToRender.forEach(shape => {
-      if (activeGroupId !== null && activeGroupId !== undefined && shape.groupId !== activeGroupId) return;
-
-      if (currentEditingId !== null && String(shape.id) === String(currentEditingId)) return;
-      if (isResizing && resizingId !== null && String(shape.id) === String(resizingId)) return;
-
-      drawShapeOnContext(ctx, shape, globalScale);
-      if (selectedShapeIds.has(shape.id)) {
-        drawSelectionBox(ctx, shape, globalScale);
-
-        if (selectedShapeIds.size === 1) {
-          const bounds = getShapeBounds(shape, globalScale);
-          if (bounds) {
-            drawResizeHandles(ctx, bounds, globalScale);
-          }
-        }
-      }
-    });
-
-    if (isResizing && resizingShape) {
-      drawShapeOnContext(ctx, resizingShape, globalScale);
-      drawSelectionBox(ctx, resizingShape, globalScale);
-      const bounds = getShapeBounds(resizingShape, globalScale);
-      if (bounds) {
-        drawResizeHandles(ctx, bounds, globalScale);
-      }
-    }
-
-    if (isDrawing && currentPoints.length > 0) {
-      const previewShape: DrawnShape = {
-        id: -9999,
-        projectId: currentProject?.id || 0,
-        type: graphSettings.activeTool,
-        points: currentPoints,
-        color: graphSettings.strokeColor,
-        width: graphSettings.strokeWidth,
-        style: graphSettings.strokeStyle,
-      };
-      drawShapeOnContext(ctx, previewShape, globalScale, true);
-    }
-
-    if (isMarqueeSelecting && marqueeStart && marqueeEnd) {
-      drawMarquee(ctx, marqueeStart, marqueeEnd, globalScale);
-    }
-
-    // Draw connection descriptions on top of everything
-    const linksData = links;
-    if (linksData) {
-      linksData.forEach((link: any) => {
-        if (!link.description) return;
-
-        // Resolve source/target objects if they are just IDs
-        const source = typeof link.source === 'object' ? link.source : nodes.find(n => n.id === link.source);
-        const target = typeof link.target === 'object' ? link.target : nodes.find(n => n.id === link.target);
-
-        if (!source || !target || typeof source.x !== 'number' || typeof target.x !== 'number') return;
-
-        const curvature = 0.1;
-        const dx = target.x - source.x;
-        const dy = target.y - source.y;
-        const l = Math.sqrt(dx * dx + dy * dy);
-        if (l === 0) return;
-
-        const straightMidX = (source.x + target.x) / 2;
-        const straightMidY = (source.y + target.y) / 2;
-        const controlPointOffset = curvature * l;
-        const controlX = straightMidX + dy / l * controlPointOffset;
-        const controlY = straightMidY - dx / l * controlPointOffset;
-
-        const t = 0.5;
-        const midX = (1 - t) * (1 - t) * source.x + 2 * (1 - t) * t * controlX + t * t * target.x;
-        const midY = (1 - t) * (1 - t) * source.y + 2 * (1 - t) * t * controlY + t * t * target.y;
-
-        const fontSize = 8; // Use constant graph units so it behaves like nodes/shapes
-        ctx.font = `${fontSize}px Inter, "Amiri", "Segoe UI Arabic", "Noto Sans Arabic", sans-serif`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-
-        const padding = 4 / globalScale;
-        const nodeDir = detectTextDir(link.description);
-        if ('direction' in ctx) ctx.direction = nodeDir === 'rtl' ? 'rtl' : 'ltr';
-        const textWidth = ctx.measureText(link.description).width;
-
-        ctx.fillStyle = 'rgba(24, 24, 27, 0.9)';
-        ctx.beginPath();
-        // Background should STILL scale with globalScale OR or be constant graph units.
-        // If the font is constant graph unit, then the background should be too.
-        const boxPadding = 4; // graph units
-        ctx.roundRect(midX - textWidth / 2 - boxPadding, midY - fontSize / 2 - boxPadding, textWidth + boxPadding * 2, fontSize + boxPadding * 2, 3);
-        ctx.fill();
-
-        ctx.fillStyle = '#f8fafc';
-        ctx.fillText(link.description, midX, midY);
-        if ('direction' in ctx) ctx.direction = 'ltr';
-      });
-    }
-  }, [filteredShapes, isDrawing, currentPoints, graphSettings.activeTool, graphSettings.strokeColor, graphSettings.strokeWidth, graphSettings.strokeStyle, selectedShapeIds, isMarqueeSelecting, marqueeStart, marqueeEnd, isResizing, resizeUpdateCounter, drawPreview, currentProject?.id, shapeToApiDrawing, addShape, editingShapeId, groupsReady, links, nodes]);
 
   const handleSelectMouseDown = useCallback((e: React.MouseEvent) => {
     if (useGraphStore.getState().isConnectionPickerActive) return;
