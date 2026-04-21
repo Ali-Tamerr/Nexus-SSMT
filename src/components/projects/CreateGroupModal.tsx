@@ -2,6 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import { X, Loader2, Pin } from 'lucide-react';
+import { Modal } from '@/components/ui/Modal';
+import { Input, TextArea } from '@/components/ui/Input';
+import { Button } from '@/components/ui/Button';
 
 import { Project } from '@/types/knowledge';
 
@@ -79,55 +82,32 @@ export function CreateGroupModal({ isOpen, onClose, onSubmit, loading, available
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <div className="fixed inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
+        <Modal
+            isOpen={isOpen}
+            onClose={onClose}
+            title={initialData ? 'Edit Collection' : 'Create Collection'}
+            size="2xl"
+        >
+            <div className="flex-1 overflow-y-auto px-1 pr-3 max-h-[60vh] custom-scrollbar">
+                <form id="create-group-form" onSubmit={handleSubmit} className="space-y-6">
+                    <div className="space-y-4">
+                        <Input
+                            label="Collection Name"
+                            value={name}
+                            onChange={(e) => setName(e.target.value)}
+                            placeholder="e.g., Q1 Research"
+                            autoFocus
+                            required
+                        />
 
-            <div className="relative w-full max-w-2xl rounded-xl border border-zinc-800 bg-zinc-900 p-6 shadow-2xl flex flex-col max-h-[90vh]">
-                <div className="mb-6 flex items-center justify-between flex-shrink-0">
-                    <h3 className="text-xl font-semibold text-white">
-                        {initialData ? 'Edit Collection' : 'Create Collection'}
-                    </h3>
-                    <button
-                        onClick={onClose}
-                        className="rounded-lg p-1 text-zinc-400 hover:bg-zinc-800 hover:text-white"
-                    >
-                        <X className="h-5 w-5" />
-                    </button>
-                </div>
-
-                <div className="flex-1 overflow-y-auto min-h-0 pr-2">
-                    <form onSubmit={handleSubmit} className="space-y-6">
-                        <div className="space-y-4">
-                            <div className="space-y-2">
-                                <label htmlFor="name" className="text-sm font-medium text-zinc-300">
-                                    Collection Name
-                                </label>
-                                <input
-                                    id="name"
-                                    type="text"
-                                    value={name}
-                                    onChange={(e) => setName(e.target.value)}
-                                    placeholder="e.g., Q1 Research"
-                                    className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-white placeholder-zinc-500 focus:border-[#355ea1] focus:outline-none"
-                                    autoFocus
-                                    required
-                                />
-                            </div>
-
-                            <div className="space-y-2">
-                                <label htmlFor="description" className="text-sm font-medium text-zinc-300">
-                                    Description (Optional)
-                                </label>
-                                <textarea
-                                    id="description"
-                                    value={description}
-                                    onChange={(e) => setDescription(e.target.value)}
-                                    placeholder="What is this collection about?"
-                                    rows={3}
-                                    className="w-full resize-none rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-white placeholder-zinc-500 focus:border-[#355ea1] focus:outline-none"
-                                />
-                            </div>
-                        </div>
+                        <TextArea
+                            label="Description (Optional)"
+                            value={description}
+                            onChange={(e) => setDescription(e.target.value)}
+                            placeholder="What is this collection about?"
+                            rows={3}
+                        />
+                    </div>
 
                         <div className="space-y-3">
                             <label className="text-sm font-medium text-zinc-300">
@@ -180,27 +160,27 @@ export function CreateGroupModal({ isOpen, onClose, onSubmit, loading, available
                             </p>
                         </div>
 
-                        <div className="flex justify-end gap-3 pt-2">
-                            <button
-                                type="button"
+                        <div className="flex justify-end gap-3 pt-4">
+                            <Button
+                                variant="ghost"
                                 onClick={onClose}
-                                className="rounded-lg px-4 py-2 text-sm font-medium text-zinc-400 hover:bg-zinc-800 hover:text-white"
                                 disabled={loading}
+                                type="button"
                             >
                                 Cancel
-                            </button>
-                            <button
+                            </Button>
+                            <Button
+                                variant="brand"
                                 type="submit"
+                                form="create-group-form"
                                 disabled={!name.trim() || loading}
-                                className="flex items-center gap-2 rounded-lg bg-[#355ea1] px-4 py-2 text-sm font-medium text-white hover:bg-[#2563EB] disabled:opacity-50"
+                                loading={loading}
                             >
-                                {loading && <Loader2 className="h-4 w-4 animate-spin" />}
                                 {initialData ? 'Save Changes' : 'Create Collection'}
-                            </button>
+                            </Button>
                         </div>
                     </form>
                 </div>
-            </div>
-        </div>
+        </Modal>
     );
 }

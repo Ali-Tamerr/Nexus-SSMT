@@ -1,7 +1,8 @@
 import { useState, useMemo } from 'react';
-import { Search, Grid, List, Loader2, LogOut } from 'lucide-react';
+import { Grid, List, Loader2, LogOut } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
+import { SearchInput } from '@/components/ui/Input';
 import { useClassroomCourses } from '@/hooks/useClassroomApi';
 import { ClassroomCourse } from '@/lib/classroomApi';
 import { clearClassroomToken, getClassroomOAuthUrl, getClassroomToken } from '@/lib/classroomToken';
@@ -207,14 +208,11 @@ export function ClassroomSelectionModal({
         {/* Header */}
         <div className="flex-shrink-0 p-3 sm:p-4 border-b border-zinc-800">
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 mb-3 sm:mb-4">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
-              <input
-                type="text"
+            <div className="flex-1 h-10">
+              <SearchInput
                 placeholder="Search classes..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white placeholder-zinc-400 focus:outline-none text-sm sm:text-base"
               />
             </div>
 
