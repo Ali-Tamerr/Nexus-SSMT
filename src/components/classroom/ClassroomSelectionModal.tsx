@@ -206,7 +206,7 @@ export function ClassroomSelectionModal({
     <Modal isOpen={isOpen} onClose={onClose} title="Select Google Classroom Course" size="2xl">
       <div className="flex flex-col h-[70vh] sm:h-[600px]">
         {/* Header */}
-        <div className="flex-shrink-0 p-3 sm:p-4 border-b border-zinc-800">
+        <div className="shrink-0 p-3 sm:p-4 border-b border-zinc-800">
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 mb-3 sm:mb-4">
             <div className="flex-1 h-10">
               <SearchInput

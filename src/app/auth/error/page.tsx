@@ -31,7 +31,7 @@ function ErrorMessage() {
             <h1 className="text-3xl font-bold text-white">Authentication Error</h1>
 
             <div className="bg-zinc-900 border border-red-900/50 rounded-lg p-6 max-w-2xl w-full">
-                <p className="text-red-400 font-mono text-sm break-words whitespace-pre-wrap">
+                <p className="text-red-400 font-mono text-sm wrap-break-word whitespace-pre-wrap">
                     {decodedError || "An unknown error occurred during authentication."}
                 </p>
             </div>
