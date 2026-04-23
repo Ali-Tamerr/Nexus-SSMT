@@ -26,6 +26,9 @@ import { useGraphExportLogic } from '@/hooks/useGraphExportLogic';
 import { useMapZoom } from '@/hooks/useMapZoom';
 import { useGraphKeyboardShortcuts } from '@/hooks/useGraphKeyboardShortcuts';
 import { useGraphDrawingHandlers } from '@/hooks/useGraphDrawingHandlers';
+import { useGraphMouseHandlers } from '@/hooks/useGraphMouseHandlers';
+import { useGraphDataEffects } from '@/hooks/useGraphDataEffects';
+import { useNodeCanvasRenderer } from '@/hooks/useNodeCanvasRenderer';
 
 export type GraphCanvasHandle = {
   exportToPNG: () => void;
@@ -81,8 +84,6 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
   const deleteShape = useGraphStore(s => s.deleteShape);
 
   const [selectedNodeIds, _setSelectedNodeIds] = useState<Set<number>>(new Set());
-  const [selectedLink, setSelectedLink] = useState<any | null>(null);
-  const [hoveredLink, setHoveredLink] = useState<any | null>(null);
   const [isOutsideContent, setIsOutsideContent] = useState(false);
 
   // Hoisted State
@@ -247,207 +248,17 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
   const marqueeStartScreenPosRef = useRef<{ x: number; y: number } | null>(null);
   const lastPinchRef = useRef<{ dist: number; center: { x: number; y: number } } | null>(null);
 
-  const handleNodeClick = useCallback(
-    (nodeObj: { id?: string | number; x?: number; y?: number }, event: MouseEvent) => {
-      const state = useGraphStore.getState();
-      if (state.isConnectionPickerActive) {
-        state.setConnectionPickerResult(Number(nodeObj.id));
-        state.setConnectionPickerActive(false);
-        return;
-      }
-
-      // Check drag state flags
-      // wasGlobalDragRef accurately tracks if the movement was > 5px
-      if (wasGlobalDragRef.current) return;
-
-      // Check drag distance (safeguard against drag events not firing or clearing too fast)
-      if (dragStartPosRef.current && event.clientX !== undefined && event.clientY !== undefined) {
-        const dx = event.clientX - dragStartPosRef.current.x;
-        const dy = event.clientY - dragStartPosRef.current.y;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-        if (dist > 5) return;
-      }
-
-      const node = nodes.find((n) => n.id === nodeObj.id);
-      if (node && !event.shiftKey && !event.ctrlKey && !event.metaKey) {
-        setActiveNode(node);
-      }
-
-
-      const nodeId = Number(nodeObj.id);
-      if (event.shiftKey || event.ctrlKey || event.metaKey) {
-        setSelectedNodeIds(prev => {
-          const next = new Set(prev);
-          if (next.has(nodeId)) {
-            next.delete(nodeId);
-          } else {
-            next.add(nodeId);
-          }
-          return next;
-        });
-      } else {
-        // If we clicked a node without shift maintaing selection if it was already selected?
-        // Usually dragging handles that. But this is CLICK (MouseUp).
-        // If it IS a click, we usually reset selection to just this node, UNLESS we dragged.
-        // But D3 suppresses click if dragged.
-        // So if we are here, we did NOT drag.
-        // So we should select ONLY this node.
-        setSelectedShapeIds(new Set());
-        setSelectedNodeIds(new Set([nodeId]));
-      }
-    },
-    [nodes, setActiveNode]
-  );
 
 
 
-  // Ref to track last hovered node ID (survives brief hover->null transitions during click)
-  const lastHoveredNodeIdRef = useRef<string | null>(null);
 
-  // Ref to track when we last clicked a node (to prevent onBackgroundClick from closing editor)
-  const lastNodeClickTimeRef = useRef<number>(0);
 
-  const handleNodeHover = useCallback(
-    (nodeObj: { id?: string | number } | null) => {
-      if (nodeObj) {
-        const nodeId = Number(nodeObj.id);
-        lastHoveredNodeIdRef.current = String(nodeId); // Keep ref as string if needed or update to number? 
-        // Actually refs might be used elsewhere. Let's make ref number if possible or cast.
-        // Update: lastHoveredNodeIdRef is defined as string | null. Let's check line 327.
-        const node = nodes.find((n) => n.id === nodeId);
-        setHoveredNode(node || null);
-        setIsHoveringNode(true);
-      } else {
-        setHoveredNode(null);
-        setIsHoveringNode(false);
-      }
-    },
-    [nodes, setHoveredNode]
-  );
 
-  const handleLinkClick = useCallback((link: any) => {
-    const fullLink = links.find(l =>
-      (l.sourceId === link.source.id || l.sourceId === link.source) &&
-      (l.targetId === link.target.id || l.targetId === link.target)
-    );
-    if (fullLink) {
-      setSelectedLink({
-        ...fullLink,
-        source: link.source,
-        target: link.target,
-      });
-    }
-  }, [links]);
 
-  const handleLinkHover = useCallback((link: any) => {
-    if (link) {
-      setHoveredLink(link);
-    } else {
-      setHoveredLink(null);
-    }
-  }, []);
 
-  const nodeCanvasObject = useCallback(
-    (
-      node: { id?: string | number; x?: number; y?: number; title?: string; groupId?: number; customColor?: string; visualSize?: number },
-      ctx: CanvasRenderingContext2D,
-      globalScale: number
-    ) => {
-      const label = node.title || '';
-      const nodeGroup = node.groupId ?? 0;
-      const vSize = node.visualSize || 1.0;
-      const fontSize = 13 * Math.sqrt(vSize);
-      ctx.font = `500 ${fontSize}px "Amiri", "Segoe UI Arabic", "Noto Sans Arabic", "Times New Roman", Tahoma, Arial, sans-serif`;
 
-      const nodeId = Number(node.id);
-      const isActive = activeNode?.id === nodeId;
-      const isSelected = selectedNodeIds.has(nodeId);
-      const isSearchMatch =
-        searchQuery &&
-        label.toLowerCase().includes(searchQuery.toLowerCase());
-
-      const baseColor = node.customColor || groups.find(g => g.order === nodeGroup)?.color || groups[0]?.color || '#8B5CF6';
-      const nodeRadius = 6 * vSize;
-      const x = node.x || 0;
-      const y = node.y || 0;
-
-      if (isSelected) {
-        ctx.beginPath();
-        ctx.arc(x, y, nodeRadius + 5, 0, 2 * Math.PI);
-        ctx.strokeStyle = '#355ea1';
-        ctx.lineWidth = 2 / globalScale;
-        ctx.setLineDash([4 / globalScale, 2 / globalScale]);
-        ctx.stroke();
-        ctx.setLineDash([]);
-      }
-
-      if (isActive) {
-        ctx.beginPath();
-        ctx.arc(x, y, nodeRadius + 4, 0, 2 * Math.PI);
-        ctx.fillStyle = 'rgba(139, 92, 246, 0.4)';
-        ctx.fill();
-      }
-
-      if (isSearchMatch) {
-        ctx.beginPath();
-        ctx.arc(x, y, nodeRadius + 3, 0, 2 * Math.PI);
-        ctx.strokeStyle = '#FBBF24';
-        ctx.lineWidth = 2 / globalScale;
-        ctx.stroke();
-      }
-
-      ctx.beginPath();
-      ctx.arc(x, y, nodeRadius, 0, 2 * Math.PI);
-      ctx.fillStyle = baseColor;
-      ctx.fill();
-
-      // Subtle border instead of shadow
-      ctx.strokeStyle = adjustBrightness(baseColor, -20);
-      ctx.lineWidth = 1.5 / globalScale;
-      ctx.stroke();
-
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'top';
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
-      const nodeDir = detectTextDir(label);
-      if ('direction' in ctx) ctx.direction = nodeDir === 'rtl' ? 'rtl' : 'ltr';
-      ctx.fillText(label, x, y + nodeRadius + 3);
-      if ('direction' in ctx) ctx.direction = 'ltr'; // reset
-    },
-    [activeNode, searchQuery, selectedNodeIds, groups]
-  );
-
-  const linkColor = useCallback((link: unknown) => {
-    const l = link as { color?: string; source?: any; target?: any };
-    const baseColor = l.color || '#355ea1';
-
-    const isHovered = hoveredLink &&
-      ((hoveredLink.source === l.source || hoveredLink.source?.id === l.source?.id) &&
-        (hoveredLink.target === l.target || hoveredLink.target?.id === l.target?.id));
-
-    return isHovered ? baseColor : baseColor + '80';
-  }, [hoveredLink]);
-
-  const linkWidth = useCallback(
-    (link: unknown) => {
-      const l = link as { source?: string | { id?: string }; target?: string | { id?: string } };
-      const srcId = typeof l.source === 'string' ? l.source : l.source?.id;
-      const tgtId = typeof l.target === 'string' ? l.target : l.target?.id;
-
-      const isHovered = hoveredLink &&
-        ((typeof hoveredLink.source === 'string' ? hoveredLink.source === srcId : hoveredLink.source?.id === srcId) &&
-          (typeof hoveredLink.target === 'string' ? hoveredLink.target === tgtId : hoveredLink.target?.id === tgtId));
-
-      const isActive = activeNode?.id === srcId || activeNode?.id === tgtId;
-
-      return isHovered ? 3 : (isActive ? 2 : 1);
-    },
-    [activeNode, hoveredLink]
-  );
 
   const previewCanvasRef = useRef<HTMLCanvasElement>(null);
-  const isPreviewMode = graphSettings.isPreviewMode;
-  const prevPreviewModeRef = useRef(isPreviewMode);
   const [graphTransform, setGraphTransform] = useState({ x: 0, y: 0, k: 1 });
 
   const currentProject = useGraphStore(state => state.currentProject);
@@ -460,262 +271,11 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
     shapesRef.current = shapes;
   }, [shapes]);
 
-  const apiDrawingToShape = useCallback((d: ApiDrawing): DrawnShape => {
-    const rawDir = (d.textDir || (d as any).text_dir || (d as any).TextDir || (d as any).direction || (d as any).TextDirection || undefined) as "ltr" | "rtl";
-    // Fallback to auto-detection if the server didn't specify
-    const finalDir = rawDir || detectTextDir(d.text);
-
-    return {
-      id: d.id,
-      projectId: d.projectId,
-      type: d.type as DrawnShape['type'],
-      points: d.points,
-      color: d.color,
-      width: d.width,
-      style: d.style as DrawnShape['style'],
-      text: d.text || undefined,
-      fontSize: d.fontSize || undefined,
-      fontFamily: d.fontFamily || undefined,
-      textDir: finalDir,
-      groupId: d.groupId,
-      synced: true,
-    };
-  }, []);
 
 
-  const lastLoadedProjectIdRef = useRef<number | null>(null);
-
-  useEffect(() => {
-    if (!currentProject?.id) return;
-    if (lastLoadedProjectIdRef.current === currentProject.id) return;
-    lastLoadedProjectIdRef.current = currentProject.id;
-
-    setGroups([]);
-    setGroupsReady(false);
-
-    const colorNames = ['violet', 'blue', 'green', 'yellow', 'red', 'pink', 'cyan', 'lime', 'orange', 'purple', 'teal', 'amber', 'emerald', 'sky', 'indigo', 'rose', 'fuchsia'];
-
-    api.groups.getByProject(currentProject.id)
-      .then((backendGroups) => {
-        const hidden = JSON.parse(localStorage.getItem('nexus_hidden_groups') || '[]');
-        const visibleGroups = backendGroups.filter(g => !hidden.includes(g.id));
-
-        const groupsWithOrder = visibleGroups.map((g, i) => {
-          const isColorName = colorNames.includes(g.name.toLowerCase());
-          const newName = isColorName ? `Group ${i + 1}` : g.name;
-
-          if (isColorName && g.name !== newName && g.id !== 0) {
-            api.groups.update(g.id, { name: newName })
-              .catch(() => { });
-          }
-
-          return { ...g, name: newName, order: i };
-        });
-        setGroups(groupsWithOrder);
-
-        if (groupsWithOrder.length > 0) {
-          setActiveGroupId(groupsWithOrder[0].id);
-        }
-        setGroupsReady(true);
-      })
-      .catch(() => {
-        setGroupsReady(true);
-      });
-  }, [setGroups, setActiveGroupId, currentProject?.id]);
-
-  // Update selected shapes when settings change
-  useEffect(() => {
-    if (selectedShapeIds.size > 0) {
-      selectedShapeIds.forEach(id => {
-        updateShape(id, { color: graphSettings.strokeColor });
-        // API update
-        const s = shapes.find(sh => sh.id === id);
-        if (s && s.synced !== false) {
-          api.drawings.update(id, shapeToApiDrawing({ ...s, color: graphSettings.strokeColor }, currentProject?.id || 0, activeGroupId ?? undefined));
-        }
-      });
-      if (currentProject?.id && user?.id) {
-        realtimeSync.notifyUpdate(currentProject.id, user.id);
-      }
-    }
-  }, [graphSettings.strokeColor]);
-
-  useEffect(() => {
-    if (selectedShapeIds.size > 0) {
-      selectedShapeIds.forEach(id => {
-        updateShape(id, { width: graphSettings.strokeWidth });
-        const s = shapes.find(sh => sh.id === id);
-        if (s && s.synced !== false) {
-          api.drawings.update(id, shapeToApiDrawing({ ...s, width: graphSettings.strokeWidth }, currentProject?.id || 0, activeGroupId ?? undefined));
-        }
-      });
-      if (currentProject?.id && user?.id) {
-        realtimeSync.notifyUpdate(currentProject.id, user.id);
-      }
-    }
-  }, [graphSettings.strokeWidth]);
-
-  useEffect(() => {
-    if (selectedShapeIds.size > 0) {
-      selectedShapeIds.forEach(id => {
-        updateShape(id, { style: graphSettings.strokeStyle });
-        const s = shapes.find(sh => sh.id === id);
-        if (s && s.synced !== false) {
-          api.drawings.update(id, shapeToApiDrawing({ ...s, style: graphSettings.strokeStyle }, currentProject?.id || 0, activeGroupId ?? undefined));
-        }
-      });
-      if (currentProject?.id && user?.id) {
-        realtimeSync.notifyUpdate(currentProject.id, user.id);
-      }
-    }
-  }, [graphSettings.strokeStyle]);
-
-  useEffect(() => {
-    if (selectedShapeIds.size > 0) {
-      selectedShapeIds.forEach(id => {
-        updateShape(id, { fontSize: graphSettings.fontSize });
-        const s = shapes.find(sh => sh.id === id);
-        if (s && s.synced !== false) {
-          api.drawings.update(id, shapeToApiDrawing({ ...s, fontSize: graphSettings.fontSize }, currentProject?.id || 0, activeGroupId ?? undefined));
-        }
-      });
-      if (currentProject?.id && user?.id) {
-        realtimeSync.notifyUpdate(currentProject.id, user.id);
-      }
-    }
-  }, [graphSettings.fontSize]);
-
-  useEffect(() => {
-    if (selectedShapeIds.size > 0) {
-      selectedShapeIds.forEach(id => {
-        updateShape(id, { fontFamily: graphSettings.fontFamily });
-        const s = shapes.find(sh => sh.id === id);
-        if (s && s.synced !== false) {
-          api.drawings.update(id, shapeToApiDrawing({ ...s, fontFamily: graphSettings.fontFamily }, currentProject?.id || 0, activeGroupId ?? undefined));
-        }
-      });
-      if (currentProject?.id && user?.id) {
-        realtimeSync.notifyUpdate(currentProject.id, user.id);
-      }
-    }
-  }, [graphSettings.fontFamily]);
-
-  useEffect(() => {
-    if (selectedShapeIds.size > 0) {
-      selectedShapeIds.forEach(id => {
-        updateShape(id, { textDir: graphSettings.textDir });
-        const s = shapes.find(sh => sh.id === id);
-        if (s && s.synced !== false) {
-          api.drawings.update(id, shapeToApiDrawing({ ...s, textDir: graphSettings.textDir }, currentProject?.id || 0, activeGroupId ?? undefined));
-        }
-      });
-      if (currentProject?.id && user?.id) {
-        realtimeSync.notifyUpdate(currentProject.id, user.id);
-      }
-    }
-  }, [graphSettings.textDir]);
-
-  // Sync toolbar with selection
-  useEffect(() => {
-    if (selectedShapeIds.size === 1) {
-      const id = Array.from(selectedShapeIds)[0];
-      const s = shapes.find(sh => sh.id === id);
-      if (s) {
-        // We only update if value exists to avoid resetting to default if undefined
-        if (s.fontSize) setGraphSettings({ fontSize: s.fontSize });
-        if (s.fontFamily) setGraphSettings({ fontFamily: s.fontFamily });
-        if (s.textDir && (s.textDir === 'ltr' || s.textDir === 'rtl')) {
-          setGraphSettings({ textDir: s.textDir as "ltr" | "rtl" });
-        }
-        if (s.color) setGraphSettings({ strokeColor: s.color });
-        if (s.width) setGraphSettings({ strokeWidth: s.width });
-        if (s.style) setGraphSettings({ strokeStyle: s.style });
-      }
-    }
-  }, [selectedShapeIds]);
-
-  useEffect(() => {
-    const checkIfOutsideContent = () => {
-      if (!graphRef.current) return;
-
-      const allPoints: { x: number; y: number }[] = [];
-
-      const currentGraphNodes = graphData.nodes as Array<{ x?: number; y?: number }>;
-      currentGraphNodes.forEach(n => {
-        if (n.x !== undefined && n.y !== undefined) {
-          allPoints.push({ x: n.x, y: n.y });
-        }
-      });
-
-      shapes.forEach(shape => {
-        if (activeGroupId !== null && activeGroupId !== undefined && shape.groupId !== activeGroupId) return;
-
-        let points = shape.points;
-        // Handle case where points might be a string (API inconsistency)
-        if (typeof points === 'string') {
-          try {
-            points = JSON.parse(points);
-          } catch (e) {
-            points = [];
-          }
-        }
-
-        if (Array.isArray(points)) {
-          points.forEach(p => {
-            allPoints.push({ x: p.x, y: p.y });
-          });
-        }
-      });
 
 
-      if (allPoints.length === 0) {
-        setIsOutsideContent(false);
-        return;
-      }
 
-      const minX = Math.min(...allPoints.map(p => p.x));
-      const maxX = Math.max(...allPoints.map(p => p.x));
-      const minY = Math.min(...allPoints.map(p => p.y));
-      const maxY = Math.max(...allPoints.map(p => p.y));
-      const padding = 200;
-      const contentBounds = {
-        minX: minX - padding,
-        maxX: maxX + padding,
-        minY: minY - padding,
-        maxY: maxY + padding,
-      };
-
-      try {
-        const center = graphRef.current.centerAt();
-        const zoom = graphRef.current.zoom();
-        const viewWidth = dimensions.width / zoom;
-        const viewHeight = dimensions.height / zoom;
-
-        const viewBounds = {
-          minX: center.x - viewWidth / 2,
-          maxX: center.x + viewWidth / 2,
-          minY: center.y - viewHeight / 2,
-          maxY: center.y + viewHeight / 2,
-        };
-
-        const isIntersecting = !(
-          viewBounds.maxX < contentBounds.minX ||
-          viewBounds.minX > contentBounds.maxX ||
-          viewBounds.maxY < contentBounds.minY ||
-          viewBounds.minY > contentBounds.maxY
-        );
-
-        setIsOutsideContent(!isIntersecting);
-      } catch (e) {
-        setIsOutsideContent(false);
-      }
-    };
-
-    const interval = setInterval(checkIfOutsideContent, 500);
-    checkIfOutsideContent();
-
-    return () => clearInterval(interval);
-  }, [graphData.nodes, shapes, dimensions]);
 
 
   const isDrawingTool = ['pen', 'rectangle', 'diamond', 'circle', 'arrow', 'line', 'eraser'].includes(graphSettings.activeTool);
@@ -749,59 +309,33 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
     return 'default';
   };
 
-  // Reheat simulation for undo/redo
-  useEffect(() => {
-    if (graphRef.current) {
-      const z = graphRef.current.zoom();
-      graphRef.current.zoom(z * 1.00001, 0);
-      graphRef.current.zoom(z, 0);
-    }
-  }, [shapes]);
 
 
 
-  useEffect(() => {
-    if (!isResizing || !graphRef.current) return;
-
-    let animationFrameId: number;
-    const refresh = () => {
-      if (graphRef.current) {
-        const z = graphRef.current.zoom() || 1;
-        graphRef.current.zoom(z * 1.00001, 0);
-        graphRef.current.zoom(z, 0);
-      }
-      animationFrameId = requestAnimationFrame(refresh);
-    };
-
-    animationFrameId = requestAnimationFrame(refresh);
-
-    return () => {
-      if (animationFrameId) {
-        cancelAnimationFrame(animationFrameId);
-      }
-    };
-  }, [isResizing]);
 
 
-  useEffect(() => {
-    const isInteracting = isMarqueeSelecting || isDraggingSelection || isMiddleMousePanning || isNodeDragging || isResizing;
-
-    let timeoutId: NodeJS.Timeout;
-
-    if (isInteracting) {
-      // Delay hiding UI to prevent flickering on clicking/short actions
-      // Only hide if interaction lasts longer than 200ms (like drag or hold)
-      timeoutId = setTimeout(() => {
-        document.body.classList.add('graph-interacting');
-      }, 200);
-    } else {
-      document.body.classList.remove('graph-interacting');
-    }
-
-    return () => clearTimeout(timeoutId);
-  }, [isMarqueeSelecting, isDraggingSelection, isMiddleMousePanning, isNodeDragging, isResizing]);
 
   useMapZoom({ containerRef, graphRef, graphTransform });
+
+  const {
+    apiDrawingToShape,
+    shapeToApiDrawing,
+  } = useGraphDataEffects({
+    graphRef,
+    selectedShapeIds,
+    graphData,
+    dimensions,
+    isResizing,
+    isMarqueeSelecting,
+    isDraggingSelection,
+    isMiddleMousePanning,
+    isNodeDragging,
+    editingShapeId,
+    textInputPos,
+    setIsOutsideContent,
+    setGroupsReady,
+  });
+
 
   // Handle Undo/Redo and Delete shortcuts
   // Filter shapes strictly by active group (match node filtering)
@@ -823,6 +357,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
   const shapesRef = useRef(filteredShapes);
   const selectedShapeIdsRef = useRef(selectedShapeIds);
   const selectedNodeIdsRefForDelete = useRef(selectedNodeIds);
+  const selectedNodeIdsRef = useRef(selectedNodeIds);
 
   const setSelectedNodeIds = useCallback((value: Set<number> | ((prev: Set<number>) => Set<number>)) => {
     if (typeof value === 'function') {
@@ -852,60 +387,28 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
     }
   }, []);
 
-  useEffect(() => {
-    shapesRef.current = shapes;
-  }, [shapes]);
+  const {
+    handleNodeClick,
+    handleNodeHover,
+    handleLinkClick,
+    handleLinkHover,
+    nodeCanvasObject,
+    linkColor,
+    linkWidth,
+    selectedLink,
+    setSelectedLink,
+    hoveredLink,
+    lastHoveredNodeIdRef,
+  } = useNodeCanvasRenderer({
+    selectedNodeIds,
+    setSelectedNodeIds,
+    setSelectedShapeIds,
+    setIsHoveringNode,
+    wasGlobalDragRef,
+    dragStartPosRef,
+  });
 
-  // Force redraw when activeGroupId or text edit mode changes
-  useEffect(() => {
-    if (graphRef.current) {
-      const z = graphRef.current.zoom() || 1;
-      graphRef.current.zoom(z * 1.00001, 0);
-      setTimeout(() => graphRef.current?.zoom(z, 0), 20);
-    }
-  }, [activeGroupId, editingShapeId, textInputPos ? true : false]);
-
-  const shapeToApiDrawing = useCallback((s: DrawnShape, projectId: number, groupId?: number) => ({
-    projectId,
-    groupId: groupId ?? s.groupId ?? undefined,
-    type: s.type,
-    points: s.points,
-    color: s.color,
-    width: s.width,
-    style: s.style,
-    text: s.text ?? undefined,
-    fontSize: s.fontSize ?? undefined,
-    fontFamily: s.fontFamily ?? undefined,
-    textDir: s.textDir ?? undefined,
-    direction: s.textDir ?? undefined,
-  }), []);
-
-  useEffect(() => {
-    if (!currentProject?.id) return;
-
-    api.drawings.getByProject(currentProject.id)
-      .then(drawings => {
-        const loadedShapes = drawings.map(apiDrawingToShape);
-        setShapes(loadedShapes);
-      })
-      .catch(() => { });
-  }, [currentProject?.id, apiDrawingToShape, setShapes]);
-
-
-
-  useEffect(() => {
-    if (isPreviewMode && !prevPreviewModeRef.current && graphRef.current) {
-      graphRef.current.d3ReheatSimulation?.();
-    }
-    prevPreviewModeRef.current = isPreviewMode;
-  }, [isPreviewMode]);
-
-
-
-
-
-  /* Use refs for callback stability to prevent ForceGraph2D handler rebinding issues */
-  const selectedNodeIdsRef = useRef(selectedNodeIds);
+  const lastNodeClickTimeRef = useRef<number>(0);
 
   // Clipboard Ref for Copy/Paste
   const clipboardRef = useRef<{ nodes: any[]; shapes: any[] } | null>(null);
@@ -1007,964 +510,86 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
     setSelectedShapeIds,
   });
 
-  const handleContainerMouseMove = useCallback((e: React.MouseEvent) => {
-    // 1. Middle Mouse Pan (High Priority)
-    if (!isMiddleMousePanning && middleMouseStartRef.current) {
-      const dx = e.clientX - middleMouseStartRef.current.x;
-      const dy = e.clientY - middleMouseStartRef.current.y;
-      if (dx * dx + dy * dy > 25) {
-        setIsMiddleMousePanning(true);
-      }
-    }
-
-    if (isMiddleMousePanning && middleMouseStartRef.current && graphRef.current) {
-      const dx = e.clientX - middleMouseStartRef.current.x;
-      const dy = e.clientY - middleMouseStartRef.current.y;
-
-      const currentCenter = graphRef.current.centerAt();
-      const currentZoom = graphRef.current.zoom();
-
-      graphRef.current.centerAt(
-        currentCenter.x - dx / currentZoom,
-        currentCenter.y - dy / currentZoom,
-        0
-      );
-      middleMouseStartRef.current = { x: e.clientX, y: e.clientY };
-      return;
-    }
-
-    // 2. Resizing Logic
-    if (isResizing && activeResizeHandleRef.current && resizeStartBoundsRef.current && resizeDragStartRef.current && originalShapeRef.current) {
-      const rect = e.currentTarget.getBoundingClientRect();
-      const screenX = e.clientX - rect.left;
-      const screenY = e.clientY - rect.top;
-      const worldPoint = screenToWorld(screenX, screenY);
-
-      let transformedShape;
-      if (activeResizeHandleRef.current === 'rotate') {
-        transformedShape = rotateShape(originalShapeRef.current, worldPoint, resizeDragStartRef.current, resizeStartBoundsRef.current);
-      } else {
-        transformedShape = resizeShape(originalShapeRef.current, activeResizeHandleRef.current, worldPoint, resizeDragStartRef.current, resizeStartBoundsRef.current, e.shiftKey);
-      }
-      currentResizingShapeRef.current = transformedShape;
-      setResizeUpdateCounter(c => c + 1);
-      return;
-    }
-
-    // 3. Manual Group Drag Logic (Nodes)
-    if (dragGroupRef.current?.active) {
-      const rect = e.currentTarget.getBoundingClientRect();
-      const screenX = e.clientX - rect.left;
-      const screenY = e.clientY - rect.top;
-      const worldPoint = screenToWorld(screenX, screenY);
-
-      const dx = worldPoint.x - dragGroupRef.current.startMouse.x;
-      const dy = worldPoint.y - dragGroupRef.current.startMouse.y;
-
-      // Update Nodes
-      const initialNodes = dragGroupRef.current.initialNodes;
-      graphDataRef.current.nodes.forEach((n: any) => {
-        const initPos = initialNodes.get(String(n.id));
-        if (initPos) {
-          const newX = (initPos.fx ?? initPos.x ?? 0) + dx;
-          const newY = (initPos.fy ?? initPos.y ?? 0) + dy;
-          n.fx = newX;
-          n.fy = newY;
-          n.x = newX;
-          n.y = newY;
-        }
-      });
-
-      // Update Shapes
-      const initialShapes = dragGroupRef.current.initialShapes;
-      if (initialShapes.size > 0) {
-        shapesRef.current = shapesRef.current.map(s => {
-          const initPoints = initialShapes.get(String(s.id));
-          if (initPoints) {
-            return {
-              ...s,
-              points: initPoints.map(p => ({ x: p.x + dx, y: p.y + dy }))
-            };
-          }
-          return s;
-        });
-        setShapes(shapesRef.current); // Trigger render
-      }
-      return;
-    }
-
-    // 4. Shape Selection Drag (Select Tool)
-    if (isDraggingSelection && dragStartWorldRef.current && selectedShapeIds.size > 0) {
-      const rect = e.currentTarget.getBoundingClientRect();
-      const worldPoint = screenToWorld(e.clientX - rect.left, e.clientY - rect.top);
-      const dx = worldPoint.x - dragStartWorldRef.current.x;
-      const dy = worldPoint.y - dragStartWorldRef.current.y;
-
-      if (Math.abs(dx) > 0.01 || Math.abs(dy) > 0.01) {
-        shapesRef.current = shapesRef.current.map(s => {
-          if (selectedShapeIds.has(s.id)) {
-            return { ...s, points: s.points.map(p => ({ x: p.x + dx, y: p.y + dy })) };
-          }
-          return s;
-        });
-        if (graphRef.current) {
-          // @ts-ignore
-          if (graphRef.current.d3ReheatSimulation) graphRef.current.d3ReheatSimulation();
-        }
-
-        if (selectedNodeIds.size > 0) {
-          const currentGraphNodes = graphData.nodes as Array<{ id: string | number; x?: number; y?: number; fx?: number; fy?: number }>;
-          currentGraphNodes.forEach(n => {
-            if (selectedNodeIds.has(Number(n.id))) {
-              const newX = (n.fx ?? n.x ?? 0) + dx;
-              const newY = (n.fy ?? n.y ?? 0) + dy;
-              n.fx = newX; n.fy = newY; n.x = newX; n.y = newY;
-            }
-          });
-        }
-        dragStartWorldRef.current = worldPoint;
-        setDragStartWorld(worldPoint);
-      }
-      return;
-    }
-
-    // 5. Marquee selection update
-    if (isMarqueeSelecting || isMarqueeSelectingRef.current) {
-      const rect = e.currentTarget.getBoundingClientRect();
-      const screenX = e.clientX - rect.left;
-      const screenY = e.clientY - rect.top;
-      const worldPoint = screenToWorld(screenX, screenY);
-      setMarqueeEnd(worldPoint);
-      if (graphRef.current) {
-        const z = graphRef.current.zoom();
-        graphRef.current.zoom(z * 1.00001, 0);
-        graphRef.current.zoom(z, 0);
-      }
-      return;
-    }
-
-    // Check for marquee start threshold
-    if (marqueeStartScreenPosRef.current && !isMarqueeSelecting && !isMarqueeSelectingRef.current) {
-      const dx = e.clientX - marqueeStartScreenPosRef.current.x;
-      const dy = e.clientY - marqueeStartScreenPosRef.current.y;
-      if (Math.sqrt(dx * dx + dy * dy) > 5) {
-        isMarqueeSelectingRef.current = true;
-        setIsMarqueeSelecting(true);
-        // setMarqueeStart was already set in mousedown
-        // Update ends
-        const rect = e.currentTarget.getBoundingClientRect();
-        const screenX = e.clientX - rect.left;
-        const screenY = e.clientY - rect.top;
-        const worldPoint = screenToWorld(screenX, screenY);
-        setMarqueeEnd(worldPoint);
-      }
-      return;
-    }
-
-    if (graphSettings.activeTool !== 'select') return;
-
-    // Hover Logic
-    const rect = e.currentTarget.getBoundingClientRect();
-    const screenX = e.clientX - rect.left;
-    const screenY = e.clientY - rect.top;
-    const worldPoint = screenToWorld(screenX, screenY);
-    const scale = graphTransform.k || 1;
-
-    // If dragging a node, do not interfere
-    if (dragNodePrevRef.current) return;
-
-    // Hover Resize Handle
-    if (selectedShapeIds.size === 1 && !isDraggingSelection) {
-      const selectedShape = filteredShapes.find(s => selectedShapeIds.has(s.id));
-      if (selectedShape) {
-        const bounds = getShapeBounds(selectedShape, scale);
-        if (bounds) {
-          const handle = getHandleAtPoint(worldPoint, bounds, scale);
-          setHoveredResizeHandle(handle);
-        } else { setHoveredResizeHandle(null); }
-      }
-    } else { setHoveredResizeHandle(null); }
-
-    const isNear = filteredShapes.some(s => isPointNearShape(worldPoint, s, scale, 10));
-    if (isNear !== isHoveringShape) {
-      setIsHoveringShape(isNear);
-    }
-  }, [graphSettings.activeTool, graphTransform, filteredShapes, screenToWorld, isHoveringShape, isMarqueeSelecting, isMiddleMousePanning, isResizing, isDraggingSelection, dragStartWorld, selectedShapeIds, shapes, setShapes, selectedNodeIds, graphData]);
-
-
-
-
-
-  const handleContainerMouseDownCapture = useCallback((e: React.MouseEvent) => {
-    // Ignore clicks on UI elements
-    const target = e.target as HTMLElement;
-    if (target.closest('.graph-ui-hide') || target.closest('button') || target.closest('nav') || target.closest('header')) {
-      return;
-    }
-
-    // Middle Mouse Pan Start (Any Tool)
-    if (e.button === 1) {
-      e.preventDefault();
-      middleMouseStartRef.current = { x: e.clientX, y: e.clientY };
-      setIsMiddleMousePanning(true);
-      return;
-    }
-
-    dragStartPosRef.current = { x: e.clientX, y: e.clientY };
-    const selectedNodeIds = selectedNodeIdsRef.current;
-
-    if (graphSettings.activeTool !== 'select') return;
-
-    const rect = e.currentTarget.getBoundingClientRect();
-    const screenX = e.clientX - rect.left;
-    const screenY = e.clientY - rect.top;
-    const worldPoint = screenToWorld(screenX, screenY);
-    const scale = graphTransform.k || 1;
-
-    // Check if over a shape (let overlay handle)
-    const isOverShape = filteredShapes.some(s => isPointNearShape(worldPoint, s, scale, 10));
-
-    // Check if over a resize handle
-    let isOverHandle = false;
-    const currentSelectedIds = selectedShapeIdsRef.current;
-    if (currentSelectedIds.size === 1) {
-      const selectedShape = filteredShapes.find(s => currentSelectedIds.has(s.id));
-      if (selectedShape) {
-        const bounds = getShapeBounds(selectedShape, scale);
-        if (bounds) {
-          const handle = getHandleAtPoint(worldPoint, bounds, scale);
-          if (handle) isOverHandle = true;
-        }
-      }
-    }
-
-    if (isOverShape || isOverHandle) return;
-
-    // Check if we're clicking ON a node by examining coordinates
-    // Find the closest node within hit radius (handles overlapping nodes)
-    const nodeHitRadius = 15 / scale;
-    let clickedNodeId: number | null = null;
-    let closestDist = Infinity;
-    let draggedNodePos = { x: 0, y: 0 };
-
-    graphDataRef.current.nodes.forEach((n: any) => {
-      const dx = (n.x ?? 0) - worldPoint.x;
-      const dy = (n.y ?? 0) - worldPoint.y;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-      if (dist <= nodeHitRadius && dist < closestDist) {
-        closestDist = dist;
-        clickedNodeId = Number(n.id);
-        draggedNodePos = { x: n.x ?? 0, y: n.y ?? 0 };
-      }
-    });
-
-
-
-    // If we clicked on a node that is part of selection, start group drag
-    // NOTE: Do NOT open editor here - wait for click handler to determine if it was a drag or click
-    if (clickedNodeId && selectedNodeIds.has(clickedNodeId)) {
-      lastHoveredNodeIdRef.current = String(clickedNodeId);
-      lastNodeClickTimeRef.current = Date.now();
-
-      const initialNodes = new Map();
-      graphDataRef.current.nodes.forEach((n: any) => {
-        if (selectedNodeIds.has(Number(n.id)) && Number(n.id) !== clickedNodeId) {
-          initialNodes.set(String(n.id), { x: n.x, y: n.y, fx: n.fx, fy: n.fy });
-        }
-      });
-
-      const initialShapes = new Map();
-      if (selectedShapeIdsRef.current.size > 0) {
-        shapesRef.current.forEach(s => {
-          if (selectedShapeIdsRef.current.has(s.id)) {
-            initialShapes.set(String(s.id), s.points.map(p => ({ ...p })));
-          }
-        });
-      }
-
-      dragGroupRef.current = {
-        active: true,
-        startMouse: worldPoint,
-        startNodePos: draggedNodePos,
-        nodeId: clickedNodeId,
-        initialNodes,
-        initialShapes
-      };
-
-      return;
-    }
-
-    // If we clicked on a node that is NOT in selection, select it
-    // NOTE: Do NOT open editor here - wait for click handler to determine if it was a drag or click
-    if (clickedNodeId && !selectedNodeIds.has(clickedNodeId)) {
-      if (e.shiftKey || e.ctrlKey || e.metaKey) {
-        // Let handleNodeClick handle multi-selection to avoid double-selection issues
-        return;
-      }
-      lastHoveredNodeIdRef.current = String(clickedNodeId);
-      lastNodeClickTimeRef.current = Date.now();
-
-      // Select the node
-      setSelectedShapeIds(new Set());
-      setSelectedNodeIds(new Set([clickedNodeId]));
-      return;
-    }
-
-    // Do nothing - let bubble phase handle marquee start (handleSelectMouseDown)
-  }, [screenToWorld, graphTransform, graphSettings.activeTool, shapes, nodes, setActiveNode, setSelectedNodeIds, setSelectedShapeIds]);
-
-  const handleContainerMouseUpCapture = useCallback((e: React.MouseEvent) => {
-    // 1. Pan End
-    // 1. Pan End
-    if (middleMouseStartRef.current) {
-      setIsMiddleMousePanning(false);
-      middleMouseStartRef.current = null;
-    }
-
-    // 2. Resize End
-    if (isResizing && resizingShapeIdRef.current) {
-      const resizedShape = currentResizingShapeRef.current;
-      if (resizedShape) {
-        const updatedShapes = shapes.map(s => s.id === resizedShape.id ? resizedShape : s);
-        setShapes(updatedShapes);
-        if (resizedShape.synced !== false) {
-          api.drawings.update(resizedShape.id, shapeToApiDrawing(resizedShape, currentProject?.id || 0, activeGroupId ?? undefined))
-            .catch(() => { });
-        }
-      }
-      setIsResizing(false);
-      activeResizeHandleRef.current = null;
-      resizeStartBoundsRef.current = null;
-      resizeDragStartRef.current = null;
-      resizingShapeIdRef.current = null;
-      currentResizingShapeRef.current = null;
-    }
-
-    if (isDraggingSelection) {
-      // Process sequentially with a small delay to avoid overwhelming the database connection pool
-      const finalShapes = shapesRef.current;
-      setShapes(finalShapes);
-
-      (async () => {
-        // Save Shapes
-        if (selectedShapeIds.size > 0) {
-          const shapeUpdates = finalShapes
-            .filter(s => selectedShapeIds.has(s.id) && s.synced !== false)
-            .map(s => ({ ...shapeToApiDrawing(s, currentProject?.id || 0, activeGroupId ?? undefined), id: s.id }));
-
-          if (shapeUpdates.length > 0) {
-            try {
-              await api.drawings.batchUpdate(shapeUpdates as any);
-            } catch { }
-          }
-        }
-
-        // Save Nodes
-        if (selectedNodeIds.size > 0) {
-          const currentGraphNodes = (graphDataRef.current?.nodes || []) as any[];
-          const nodeUpdates: any[] = [];
-          const updateNode = useGraphStore.getState().updateNode;
-          for (const n of currentGraphNodes) {
-            if (selectedNodeIds.has(Number(n.id))) {
-              // Vital: Apply local state update synchronously so they don't bounce back
-              updateNode(n.id, { x: n.x, y: n.y });
-              const fullNode = nodes.find(sn => sn.id === n.id);
-              if (fullNode) {
-                nodeUpdates.push({ n, fullNode });
-              }
-            }
-          }
-
-          const updatesToPush = nodeUpdates.map(({ n, fullNode }) => ({
-            ...fullNode,
-            id: n.id,
-            x: n.x,
-            y: n.y
-          }));
-
-          if (updatesToPush.length > 0) {
-            try {
-              await api.nodes.batchUpdate(updatesToPush);
-            } catch { }
-          }
-        }
-      })();
-
-      setIsDraggingSelection(false);
-      setDragStartWorld(null);
-    }
-
-    // Check global drag distance to prevent click triggers
-    if (dragStartPosRef.current) {
-      const dx = e.clientX - dragStartPosRef.current.x;
-      const dy = e.clientY - dragStartPosRef.current.y;
-      if (Math.sqrt(dx * dx + dy * dy) > 7) { // Increased threshold slightly for mobile stability
-        wasGlobalDragRef.current = true;
-        // Clear the flag after a short delay to allow click handlers to read it
-        setTimeout(() => { wasGlobalDragRef.current = false; }, 200);
-      }
-    }
-    dragStartPosRef.current = null;
-
-    // Finalize group drag (only if a drag actually happened but wasn't a node drag... wait, node dragging handles its own finalize)
-    if (dragGroupRef.current?.active) {
-      // If we are actively dragging a node, do NOT terminate the group yet! handleNodeDragEnd is about to run and needs this!
-      if (!isNodeDraggingRef.current) {
-        // Was just a click, cleanup
-        dragGroupRef.current = null;
-      }
-    }
-
-    // Finalize marquee selection
-    if ((isMarqueeSelecting || isMarqueeSelectingRef.current) && marqueeStart && marqueeEnd) {
-      const minX = Math.min(marqueeStart.x, marqueeEnd.x);
-      const maxX = Math.max(marqueeStart.x, marqueeEnd.x);
-      const minY = Math.min(marqueeStart.y, marqueeEnd.y);
-      const maxY = Math.max(marqueeStart.y, marqueeEnd.y);
-
-      const newSelectedNodes = new Set<number>();
-      graphDataRef.current.nodes.forEach((n: any) => {
-        if (n.x >= minX && n.x <= maxX && n.y >= minY && n.y <= maxY) {
-          newSelectedNodes.add(Number(n.id));
-        }
-      });
-
-      const newSelectedShapes = new Set<number>();
-      filteredShapes.forEach(s => {
-        const cx = s.points.reduce((sum, p) => sum + p.x, 0) / s.points.length;
-        const cy = s.points.reduce((sum, p) => sum + p.y, 0) / s.points.length;
-        if (cx >= minX && cx <= maxX && cy >= minY && cy <= maxY) {
-          newSelectedShapes.add(s.id);
-        }
-      });
-
-
-
-      setSelectedNodeIds(newSelectedNodes);
-      setSelectedShapeIds(newSelectedShapes);
-      setIsMarqueeSelecting(false);
-      isMarqueeSelectingRef.current = false;
-      setMarqueeStart(null);
-      setMarqueeEnd(null);
-    }
-
-    // Always clear the start ref
-    marqueeStartScreenPosRef.current = null;
-  }, [setShapes, isMarqueeSelecting, marqueeStart, marqueeEnd, filteredShapes, isResizing, isDraggingSelection, selectedShapeIds, selectedNodeIds, nodes, currentProject?.id, activeGroupId, shapeToApiDrawing, setSelectedNodeIds, setSelectedShapeIds, setIsMarqueeSelecting]);
-
-  // Handle node drag via ForceGraph - move other selected nodes along
-  const handleNodeDrag = useCallback((node: any) => {
-    isNodeDraggingRef.current = true;
-    setIsNodeDragging(true);
-    lastDragTimeRef.current = Date.now();
-    if (!dragGroupRef.current?.active) return;
-    if (node.id !== dragGroupRef.current.nodeId) return;
-
-    // Calculate delta from the dragged node's movement
-    const initialNodes = dragGroupRef.current.initialNodes;
-    const startMouse = dragGroupRef.current.startMouse;
-
-    // The dragged node's new position gives us the delta
-    const draggedNodeInitial = dragGroupRef.current.startNodePos;
-    const dx = (node.x ?? 0) - draggedNodeInitial.x;
-    const dy = (node.y ?? 0) - draggedNodeInitial.y;
-
-
-
-    // Update other selected nodes
-    graphDataRef.current.nodes.forEach((n: any) => {
-      const initPos = initialNodes.get(String(n.id));
-      if (initPos) {
-        const newX = (initPos.x ?? 0) + dx;
-        const newY = (initPos.y ?? 0) + dy;
-        n.fx = newX;
-        n.fy = newY;
-        n.x = newX;
-        n.y = newY;
-      }
-    });
-
-    // Update shapes
-    const initialShapes = dragGroupRef.current.initialShapes;
-    if (initialShapes.size > 0) {
-      shapesRef.current = shapesRef.current.map(s => {
-        const initPoints = initialShapes.get(String(s.id));
-        if (initPoints) {
-          return {
-            ...s,
-            points: initPoints.map(p => ({ x: p.x + dx, y: p.y + dy }))
-          };
-        }
-        return s;
-      });
-      if (graphRef.current) {
-        // @ts-ignore
-        if (graphRef.current.d3ReheatSimulation) graphRef.current.d3ReheatSimulation();
-      }
-    }
-  }, []);
-
-  const handleNodeDragEnd = useCallback((node: any) => {
-    // Prevent force layout from assigning random coordinates to nodes upon drag release
-    node.fx = node.x;
-    node.fy = node.y;
-
-    // Small delay to ensure click handler sees the drag state
-    setTimeout(() => {
-      isNodeDraggingRef.current = false;
-      setIsNodeDragging(false);
-    }, 250);
-
-    const storeNodes = useGraphStore.getState().nodes;
-    const updateNode = useGraphStore.getState().updateNode;
-
-    if (dragGroupRef.current?.active) {
-      const selectedNodeIds = selectedNodeIdsRef.current;
-
-      (async () => {
-        // Persist node positions for all selected nodes locally first
-        const nodeUpdates: any[] = [];
-        for (const n of graphDataRef.current.nodes) {
-          if (selectedNodeIds.has(Number(n.id))) {
-            updateNode(n.id, { x: n.x, y: n.y });
-
-            const fullNode = storeNodes.find(sn => sn.id === n.id);
-            if (fullNode) {
-              nodeUpdates.push({ n, fullNode });
-            }
-          }
-        }
-
-        const updatesToPush = nodeUpdates.map(({ n, fullNode }) => ({
-          id: fullNode.id,
-          title: fullNode.title,
-          content: fullNode.content || '',
-          groupId: fullNode.groupId,
-          projectId: fullNode.projectId,
-          userId: fullNode.userId,
-          customColor: fullNode.customColor,
-          group: fullNode.group ? { id: fullNode.group.id, name: fullNode.group.name, color: fullNode.group.color, order: fullNode.group.order } : { id: fullNode.groupId ?? 0, name: 'Default', color: '#808080', order: 0 },
-          x: n.x,
-          y: n.y
-        }));
-
-        if (updatesToPush.length > 0) {
-          try {
-            await api.nodes.batchUpdate(updatesToPush);
-            if (currentProject?.id && user?.id) {
-              realtimeSync.notifyUpdate(currentProject.id, user.id);
-            }
-          } catch { }
-        }
-
-        // Sync shapes to state and persist
-        const selectedShapeIds = selectedShapeIdsRef.current;
-        if (selectedShapeIds.size > 0) {
-          const finalShapes = shapesRef.current;
-          setShapes(finalShapes);
-
-          const shapeUpdates = finalShapes
-            .filter(s => selectedShapeIds.has(s.id))
-            .map(s => {
-              const dto = shapeToApiDrawing(s, currentProject?.id || 0, activeGroupId ?? undefined);
-              // CRITICAL: Ensure we keep text/font properties for text elements
-              return { ...dto, id: s.id, text: s.text, fontSize: s.fontSize, fontFamily: s.fontFamily, textDir: s.textDir };
-            });
-
-          if (shapeUpdates.length > 0) {
-            try {
-              await api.drawings.batchUpdate(shapeUpdates as any);
-            } catch { }
-          }
-        }
-      })();
-
-      dragGroupRef.current = null;
-    } else if (node) {
-      // Single node drag - persist position
-      const nodeId = Number(node.id);
-      updateNode(nodeId, { x: node.x, y: node.y });
-
-      const fullNode = storeNodes.find(sn => sn.id === nodeId);
-      if (fullNode) {
-        api.nodes.update(nodeId, {
-          id: fullNode.id,
-          title: fullNode.title,
-          content: fullNode.content || '',
-
-          groupId: fullNode.groupId,
-          projectId: fullNode.projectId,
-          userId: fullNode.userId,
-          customColor: fullNode.customColor,
-          group: fullNode.group ? { id: fullNode.group.id, name: fullNode.group.name, color: fullNode.group.color, order: fullNode.group.order } : { id: fullNode.groupId ?? 0, name: 'Default', color: '#808080', order: 0 },
-          x: node.x,
-          y: node.y
-        }).catch(() => { });
-      }
-    }
-  }, [setShapes]);
-
-  /* End Manual Refs */
-
-
-
-
-
-  const handleSelectMouseDown = useCallback((e: React.MouseEvent) => {
-    if (useGraphStore.getState().isConnectionPickerActive) return;
-    if (!isSelectTool) return;
-    if (isHoveringNode) return;
-
-    if (e.button === 1) {
-      e.preventDefault();
-      // Only start tracking - don't enable pan mode until drag threshold met
-      middleMouseStartRef.current = { x: e.clientX, y: e.clientY };
-      return;
-    }
-
-    if (e.button !== 0) return;
-
-    const rect = e.currentTarget.getBoundingClientRect();
-    const screenX = e.clientX - rect.left;
-    const screenY = e.clientY - rect.top;
-    const worldPoint = screenToWorld(screenX, screenY);
-    const scale = graphRef.current?.zoom() || graphTransform.k || 1;
-
-    const selectedIds = selectedShapeIdsRef.current;
-
-    if (selectedIds.size === 1) {
-      const selectedShape = filteredShapes.find(s => selectedIds.has(s.id));
-      if (selectedShape) {
-        const bounds = getShapeBounds(selectedShape, scale);
-        if (bounds) {
-          const handle = getHandleAtPoint(worldPoint, bounds, scale);
-
-          if (handle) {
-            setIsResizing(true);
-            activeResizeHandleRef.current = handle;
-            resizeStartBoundsRef.current = bounds;
-            resizeDragStartRef.current = worldPoint;
-            resizingShapeIdRef.current = selectedShape.id;
-            originalShapeRef.current = { ...selectedShape, points: [...selectedShape.points] };
-            currentResizingShapeRef.current = { ...selectedShape, points: [...selectedShape.points] };
-                  pushToUndoStack();
-            return;
-          }
-        }
-      }
-    }
-
-    let clickedNodeId: number | null = null;
-    let closestDist = Infinity;
-    const nodeHitRadius = 15 / scale;
-    const currentNodes = (graphDataRef.current?.nodes || []) as any[];
-    currentNodes.forEach((n: any) => {
-      const dx = (n.x ?? 0) - worldPoint.x;
-      const dy = (n.y ?? 0) - worldPoint.y;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-      if (dist <= nodeHitRadius && dist < closestDist) {
-        closestDist = dist;
-        clickedNodeId = Number(n.id);
-      }
-    });
-
-    if (clickedNodeId) return;
-
-    const clickedShape = filteredShapes.find(s => isPointNearShape(worldPoint, s, scale, 10));
-
-    if (clickedShape) {
-      lastNodeClickTimeRef.current = Date.now();
-      if (e.shiftKey || e.ctrlKey || e.metaKey) {
-        setSelectedShapeIds(prev => {
-          const next = new Set(prev);
-          if (next.has(clickedShape.id)) {
-            next.delete(clickedShape.id);
-          } else {
-            next.add(clickedShape.id);
-          }
-          return next;
-        });
-      } else {
-        if (!selectedShapeIds.has(clickedShape.id)) {
-          setSelectedShapeIds(new Set([clickedShape.id]));
-          setSelectedNodeIds(new Set());
-        }
-      }
-      setIsDraggingSelection(true);
-      dragStartWorldRef.current = worldPoint;
-      setDragStartWorld(worldPoint);
-            pushToUndoStack();
-    } else {
-      if (!e.shiftKey && !e.ctrlKey && !e.metaKey) {
-        setSelectedShapeIds(new Set());
-        setSelectedNodeIds(new Set());
-        
-        // Close selection pane and project info popup when clicking empty space
-        setShowSelectionPane(false);
-        // We can't directly set isOpen for ProjectInfoPopup because it's internal,
-        // but it has a mousedown listener on document. 
-        // Since we stopped propagation in some places, let's make sure it's closed.
-        // If it's the guest view / preview mode, we might need a more direct way.
-      }
-      isMarqueeSelectingRef.current = false;
-      setIsMarqueeSelecting(false);
-      marqueeStartScreenPosRef.current = { x: e.clientX, y: e.clientY };
-      setMarqueeStart(worldPoint);
-      setMarqueeEnd(worldPoint);
-    }
-  }, [isSelectTool, isHoveringNode, filteredShapes, selectedShapeIds, screenToWorld, graphTransform.k, getShapeBounds, pushToUndoStack, shapes, isPointNearShape]);
-
-  const handleTouchStart = useCallback((e: React.TouchEvent) => {
-    if (e.touches.length === 2) {
-      // 2-finger pan start
-      const t1 = e.touches[0];
-      const t2 = e.touches[1];
-      const center = {
-        x: (t1.clientX + t2.clientX) / 2,
-        y: (t1.clientY + t2.clientY) / 2,
-      };
-      lastPinchRef.current = { dist: 0, center };
-      return;
-    }
-
-    if (e.touches.length !== 1) return;
-    const touch = e.touches[0];
-
-    // Check if we are touching UI
-    const target = e.target as HTMLElement;
-    if (target.closest('.graph-ui-hide') || target.closest('button')) return;
-
-    if (!isPanTool) {
-      // Don't prevent default if it's a single touch in pan mode or select mode 
-      // to allow the browser to generate click events/allow D3 to see the interaction properly.
-      // touch-action: none on the container already prevents browser scrolling/zooming.
-      if (graphSettings.activeTool !== 'pan' && graphSettings.activeTool !== 'select') {
-         e.preventDefault(); 
-      }
-    }
-
-    const syntheticEvent = {
-      ...e,
-      clientX: touch.clientX,
-      clientY: touch.clientY,
-      button: 0,
-      buttons: 1,
-      target: e.target,
-      currentTarget: e.currentTarget,
-      preventDefault: () => e.preventDefault(),
-      stopPropagation: () => e.stopPropagation(),
-      shiftKey: e.shiftKey,
-      altKey: e.altKey,
-      ctrlKey: e.ctrlKey,
-      metaKey: e.metaKey,
-    } as unknown as React.MouseEvent;
-
-    handleContainerMouseDownCapture(syntheticEvent);
-    handleSelectMouseDown(syntheticEvent);
-  }, [handleContainerMouseDownCapture, handleSelectMouseDown, isPanTool, graphSettings.activeTool]);
-
-  const handleTouchMove = useCallback((e: React.TouchEvent) => {
-    if (e.touches.length === 2 && lastPinchRef.current && graphRef.current) {
-       e.preventDefault();
-       const t1 = e.touches[0];
-       const t2 = e.touches[1];
-       const currCenter = {
-         x: (t1.clientX + t2.clientX) / 2,
-         y: (t1.clientY + t2.clientY) / 2,
-       };
-       
-       const { center: startCenter } = lastPinchRef.current;
-       const zoom = graphRef.current.zoom();
-       
-       const dx = currCenter.x - startCenter.x;
-       const dy = currCenter.y - startCenter.y;
-       
-       if (Math.abs(dx) > 1 || Math.abs(dy) > 1) {
-         const currentCenter = graphRef.current.centerAt();
-         graphRef.current.centerAt(
-           currentCenter.x - dx / zoom,
-           currentCenter.y - dy / zoom,
-           0
-         );
-         lastPinchRef.current.center = currCenter;
-       }
-       return;
-    }
-
-    if (e.touches.length !== 1) return;
-    if (!isPanTool) e.preventDefault();
-
-    const touch = e.touches[0];
-    const syntheticEvent = {
-      ...e,
-      clientX: touch.clientX,
-      clientY: touch.clientY,
-      target: e.target,
-      currentTarget: e.currentTarget,
-      preventDefault: () => e.preventDefault(),
-      stopPropagation: () => e.stopPropagation(),
-      shiftKey: e.shiftKey,
-    } as unknown as React.MouseEvent;
-
-    handleContainerMouseMove(syntheticEvent);
-  }, [handleContainerMouseMove, isPanTool]);
-
-  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
-    // e.preventDefault();
-    const touch = e.changedTouches[0];
-
-    const syntheticEvent = {
-      ...e,
-      clientX: touch.clientX,
-      clientY: touch.clientY,
-      button: 0,
-      target: e.target,
-      currentTarget: e.currentTarget,
-      preventDefault: () => { }, //e.preventDefault(),
-      stopPropagation: () => e.stopPropagation(),
-    } as unknown as React.MouseEvent;
-
-    handleContainerMouseUpCapture(syntheticEvent);
-    
-    // If it was a simple tap (no drag), close selection pane if clicking empty space
-    if (!wasGlobalDragRef.current) {
-       // The handleSelectMouseDown already handles empty space click for desktop,
-       // but for touch we might want to be explicit.
-    }
-  }, [handleContainerMouseUpCapture]);
-
-  const handleContainerDoubleClick = useCallback((e: React.MouseEvent) => {
-    if (!isSelectTool) return;
-    if (useGraphStore.getState().isConnectionPickerActive) return;
-
-    const rect = containerRef.current?.getBoundingClientRect();
-    if (!rect) return;
-
-    const screenX = e.clientX - rect.left;
-    const screenY = e.clientY - rect.top;
-    const worldPoint = screenToWorld(screenX, screenY);
-    const scale = graphRef.current?.zoom() || graphTransform.k || 1;
-
-    // Detect if we double-clicked on a text shape
-    const clickedTextShape = [...filteredShapes].reverse().find(s =>
-      s.type === 'text' && isPointNearShape(worldPoint, s, scale, 15)
-    );
-
-    if (clickedTextShape && graphRef.current) {
-      setEditingShapeId(clickedTextShape.id);
-      setTextInputValue(clickedTextShape.text || '');
-      setSelectedShapeIds(new Set([clickedTextShape.id]));
-      setSelectedNodeIds(new Set());
-
-      // Position input at shape anchor
-      const screenPos = graphRef.current.graph2ScreenCoords(clickedTextShape.points[0].x, clickedTextShape.points[0].y);
-      setTextInputPos({
-        x: screenPos.x + rect.left,
-        y: screenPos.y + rect.top,
-        worldX: clickedTextShape.points[0].x,
-        worldY: clickedTextShape.points[0].y
-      });
-    }
-  }, [isSelectTool, screenToWorld, filteredShapes, isPointNearShape, graphTransform.k]);
-
-  const handleCanvasTouchStart = useCallback((e: React.TouchEvent) => {
-    if (e.touches.length === 2) {
-      // Start Pinch/Zoom
-      setIsDrawing(false);
-      const t1 = e.touches[0];
-      const t2 = e.touches[1];
-      const dist = Math.sqrt(Math.pow(t1.clientX - t2.clientX, 2) + Math.pow(t1.clientY - t2.clientY, 2));
-      const center = {
-        x: (t1.clientX + t2.clientX) / 2,
-        y: (t1.clientY + t2.clientY) / 2,
-      };
-      lastPinchRef.current = { dist, center };
-      return;
-    }
-
-    if (e.touches.length !== 1) return;
-    const touch = e.touches[0];
-    const syntheticEvent = {
-      ...e,
-      clientX: touch.clientX,
-      clientY: touch.clientY,
-      target: e.target,
-      currentTarget: e.currentTarget
-    } as unknown as React.MouseEvent;
-    handleCanvasMouseDown(syntheticEvent);
-  }, [handleCanvasMouseDown]);
-
-  const handleCanvasTouchMove = useCallback((e: React.TouchEvent) => {
-    if (e.touches.length === 2 && lastPinchRef.current && graphRef.current) {
-      e.preventDefault();
-      // Handle Pinch/Zoom
-      const t1 = e.touches[0];
-      const t2 = e.touches[1];
-      const currDist = Math.sqrt(Math.pow(t1.clientX - t2.clientX, 2) + Math.pow(t1.clientY - t2.clientY, 2));
-      const currCenter = {
-        x: (t1.clientX + t2.clientX) / 2,
-        y: (t1.clientY + t2.clientY) / 2,
-      };
-
-      const { dist: startDist, center: startCenter } = lastPinchRef.current;
-      const zoomFactor = currDist / startDist;
-
-      const currentZoom = graphRef.current.zoom();
-      const newZoom = currentZoom * zoomFactor;
-
-      // Calculate the world coordinate of the previous center
-      // const startWorld = graphRef.current.screen2GraphCoords(startCenter.x, startCenter.y); // This relies on old zoom
-
-      // Calculate new graph center to keep the pinch center fixed on screen
-      // Logic: pinchCenter should map to currCenter
-      // CenterAt sets the graph coordinate at the VIEWPORT center
-
-      // We need accurate screen-to-graph at the moment. 
-      // Instead of complex relative math, we can simply apply Zoom and Pan deltas.
-      // Zoom anchored to center, then Pan to correct offset.
-
-      const newGraphX = (graphRef.current.centerAt().x - (currCenter.x - getLastCenter().x) / currentZoom);
-      // Wait, complex logic inside hook might be unstable.
-      // Simple logic:
-      // 1. Zoom
-      graphRef.current.zoom(newZoom, 0);
-
-      // 2. Pan
-      // screen delta
-      const dx = currCenter.x - startCenter.x;
-      const dy = currCenter.y - startCenter.y;
-
-      // graph delta (approximate at new zoom level)
-      const graphDx = dx / newZoom;
-      const graphDy = dy / newZoom;
-
-      const center = graphRef.current.centerAt();
-      graphRef.current.centerAt(center.x - graphDx, center.y - graphDy, 0);
-
-      lastPinchRef.current = { dist: currDist, center: currCenter };
-      return;
-    }
-
-    if (e.touches.length !== 1) return;
-    e.preventDefault();
-    const touch = e.touches[0];
-    const syntheticEvent = {
-      ...e,
-      clientX: touch.clientX,
-      clientY: touch.clientY,
-      target: e.target,
-      currentTarget: e.currentTarget
-    } as unknown as React.MouseEvent;
-    handleCanvasMouseMove(syntheticEvent);
-  }, [handleCanvasMouseMove]);
-
-  // Helper to safely get last center without typescript complaints in closure
-  const getLastCenter = () => lastPinchRef.current?.center || { x: 0, y: 0 };
-
-  const handleCanvasTouchEnd = useCallback((e: React.TouchEvent) => {
-    lastPinchRef.current = null;
-    handleCanvasMouseUp();
-  }, [handleCanvasMouseUp]);
+  const {
+    handleContainerMouseMove,
+    handleContainerMouseDownCapture,
+    handleContainerMouseUpCapture,
+    handleSelectMouseDown,
+    handleNodeDrag,
+    handleNodeDragEnd,
+    handleTouchStart,
+    handleTouchMove,
+    handleTouchEnd,
+    handleContainerDoubleClick,
+    handleCanvasTouchStart,
+    handleCanvasTouchMove,
+    handleCanvasTouchEnd,
+  } = useGraphMouseHandlers({
+    graphRef,
+    containerRef,
+    shapesRef,
+    graphDataRef,
+    selectedShapeIdsRef,
+    selectedNodeIdsRef,
+    dragStartWorldRef,
+    dragNodePrevRef,
+    dragStartPosRef,
+    wasGlobalDragRef,
+    isNodeDraggingRef,
+    isMarqueeSelectingRef,
+    marqueeStartScreenPosRef,
+    lastPinchRef,
+    lastHoveredNodeIdRef,
+    lastNodeClickTimeRef,
+    lastDragTimeRef,
+    middleMouseStartRef,
+    activeResizeHandleRef,
+    resizeStartBoundsRef,
+    resizeDragStartRef,
+    resizingShapeIdRef,
+    originalShapeRef,
+    currentResizingShapeRef,
+    dragGroupRef,
+    graphTransform,
+    screenToWorld,
+    filteredShapes,
+    selectedShapeIds,
+    selectedNodeIds,
+    isMiddleMousePanning,
+    setIsMiddleMousePanning,
+    isResizing,
+    setIsResizing,
+    setResizeUpdateCounter,
+    isDraggingSelection,
+    setIsDraggingSelection,
+    dragStartWorld,
+    setDragStartWorld,
+    isMarqueeSelecting,
+    setIsMarqueeSelecting,
+    marqueeStart,
+    setMarqueeStart,
+    marqueeEnd,
+    setMarqueeEnd,
+    isHoveringShape,
+    setIsHoveringShape,
+    isHoveringNode,
+    hoveredResizeHandle,
+    setHoveredResizeHandle,
+    setIsNodeDragging,
+    isSelectTool,
+    isPanTool,
+    setSelectedShapeIds,
+    setSelectedNodeIds,
+    setShowSelectionPane,
+    setEditingShapeId,
+    setTextInputValue,
+    setTextInputPos,
+    setIsDrawing,
+    shapeToApiDrawing,
+    handleCanvasMouseDown,
+    handleCanvasMouseMove,
+    handleCanvasMouseUp,
+  });
 
 
   return (
@@ -2708,11 +1333,3 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
   );
 });
 
-function adjustBrightness(hex: string, percent: number): string {
-  const num = parseInt(hex.replace('#', ''), 16);
-  const amt = Math.round(2.55 * percent);
-  const R = Math.max(0, Math.min(255, (num >> 16) + amt));
-  const G = Math.max(0, Math.min(255, ((num >> 8) & 0x00ff) + amt));
-  const B = Math.max(0, Math.min(255, (num & 0x0000ff) + amt));
-  return `#${(0x1000000 + R * 0x10000 + G * 0x100 + B).toString(16).slice(1)}`;
-}
