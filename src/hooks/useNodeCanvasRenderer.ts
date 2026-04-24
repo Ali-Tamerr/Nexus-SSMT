@@ -191,13 +191,21 @@ export function useNodeCanvasRenderer({
 
   const linkColor = useCallback((link: unknown) => {
     const l = link as { color?: string; source?: any; target?: any };
-    const baseColor = l.color || '#355ea1';
+    // Use a more visible default blue if no color specified
+    const baseColor = l.color || '#3b82f6';
 
     const isHovered = hoveredLink &&
       ((hoveredLink.source === l.source || hoveredLink.source?.id === l.source?.id) &&
         (hoveredLink.target === l.target || hoveredLink.target?.id === l.target?.id));
 
-    return isHovered ? baseColor : baseColor + '80';
+    if (isHovered) return baseColor;
+    
+    // Only append alpha if it's a HEX color, otherwise it breaks names like 'blue' or 'violet'
+    if (baseColor.startsWith('#') && baseColor.length === 7) {
+      return baseColor + '80';
+    }
+    
+    return baseColor;
   }, [hoveredLink]);
 
   const linkWidth = useCallback(

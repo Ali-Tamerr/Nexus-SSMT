@@ -625,7 +625,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
               height={dimensions.height}
               graphData={graphData}
               nodeCanvasObject={nodeCanvasObject}
-              nodePointerAreaPaint={(node: { x?: number; y?: number }, color: string, ctx: CanvasRenderingContext2D) => {
+              nodePointerAreaPaint={(node: any, color: string, ctx: CanvasRenderingContext2D) => {
                 if (!node.x || !node.y) return;
                 ctx.fillStyle = color;
                 ctx.beginPath();
@@ -633,13 +633,13 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
                 ctx.fill();
               }}
               nodeLabel={() => ''}
-              linkColor={(link: any) => link.color || '#52525b'}
+              linkColor={linkColor}
               linkWidth={linkWidth}
               linkDirectionalArrowLength={4}
               linkDirectionalArrowRelPos={1}
               linkCurvature={0.1}
-              linkCanvasObjectMode={() => 'after'}
-              onNodeClick={(node: any, event: any) => {
+              onRenderFramePost={onRenderFramePost}
+              onNodeClick={(node: any, event: MouseEvent) => {
                 const state = useGraphStore.getState();
                 if (state.isConnectionPickerActive) {
                   state.setConnectionPickerResult(Number(node.id));
@@ -657,118 +657,49 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
                 if (useGraphStore.getState().isConnectionPickerActive) return;
                 if (wasGlobalDragRef.current) return;
                 const timeSinceNodeClick = Date.now() - lastNodeClickTimeRef.current;
-                if (timeSinceNodeClick < 300) {
-                  return;
-                }
+                if (timeSinceNodeClick < 300) return;
 
                 if (graphSettings.activeTool === 'node') {
-                  const screenX = evt.clientX;
-                  const screenY = evt.clientY;
-                  const rect = containerRef.current!.getBoundingClientRect();
-                  const worldPoint = screenToWorld(screenX - rect.left, screenY - rect.top);
-
-                  (async () => {
-                    const projectId = currentProject?.id;
-                    if (!projectId || !user?.id) return;
-
-                    let groupId = typeof activeGroupId === 'number' ? activeGroupId : 0;
-                    if (groupId === 0) {
-                      try {
-                        const groups = await api.groups.getByProject(projectId);
-                        if (groups && groups.length > 0) groupId = groups[0].id;
-                        else {
-                          const ng = await api.groups.create({ name: 'Default', color: '#808080', order: 0, projectId });
-                          if (ng) groupId = ng.id;
-                        }
-                      } catch (e) { }
-                    }
-
-                    if (pendingNodes && pendingNodes.length > 0) {
-                      // Multi-node placement (Classroom style)
-                      const radius = Math.sqrt(pendingNodes.length) * 40;
-                      const batchToCreate = pendingNodes.map(p => ({
-                        ...p,
-                        x: worldPoint.x + (Math.random() - 0.5) * radius,
-                        y: worldPoint.y + (Math.random() - 0.5) * radius,
-                        groupId: groupId,
-                        userId: user.id
-                      }));
-
-                      try {
-                        const newNodes = await api.nodes.batchCreate(batchToCreate);
-                        if (newNodes && newNodes.length > 0) {
-                          newNodes.forEach(n => addNode(n));
-                          showToast(`Placed ${newNodes.length} nodes from Classroom`, 'success');
-                          
-                          // Notify collaborators
-                          if (projectId && user.id) {
-                            realtimeSync.notifyUpdate(projectId, user.id);
-                          }
-                        }
-                      } catch (e) {
-                        showToast('Failed to place nodes', 'error');
-                      }
-                      setPendingNodes([]);
-                    } else {
-                      // Single node placement
-                      const GROUP_COLORS: Record<number, string> = {
-                        0: '#8B5CF6', 1: '#355ea1', 2: '#10B981', 3: '#F59E0B',
-                        4: '#EF4444', 5: '#EC4899', 6: '#06B6D4', 7: '#84CC16',
-                      };
-                      const colors = Object.values(GROUP_COLORS);
-                      const randomColor = colors[Math.floor(Math.random() * colors.length)];
-
-                      const payload = {
-                        title: 'New Node',
-                        content: '',
-                        projectId,
-                        groupId,
-                        customColor: randomColor,
-                        visualSize: 1.0,
-                        x: worldPoint.x,
-                        y: worldPoint.y,
-                        userId: user.id
-                      };
-
-                      try {
-                        const newNode = await api.nodes.create(payload);
-                        if (newNode) {
-                          addNode(newNode);
-                          setActiveNode(newNode);
-                          // toggleEditor(true); // Don't auto-open editor per UX preference for quick placement?
-                          // Actually, the original Add Node did open. Let's keep it consistent.
-                          useGraphStore.getState().toggleEditor(true);
-
-                          // Notify collaborators
-                          if (projectId && user.id) {
-                            realtimeSync.notifyUpdate(projectId, user.id);
-                          }
-                        }
-                      } catch (e) {
-                        showToast('Failed to create node', 'error');
-                      }
-                    }
-                    
-                    setGraphSettings({ activeTool: 'select' });
-                  })();
-                  return;
+                   const screenX = evt.clientX;
+                   const screenY = evt.clientY;
+                   const rect = containerRef.current!.getBoundingClientRect();
+                   const worldPoint = screenToWorld(screenX - rect.left, screenY - rect.top);
+                   (async () => {
+                     const projectId = currentProject?.id;
+                     if (!projectId || !user?.id) return;
+                     let groupId = typeof activeGroupId === 'number' ? activeGroupId : 0;
+                     if (groupId === 0) {
+                        try {
+                          const groups = await api.groups.getByProject(projectId);
+                          if (groups && groups.length > 0) groupId = groups[0].id;
+                        } catch (e) {}
+                     }
+                     
+                     if (pendingNodes && pendingNodes.length > 0) {
+                        const radius = Math.sqrt(pendingNodes.length) * 40;
+                        const batchToCreate = pendingNodes.map(p => ({ ...p, x: worldPoint.x + (Math.random()-0.5)*radius, y: worldPoint.y + (Math.random()-0.5)*radius, groupId, userId: user.id }));
+                        try {
+                          const newNodes = await api.nodes.batchCreate(batchToCreate);
+                          if (newNodes) { newNodes.forEach(n => addNode(n)); setPendingNodes([]); }
+                        } catch (e) {}
+                     } else {
+                        try {
+                          const newNode = await api.nodes.create({ title: 'New Node', content: '', projectId, groupId, customColor: '#8B5CF6', visualSize: 1.0, x: worldPoint.x, y: worldPoint.y, userId: user.id });
+                          if (newNode) { addNode(newNode); setActiveNode(newNode); useGraphStore.getState().toggleEditor(true); }
+                        } catch (e) {}
+                     }
+                     setGraphSettings({ activeTool: 'select' });
+                   })();
+                   return;
                 }
-
                 setActiveNode(null);
                 setSelectedLink(null);
                 setSelectedNodeIds(new Set());
                 setSelectedShapeIds(new Set());
-                // Close selection pane
                 setShowSelectionPane(false);
-                
-                // For ProjectInfoPopup, it listens to mousedown on document.
-                // We ensure this click bubbles up or we can dispatch a custom event if needed.
-                // Given the user report, guest preview mode might have layers blocking it.
-                // Let's ensure we are not stopping propagation for background clicks.
               }}
               nodeId="id"
               onZoom={handleZoom}
-              onRenderFramePost={onRenderFramePost}
               enableNodeDrag={!graphSettings.lockAllMovement && !isDrawingTool && !isPanTool}
               enableZoomInteraction={isSelectTool || isPanTool}
               enablePanInteraction={isPanTool}
