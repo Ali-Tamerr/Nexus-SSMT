@@ -27,10 +27,20 @@ export const metadata: Metadata = {
   description: "A collaborative Social Study Mapping platform built with Next.js 16 and D3-force to visualize complex relationships.",
   keywords: ["knowledge graph", "note-taking", "second brain", "Social Study Mapping", "mind map", "Study Mapping", "Data Visualization"],
   authors: [{ name: "Ali Tamer" }],
+  manifest: "/manifest.json",
+  themeColor: "#09090b",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Nexus",
+  },
   openGraph: {
     title: "Nexus - Social Study Mapping Tool",
     description: "A collaborative Social Study Mapping platform built with Next.js 16 and D3-force to visualize complex relationships.",
     type: "website",
+  },
+  icons: {
+    apple: "/icons/apple-touch-icon.png",
   },
 };
 
@@ -45,6 +55,24 @@ export default function RootLayout({
         <Providers>
           {children}
         </Providers>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              if ('serviceWorker' in navigator) {
+                window.addEventListener('load', function() {
+                  navigator.serviceWorker.register('/sw.js').then(
+                    function(registration) {
+                      console.log('Service Worker registration successful with scope: ', registration.scope);
+                    },
+                    function(err) {
+                      console.log('Service Worker registration failed: ', err);
+                    }
+                  );
+                });
+              }
+            `,
+          }}
+        />
       </body>
     </html>
   );
