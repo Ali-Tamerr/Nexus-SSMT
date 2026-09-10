@@ -1,6 +1,7 @@
 'use client';
 
 import Image from 'next/image';
+import Link from 'next/link';
 import NexusLogo from '@/assets/Logo/Logo with no circle.svg';
 import { HardDrive } from 'lucide-react';
 
@@ -91,6 +92,15 @@ export function WelcomeHero({
           <FeatureCard key={feature.title} {...feature} />
         ))}
       </section>
+
+      <footer className="mt-10 text-center text-xs text-zinc-500">
+        <Link
+          href="/terms"
+          className="hover:text-zinc-300 transition-colors underline-offset-4 hover:underline"
+        >
+          Terms &amp; Conditions
+        </Link>
+      </footer>
 
       <button
         onClick={onGuest}

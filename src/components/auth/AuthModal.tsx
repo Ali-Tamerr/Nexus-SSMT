@@ -8,6 +8,7 @@ import { api } from '@/lib/api';
 import { signIn } from 'next-auth/react';
 import Image from 'next/image';
 import NexusLogo from '@/assets/Logo/Logo with no circle.svg';
+import { TermsModal } from '@/components/legal/TermsModal';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -22,6 +23,8 @@ export function AuthModal({ isOpen, onClose, initialMode = 'login' }: AuthModalP
   const [verificationCode, setVerificationCode] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [agreeToTerms, setAgreeToTerms] = useState(false);
+  const [showTermsModal, setShowTermsModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -141,6 +144,10 @@ export function AuthModal({ isOpen, onClose, initialMode = 'login' }: AuthModalP
         setError('Password must be at least 6 characters with letters and numbers');
         return;
       }
+      if (mode === 'signup' && !agreeToTerms) {
+        setError('You must agree to the Terms and Conditions to create an account');
+        return;
+      }
     }
 
     setIsSubmitting(true);
@@ -219,6 +226,7 @@ export function AuthModal({ isOpen, onClose, initialMode = 'login' }: AuthModalP
     setPassword('');
     setDisplayName('');
     setVerificationCode('');
+    setAgreeToTerms(false);
     setError(null);
   };
 
@@ -346,9 +354,32 @@ export function AuthModal({ isOpen, onClose, initialMode = 'login' }: AuthModalP
           </div>
           )}
 
+          {mode === 'signup' && (
+            <div className="flex items-start gap-2.5 pt-1">
+              <input
+                id="agree-to-terms"
+                type="checkbox"
+                checked={agreeToTerms}
+                onChange={(e) => setAgreeToTerms(e.target.checked)}
+                className="mt-0.5 h-4 w-4 rounded border-zinc-700 bg-zinc-800 text-[#355ea1] focus:ring-1 focus:ring-[#265fbd] cursor-pointer"
+                required
+              />
+              <label htmlFor="agree-to-terms" className="text-xs text-zinc-400 select-none leading-relaxed">
+                I agree to the{' '}
+                <button
+                  type="button"
+                  onClick={() => setShowTermsModal(true)}
+                  className="text-blue-400 hover:text-blue-300 underline underline-offset-2 transition-colors cursor-pointer font-medium"
+                >
+                  Terms &amp; Conditions
+                </button>
+              </label>
+            </div>
+          )}
+
           <button
             type="submit"
-            disabled={isSubmitting || isGoogleLoading}
+            disabled={isSubmitting || isGoogleLoading || (mode === 'signup' && !agreeToTerms)}
             className="flex w-full items-center justify-center gap-2 rounded-lg bg-[#355ea1] py-3 text-sm font-semibold text-white transition-colors hover:bg-[#265fbd] disabled:cursor-not-allowed disabled:opacity-50"
           >
             {isSubmitting ? (
@@ -435,6 +466,11 @@ export function AuthModal({ isOpen, onClose, initialMode = 'login' }: AuthModalP
           )}
         </div>
       </div>
+
+      <TermsModal
+        isOpen={showTermsModal}
+        onClose={() => setShowTermsModal(false)}
+      />
     </div>
   );
 }
