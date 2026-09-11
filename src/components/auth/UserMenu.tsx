@@ -2,7 +2,8 @@
 import { signOut } from 'next-auth/react';
 
 import { useState, useRef, useEffect } from 'react';
-import { LogOut, Settings, User, ChevronDown, UserPen, Lock, Github } from 'lucide-react';
+import { LogOut, Settings, User, ChevronDown, UserPen, Lock } from 'lucide-react';
+import { GithubIcon } from '@/components/ui/GithubIcon';
 import { useAuthStore } from '@/store/useAuthStore';
 import { ProfileModal, ModalMode } from './ProfileModal';
 import { useToast } from '@/context/ToastContext';
@@ -139,7 +140,7 @@ export function UserMenu() {
             className="border-t border-zinc-800 pt-6 md:hidden flex w-full items-center gap-3 px-4 py-2 text-sm text-zinc-300 transition-colors hover:bg-zinc-800"
             onClick={() => setIsOpen(false)}
           >
-            <Github className="h-4 w-4" />
+            <GithubIcon className="h-4 w-4" />
             View Github Repository
           </a>
         </div>

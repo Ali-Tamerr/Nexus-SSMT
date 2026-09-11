@@ -2,7 +2,7 @@
 
 import { useState, Suspense, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { Github } from 'lucide-react';
+import { GithubIcon } from '@/components/ui/GithubIcon';
 import { useHomePageLogic } from '@/hooks/useHomePageLogic';
 
 import { Project } from '@/types/knowledge';
@@ -77,7 +77,7 @@ export default function HomePage() {
           className="flex items-center justify-center h-8 w-8 md:h-9 md:w-9 border border-zinc-400/50 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-full transition-all"
           title="View on GitHub"
         >
-          <Github className="h-5 w-5" />
+          <GithubIcon className="h-5 w-5" />
         </a>
       </Navbar>
 

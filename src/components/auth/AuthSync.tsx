@@ -24,7 +24,7 @@ export function AuthSync() {
             }
 
             if (status === 'authenticated' && session?.user?.email) {
-                let userId = session.user.id;
+                let userId = (session.user as any)?.id;
 
                 // Fallback: If session doesn't have ID (race condition or JWT issue), fetch from API
                 if (!userId) {
