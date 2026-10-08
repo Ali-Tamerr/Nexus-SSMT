@@ -7,23 +7,23 @@ export default function robots(): MetadataRoute.Robots {
     rules: [
       {
         userAgent: '*',
-        allow: '/',
-        disallow: ['/api/'],
+        allow: [
+          '/',
+          '/about',
+          '/contact',
+          '/privacy',
+          '/terms',
+          '/docs',
+          '/.well-known/',
+          '/llms.txt',
+          '/agent-instructions',
+          '/api/mcp',
+          '/api/openapi.json',
+        ],
+        disallow: ['/api/auth/', '/project/editor'],
       },
       {
-        userAgent: 'Google-Extended',
-        allow: '/',
-      },
-      {
-        userAgent: 'GPTBot',
-        allow: '/',
-      },
-      {
-        userAgent: 'PerplexityBot',
-        allow: '/',
-      },
-      {
-        userAgent: 'ClaudeBot',
+        userAgent: ['Google-Extended', 'GPTBot', 'PerplexityBot', 'ClaudeBot', 'Applebot-Extended'],
         allow: '/',
       },
     ],

@@ -60,9 +60,6 @@ export default function HomePage() {
     projects, groups, recent, modals
   } = state;
 
-  if (!hasHydrated) {
-    return <LoadingScreen />;
-  }
 
   return (
     <div className="h-screen overflow-y-auto bg-zinc-950">
