@@ -413,13 +413,14 @@ export function useGraphDrawingHandlers({
         const midX = (1 - t) * (1 - t) * source.x + 2 * (1 - t) * t * controlX + t * t * target.x;
         const midY = (1 - t) * (1 - t) * source.y + 2 * (1 - t) * t * controlY + t * t * target.y;
 
+        ctx.save();
         const fontSize = 8;
         ctx.font = `${fontSize}px Inter, "Amiri", "Segoe UI Arabic", "Noto Sans Arabic", sans-serif`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
 
         const nodeDir = detectTextDir(link.description);
-        if ('direction' in ctx) ctx.direction = nodeDir === 'rtl' ? 'rtl' : 'ltr';
+        if ('direction' in ctx) (ctx as any).direction = nodeDir === 'rtl' ? 'rtl' : 'ltr';
         const textWidth = ctx.measureText(link.description).width;
 
         ctx.fillStyle = 'rgba(24, 24, 27, 0.9)';
@@ -430,7 +431,7 @@ export function useGraphDrawingHandlers({
 
         ctx.fillStyle = '#f8fafc';
         ctx.fillText(link.description, midX, midY);
-        if ('direction' in ctx) ctx.direction = 'ltr';
+        ctx.restore();
       });
     }
   }, [filteredShapes, isDrawing, currentPoints, graphSettings.activeTool, graphSettings.strokeColor, graphSettings.strokeWidth, graphSettings.strokeStyle, selectedShapeIds, isMarqueeSelecting, marqueeStart, marqueeEnd, isResizing, resizeUpdateCounter, drawPreview, currentProject?.id, shapeToApiDrawing, addShape, editingShapeId, groupsReady, links, nodes]);

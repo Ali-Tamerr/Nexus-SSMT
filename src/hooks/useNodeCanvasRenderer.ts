@@ -178,13 +178,14 @@ export function useNodeCanvasRenderer({
       ctx.lineWidth = 1.5 / globalScale;
       ctx.stroke();
 
+      ctx.save();
       ctx.textAlign = 'center';
       ctx.textBaseline = 'top';
       ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
       const nodeDir = detectTextDir(label);
-      if ('direction' in ctx) ctx.direction = nodeDir === 'rtl' ? 'rtl' : 'ltr';
+      if ('direction' in ctx) (ctx as any).direction = nodeDir === 'rtl' ? 'rtl' : 'ltr';
       ctx.fillText(label, x, y + nodeRadius + 3);
-      if ('direction' in ctx) ctx.direction = 'ltr';
+      ctx.restore();
     },
     [activeNode, searchQuery, selectedNodeIds, groups]
   );
