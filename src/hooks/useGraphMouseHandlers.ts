@@ -408,12 +408,20 @@ export function useGraphMouseHandlers(props: UseGraphMouseHandlersProps) {
       setSelectedNodeIds(new Set([clickedNodeId]));
 
       // Initialize dragGroup for the newly selected node
+      const initialNodesMap = new Map();
+      // Include the selected node itself so it moves during drag
+      initialNodesMap.set(String(clickedNodeId), {
+        x: draggedNodePos.x,
+        y: draggedNodePos.y,
+        fx: draggedNodePos.x,
+        fy: draggedNodePos.y,
+      });
       dragGroupRef.current = {
         active: true,
         startMouse: worldPoint,
         startNodePos: draggedNodePos,
         nodeId: clickedNodeId,
-        initialNodes: new Map(),
+        initialNodes: initialNodesMap,
         initialShapes: new Map(),
       };
 
