@@ -3,7 +3,8 @@ import path from "path";
 
 const nextConfig: NextConfig = {
   turbopack: {
-    root: path.resolve(__dirname),
+    // Explicitly set the workspace root to the project directory to ensure Turbopack can locate the Next.js package
+    root: process.cwd(),
   },
   async rewrites() {
     const backendUrl = (
