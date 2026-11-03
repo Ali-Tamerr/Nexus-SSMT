@@ -167,6 +167,12 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
   const shapeSaveTimeoutsRef = useRef<Map<string | number, any>>(new Map());
   const shapeStateSaveTimeoutRef = useRef<any>(null);
 
+  // Clear position cache when project changes so new project nodes receive their stored positions.
+  useEffect(() => {
+    nodeCacheRef.current.clear();
+    linkCacheRef.current.clear();
+  }, [currentProject?.id]);
+
   const graphDataObjRef = useRef<{ nodes: any[], links: any[] }>({ nodes: [], links: [] });
   const lastDataChangeFitTimeRef = useRef<number>(0);
 
@@ -193,13 +199,16 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
       cached.attachments = n.attachments;
       cached.tags = n.tags;
 
-      // Update positions
-      // We update fx/fy to control position (ForceGraph treats fx/fy as fixed/pinned)
-      // We also update x/y to ensure current position reflects store state immediately
-      cached.fx = n.x;
-      cached.fy = n.y;
-      cached.x = n.x;
-      cached.y = n.y;
+      // Only set position for brand-new cache entries.
+      // Overriding fx/fy on every recompute resets D3's live position to a
+      // potentially stale store value, causing nodes to teleport after saves.
+      if (!cached.__posInit) {
+        cached.fx = n.x;
+        cached.fy = n.y;
+        cached.x = n.x;
+        cached.y = n.y;
+        cached.__posInit = true;
+      }
 
       return cached;
     });
