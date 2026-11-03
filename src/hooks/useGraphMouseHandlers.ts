@@ -371,7 +371,7 @@ export function useGraphMouseHandlers(props: UseGraphMouseHandlersProps) {
 
       const initialNodes = new Map();
       graphDataRef.current.nodes.forEach((n: any) => {
-        if (currentSelectedNodeIds.has(Number(n.id)) && Number(n.id) !== clickedNodeId) {
+        if (currentSelectedNodeIds.has(Number(n.id))) {
           initialNodes.set(String(n.id), { x: n.x, y: n.y, fx: n.fx, fy: n.fy });
         }
       });
@@ -559,9 +559,57 @@ export function useGraphMouseHandlers(props: UseGraphMouseHandlersProps) {
     isNodeDraggingRef.current = true;
     setIsNodeDragging(true);
     lastDragTimeRef.current = Date.now();
-    if (!dragGroupRef.current?.active) return;
-    if (String(node.id) !== String(dragGroupRef.current.nodeId)) return;
 
+    // If no active drag group, or the library picked a different node than our
+    // capture handler expected, re-align the drag group to whatever node the
+    // library is actually dragging. This fixes the mismatch where our custom
+    // hit-test in mouseDownCapture selects node A, but the library's internal
+    // hit-test (nodePointerAreaPaint) picks node B.
+    if (
+      !dragGroupRef.current?.active ||
+      String(node.id) !== String(dragGroupRef.current.nodeId)
+    ) {
+      const nodeId = Number(node.id);
+      // Record the node's position at the start of the drag
+      const startPos = { x: node.x ?? 0, y: node.y ?? 0 };
+
+      // Build initialNodes for other currently-selected nodes
+      const currentSelectedNodeIds = selectedNodeIdsRef.current;
+      const initialNodes = new Map();
+      graphDataRef.current.nodes.forEach((n: any) => {
+        if (currentSelectedNodeIds.has(Number(n.id)) && Number(n.id) !== nodeId) {
+          initialNodes.set(String(n.id), { x: n.x, y: n.y, fx: n.fx, fy: n.fy });
+        }
+      });
+
+      const initialShapes = new Map();
+      if (selectedShapeIdsRef.current.size > 0) {
+        shapesRef.current.forEach(s => {
+          if (selectedShapeIdsRef.current.has(s.id)) {
+            initialShapes.set(String(s.id), s.points.map(p => ({ ...p })));
+          }
+        });
+      }
+
+      dragGroupRef.current = {
+        active: true,
+        startMouse: startPos,
+        startNodePos: startPos,
+        nodeId: String(nodeId) as any,
+        initialNodes,
+        initialShapes,
+      };
+
+      // Update selection to match the library's node
+      if (!currentSelectedNodeIds.has(nodeId)) {
+        setSelectedNodeIds(new Set([nodeId]));
+        setSelectedShapeIds(new Set());
+      }
+
+      return; // first drag tick — position hasn't changed yet
+    }
+
+    // Normal drag: the library moved the target node, apply delta to companions
     const initialNodes = dragGroupRef.current.initialNodes;
     const draggedNodeInitial = dragGroupRef.current.startNodePos;
     const dx = (node.x ?? 0) - draggedNodeInitial.x;
