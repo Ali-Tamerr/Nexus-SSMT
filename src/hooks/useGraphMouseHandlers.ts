@@ -349,10 +349,9 @@ export function useGraphMouseHandlers(props: UseGraphMouseHandlersProps) {
 
     if (isOverShape || isOverHandle) return;
 
-    const nodeHitRadius = 15 / scale;
+    const nodeHitRadius = 15;
     let clickedNodeId: number | null = null;
     let closestDist = Infinity;
-    let draggedNodePos = { x: 0, y: 0 };
 
     graphDataRef.current.nodes.forEach((n: any) => {
       const dx = (n.x ?? 0) - worldPoint.x;
@@ -361,30 +360,15 @@ export function useGraphMouseHandlers(props: UseGraphMouseHandlersProps) {
       if (dist <= nodeHitRadius && dist < closestDist) {
         closestDist = dist;
         clickedNodeId = Number(n.id);
-        draggedNodePos = { x: n.x ?? 0, y: n.y ?? 0 };
       }
     });
 
-    if (clickedNodeId && currentSelectedNodeIds.has(clickedNodeId)) {
+    if (clickedNodeId) {
+      // Node was hit — just record for double-click detection and return.
+      // Selection is handled by the library's onNodeClick / onNodeDrag callbacks
+      // which use nodePointerAreaPaint hit-testing (guaranteed to match).
       lastHoveredNodeIdRef.current = String(clickedNodeId);
       lastNodeClickTimeRef.current = Date.now();
-      // dragGroup is NOT set here — handleNodeDrag will create it using the
-      // library's actual drag target, avoiding hit-test mismatches.
-      return;
-    }
-
-    if (clickedNodeId && !currentSelectedNodeIds.has(clickedNodeId)) {
-      if (e.shiftKey || e.ctrlKey || e.metaKey) {
-        return;
-      }
-      lastHoveredNodeIdRef.current = String(clickedNodeId);
-      lastNodeClickTimeRef.current = Date.now();
-
-      setSelectedShapeIds(new Set());
-      setSelectedNodeIds(new Set([clickedNodeId]));
-      // dragGroup is NOT set here — handleNodeDrag will create it using the
-      // library's actual drag target, avoiding hit-test mismatches.
-
       return;
     }
   }, [screenToWorld, graphTransform, graphSettings.activeTool, shapes, nodes, setActiveNode, setSelectedNodeIds, setSelectedShapeIds]);
