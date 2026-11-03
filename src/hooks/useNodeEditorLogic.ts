@@ -13,6 +13,7 @@ export function useNodeEditorLogic() {
   const setActiveNode = useGraphStore((s) => s.setActiveNode);
   const isEditorOpen = useGraphStore((s) => s.isEditorOpen);
   const toggleEditor = useGraphStore((s) => s.toggleEditor);
+  const setSelectedNodeIds = useGraphStore((s) => s.setSelectedNodeIds);
   const addAttachmentToNode = useGraphStore((s) => s.addAttachmentToNode);
   const removeAttachmentFromNode = useGraphStore((s) => s.removeAttachmentFromNode);
   const addTagToNode = useGraphStore((s) => s.addTagToNode);
@@ -218,6 +219,8 @@ export function useNodeEditorLogic() {
       setSearchQuery('');
       showToast('Node saved successfully');
       toggleEditor(false);
+      // Keep node selected after save for immediate dragging
+      setSelectedNodeIds(new Set([activeNode.id]));
 
       if (activeNode.projectId && user?.id && !isGuest) realtimeSync.notifyUpdate(activeNode.projectId, user.id);
     } catch (err) {
