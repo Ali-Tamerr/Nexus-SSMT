@@ -406,6 +406,17 @@ export function useGraphMouseHandlers(props: UseGraphMouseHandlersProps) {
 
       setSelectedShapeIds(new Set());
       setSelectedNodeIds(new Set([clickedNodeId]));
+
+      // Initialize dragGroup for the newly selected node
+      dragGroupRef.current = {
+        active: true,
+        startMouse: worldPoint,
+        startNodePos: draggedNodePos,
+        nodeId: clickedNodeId,
+        initialNodes: new Map(),
+        initialShapes: new Map(),
+      };
+
       return;
     }
   }, [screenToWorld, graphTransform, graphSettings.activeTool, shapes, nodes, setActiveNode, setSelectedNodeIds, setSelectedShapeIds]);
