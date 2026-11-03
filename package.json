@@ -6,10 +6,10 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "NODE_OPTIONS='--max-old-space-size=4096' next build && npm run deploy:worker",
+    "build": "next build",
     "lint": "eslint",
     "build:worker": "npx @opennextjs/cloudflare build",
-    "deploy:worker": "npm run build:worker && npx wrangler pages deploy .open-next",
+    "deploy": "next build && npm run build:worker && npx wrangler pages deploy .open-next",
     "type-check": "tsc --noEmit",
     "type-check:watch": "tsc --noEmit --watch"
   },
