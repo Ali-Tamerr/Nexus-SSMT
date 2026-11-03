@@ -174,7 +174,13 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
     linkCacheRef.current.clear();
   }, [currentProject?.id]);
 
-  const graphDataObjRef = useRef<{ nodes: any[], links: any[] }>({ nodes: [], links: [] });
+  const graphDataObjRef = useRef<{ nodes: any[]; links: any[] }>({ nodes: [], links: [] });
+  // Tracks the set of node IDs so graphData identity only changes when the node
+  // SET changes (add/remove). This forces react-kapsule's graphData.onChange to
+  // re-run, registering __indexColor for new nodes in the library's colorTracker
+  // so color-pick hit-testing (drag subject / onNodeClick) stays correct. Identity
+  // stays stable across position/property edits so the D3 simulation isn't reset.
+  const graphDataIdentityRef = useRef<string | null>(null);
   const lastDataChangeFitTimeRef = useRef<number>(0);
 
   const graphData = useMemo(() => {
@@ -244,6 +250,18 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
 
         return cached;
       });
+
+    // Change graphData identity only when the node SET changes (add/remove).
+    // This forces react-kapsule's graphData.onChange to re-run so new nodes get
+    // __indexColor registered in the library's colorTracker (color-pick hit test
+    // for drag subject / onNodeClick). Identity stays stable across position and
+    // property edits so the D3 simulation is not reset.
+    const nodeSetSig = [...filteredNodeIds].sort().join(',');
+    if (nodeSetSig !== graphDataIdentityRef.current) {
+      graphDataIdentityRef.current = nodeSetSig;
+      graphDataObjRef.current = { nodes: graphNodes, links: graphLinks };
+      return graphDataObjRef.current;
+    }
 
     graphDataObjRef.current.nodes = graphNodes;
     graphDataObjRef.current.links = graphLinks;
