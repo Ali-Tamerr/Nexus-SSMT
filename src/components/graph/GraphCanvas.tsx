@@ -61,6 +61,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
   const searchQuery = useGraphStore((s) => s.searchQuery);
   const graphSettings = useGraphStore((s) => s.graphSettings);
   const setGraphSettings = useGraphStore((s) => s.setGraphSettings);
+  const currentProject = useGraphStore((s) => s.currentProject);
   const { showToast, showConfirmation } = useToast();
 
   const groups = useGraphStore(state => state.groups);
@@ -271,7 +272,6 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
   const previewCanvasRef = useRef<HTMLCanvasElement>(null);
   const [graphTransform, setGraphTransform] = useState({ x: 0, y: 0, k: 1 });
 
-  const currentProject = useGraphStore(state => state.currentProject);
   const addShape = useGraphStore(state => state.addShape);
   const updateShape = useGraphStore(state => state.updateShape);
   const updateNode = useGraphStore(state => state.updateNode);
