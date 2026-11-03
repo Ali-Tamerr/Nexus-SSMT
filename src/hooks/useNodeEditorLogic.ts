@@ -219,8 +219,8 @@ export function useNodeEditorLogic() {
       setSearchQuery('');
       showToast('Node saved successfully');
       toggleEditor(false);
-      // Keep node selected after save for immediate dragging
-      setSelectedNodeIds(new Set([activeNode.id]));
+      setActiveNode(null);
+      setSelectedNodeIds(new Set());
 
       if (activeNode.projectId && user?.id && !isGuest) realtimeSync.notifyUpdate(activeNode.projectId, user.id);
     } catch (err) {

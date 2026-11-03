@@ -541,7 +541,7 @@ export function useGraphMouseHandlers(props: UseGraphMouseHandlersProps) {
     setIsNodeDragging(true);
     lastDragTimeRef.current = Date.now();
     if (!dragGroupRef.current?.active) return;
-    if (node.id !== dragGroupRef.current.nodeId) return;
+    if (String(node.id) !== String(dragGroupRef.current.nodeId)) return;
 
     const initialNodes = dragGroupRef.current.initialNodes;
     const draggedNodeInitial = dragGroupRef.current.startNodePos;
@@ -598,10 +598,11 @@ export function useGraphMouseHandlers(props: UseGraphMouseHandlersProps) {
       (async () => {
         const nodeUpdates: any[] = [];
         for (const n of graphDataRef.current.nodes) {
-          if (currentSelectedNodeIds.has(Number(n.id))) {
-            updateNode(n.id, { x: n.x, y: n.y });
+          const nid = Number(n.id);
+          if (currentSelectedNodeIds.has(nid)) {
+            updateNode(nid, { x: n.x, y: n.y });
 
-            const fullNode = storeNodes.find(sn => sn.id === n.id);
+            const fullNode = storeNodes.find(sn => Number(sn.id) === nid);
             if (fullNode) {
               nodeUpdates.push({ n, fullNode });
             }
