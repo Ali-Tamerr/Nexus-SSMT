@@ -368,32 +368,8 @@ export function useGraphMouseHandlers(props: UseGraphMouseHandlersProps) {
     if (clickedNodeId && currentSelectedNodeIds.has(clickedNodeId)) {
       lastHoveredNodeIdRef.current = String(clickedNodeId);
       lastNodeClickTimeRef.current = Date.now();
-
-      const initialNodes = new Map();
-      graphDataRef.current.nodes.forEach((n: any) => {
-        if (currentSelectedNodeIds.has(Number(n.id))) {
-          initialNodes.set(String(n.id), { x: n.x, y: n.y, fx: n.fx, fy: n.fy });
-        }
-      });
-
-      const initialShapes = new Map();
-      if (selectedShapeIdsRef.current.size > 0) {
-        shapesRef.current.forEach(s => {
-          if (selectedShapeIdsRef.current.has(s.id)) {
-            initialShapes.set(String(s.id), s.points.map(p => ({ ...p })));
-          }
-        });
-      }
-
-      dragGroupRef.current = {
-        active: true,
-        startMouse: worldPoint,
-        startNodePos: draggedNodePos,
-        nodeId: clickedNodeId,
-        initialNodes,
-        initialShapes
-      };
-
+      // dragGroup is NOT set here — handleNodeDrag will create it using the
+      // library's actual drag target, avoiding hit-test mismatches.
       return;
     }
 
@@ -406,24 +382,8 @@ export function useGraphMouseHandlers(props: UseGraphMouseHandlersProps) {
 
       setSelectedShapeIds(new Set());
       setSelectedNodeIds(new Set([clickedNodeId]));
-
-      // Initialize dragGroup for the newly selected node
-      const initialNodesMap = new Map();
-      // Include the selected node itself so it moves during drag
-      initialNodesMap.set(String(clickedNodeId), {
-        x: draggedNodePos.x,
-        y: draggedNodePos.y,
-        fx: draggedNodePos.x,
-        fy: draggedNodePos.y,
-      });
-      dragGroupRef.current = {
-        active: true,
-        startMouse: worldPoint,
-        startNodePos: draggedNodePos,
-        nodeId: clickedNodeId,
-        initialNodes: initialNodesMap,
-        initialShapes: new Map(),
-      };
+      // dragGroup is NOT set here — handleNodeDrag will create it using the
+      // library's actual drag target, avoiding hit-test mismatches.
 
       return;
     }
