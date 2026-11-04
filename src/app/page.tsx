@@ -92,7 +92,7 @@ export default function HomePage() {
                   <HardDrive className="h-4 w-4 text-zinc-400" />
                   <span>Local Workspace</span>
                 </button>
-                <span className="absolute top-full mt-1 left-1/2 -translate-x-1/2 text-xs text-zinc-500">No login required</span>
+                <span className="absolute top-full mt-1 left-1/2 -translate-x-1/2 w-[140px] text-center text-xs text-zinc-500">No login required</span>
               </div>
             </div>
             <WelcomeHero
