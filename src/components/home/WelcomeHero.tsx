@@ -43,21 +43,23 @@ function AccordionItem({ title, children }: { title: string; children: React.Rea
   const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <div className="rounded-xl border border-zinc-800/80 bg-zinc-900/40 backdrop-blur-sm">
+    <div className="rounded-xl border border-zinc-800/80 bg-zinc-900/40 backdrop-blur-sm overflow-hidden">
       <button
         onClick={() => setIsOpen((prev) => !prev)}
-        className="flex w-full items-center justify-between py-4 px-6 text-left"
+        className="flex w-full items-center justify-between py-4 px-6 text-left transition-all duration-500 [transition-timing-function:cubic-bezier(.36,0,0,.96)]"
       >
         <h3 className="font-semibold text-sm text-zinc-200">{title}</h3>
         {isOpen ? (
-          <ChevronUp className="h-4 w-4 text-zinc-400" />
+          <ChevronUp className="h-4 w-4 text-zinc-400 transition-transform duration-500 [transition-timing-function:cubic-bezier(.36,0,0,.96)]" />
         ) : (
-          <ChevronDown className="h-4 w-4 text-zinc-400" />
+          <ChevronDown className="h-4 w-4 text-zinc-400 transition-transform duration-500 [transition-timing-function:cubic-bezier(.36,0,0,.96)]" />
         )}
       </button>
-      {isOpen && (
-        <div className="border-t border-zinc-800/80 px-6 pb-4">{children}</div>
-      )}
+      <div
+        className={`border-t border-zinc-800/80 px-6 pb-4 pt-4 overflow-hidden transition-all duration-500 [transition-timing-function:cubic-bezier(.36,0,0,.96)] ${isOpen ? 'max-height-[2000px] opacity-100' : 'max-height-0 opacity-0'}`}
+      >
+        {children}
+      </div>
     </div>
   );
 }
