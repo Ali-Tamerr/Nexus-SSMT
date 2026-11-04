@@ -104,7 +104,7 @@ export function WelcomeHero({
       </div>
 
       {/* FAQ accordion - sits below the centered hero */}
-      <section aria-label="Nexus FAQ" className="mt-4 max-w-3xl w-full">
+      <section aria-label="Nexus FAQ" className="mt-4 mx-auto max-w-3xl w-full">
         <AccordionItem title="What is Nexus SSMT?">
           <p className="text-center text-zinc-300 text-sm sm:text-base leading-relaxed bg-zinc-900/60 border border-zinc-800/80 p-4 rounded-xl backdrop-blur-sm">
             <strong>Nexus Social Study Mapping Tool</strong> is an open-source, interactive web platform designed to transform fragmented notes and study data into dynamic, interconnected knowledge graphs. Connect ideas with force-directed layouts, real-time collaboration, and drawing overlays for deep research, course curriculum planning, and study visualization.
@@ -121,7 +121,7 @@ export function WelcomeHero({
       </section>
 
       {/* Footer - always at the bottom of the screen */}
-      <div className="mt-auto flex flex-col">
+      <div className="mt-auto flex flex-col items-center">
         {/* NoScript block ensuring 100% crawler visibility without JS */}
         <noscript>
           <div className="mt-4 p-4 rounded-lg bg-zinc-900 border border-zinc-800 text-xs text-zinc-300 max-w-4xl w-full">
@@ -138,7 +138,7 @@ export function WelcomeHero({
         </noscript>
 
         {/* Trust Anchor & Resource Footer */}
-        <footer className="mt-6 flex flex-wrap gap-6 text-xs text-zinc-500">
+        <footer className="mt-6 flex flex-wrap justify-center gap-6 text-xs text-zinc-500">
           <Link href="/about" className="hover:text-zinc-300 transition-colors">
             About
           </Link>
