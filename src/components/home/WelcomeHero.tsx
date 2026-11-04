@@ -75,9 +75,9 @@ export function WelcomeHero({
 }) {
   return (
     <>
-      <div className="grid min-h-[calc(100vh-64px)] grid-rows-[1fr_auto_auto] py-6">
+      <div className="flex flex-col min-h-[calc(100vh-64px)] py-6">
       {/* Centered hero: logo, name, and auth buttons */}
-      <div className="flex flex-col items-center justify-center">
+      <div className="flex-1 flex flex-col items-center justify-center">
         <header className="flex flex-col items-center justify-center text-center max-w-3xl">
           <div className="relative mb-4 h-24 w-24">
             <Image src={NexusLogo} alt="Nexus Logo" fill className="object-contain" priority />
@@ -104,7 +104,7 @@ export function WelcomeHero({
       </div>
 
       {/* FAQ accordion - sits below the centered hero */}
-      <section aria-label="Nexus FAQ" className="mt-8 max-w-3xl w-full">
+      <section aria-label="Nexus FAQ" className="mt-8 mx-auto max-w-3xl w-full">
         <AccordionItem title="What is Nexus SSMT?">
           <p className="text-center text-zinc-300 text-sm sm:text-base leading-relaxed bg-zinc-900/60 border border-zinc-800/80 p-4 rounded-xl backdrop-blur-sm">
             <strong>Nexus Social Study Mapping Tool</strong> is an open-source, interactive web platform designed to transform fragmented notes and study data into dynamic, interconnected knowledge graphs. Connect ideas with force-directed layouts, real-time collaboration, and drawing overlays for deep research, course curriculum planning, and study visualization.
