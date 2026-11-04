@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import NexusLogo from '@/assets/Logo/Logo with no circle.svg';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 
@@ -72,6 +72,19 @@ export function WelcomeHero({
   onGuest: () => void;
 }) {
   const [openFaq, setOpenFaq] = useState<number | null>(null);
+  const faqRef = useRef<HTMLDivElement>(null);
+
+  // Clicking anywhere outside the accordion section closes an open FAQ.
+  useEffect(() => {
+    const onClick = (e: MouseEvent) => {
+      if (openFaq === null) return;
+      if (faqRef.current && !faqRef.current.contains(e.target as Node)) {
+        setOpenFaq(null);
+      }
+    };
+    document.addEventListener('mousedown', onClick);
+    return () => document.removeEventListener('mousedown', onClick);
+  }, [openFaq]);
 
   return (
     <>
@@ -105,7 +118,7 @@ export function WelcomeHero({
 
       {/* FAQ + footer stay pinned to the bottom; an open accordion grows upward, so the hero never moves */}
       <div className="absolute inset-x-0 bottom-6 px-4 sm:bottom-8 sm:px-6">
-      <section aria-label="Nexus FAQ" className="mx-auto max-w-3xl w-full">
+      <section aria-label="Nexus FAQ" ref={faqRef} className="mx-auto max-w-3xl w-full">
         <div className="space-y-3">
           <AccordionItem
             title="What is Nexus SSMT?"
