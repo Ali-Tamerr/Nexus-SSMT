@@ -56,7 +56,7 @@ function AccordionItem({ title, children }: { title: string; children: React.Rea
         )}
       </button>
       <div
-        className={`border-t border-zinc-800/80 overflow-hidden transition-[max-height,opacity,padding-top,padding-bottom] duration-500 [transition-timing-function:cubic-bezier(.36,0,0,.96)] ${isOpen ? 'max-h-[500px] opacity-100 pt-4 pb-4' : 'max-h-0 opacity-0 pt-0 pb-0'}`}
+        className={`border-t border-zinc-800/80 px-6 overflow-hidden transition-[max-height,opacity,padding-top,padding-bottom] duration-500 [transition-timing-function:cubic-bezier(.36,0,0,.96)] ${isOpen ? 'max-h-[500px] opacity-100 pt-4 pb-4' : 'max-h-0 opacity-0 pt-0 pb-0'}`}
       >
         {children}
       </div>
