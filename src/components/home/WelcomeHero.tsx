@@ -4,7 +4,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useState } from 'react';
 import NexusLogo from '@/assets/Logo/Logo with no circle.svg';
-import { HardDrive, ChevronDown, ChevronUp } from 'lucide-react';
+import { ChevronDown, ChevronUp } from 'lucide-react';
 
 interface FeatureProps {
   title: string;
@@ -154,14 +154,6 @@ export function WelcomeHero({
         </footer>
       </div>
     </div>
-
-    <button
-      onClick={onGuest}
-      className="fixed bottom-4 left-4 right-4 md:left-auto md:right-6 md:bottom-6 z-40 flex items-center justify-center gap-2.5 rounded-xl border border-zinc-800/80 bg-zinc-900/90 backdrop-blur-md px-5 py-3 text-sm font-medium text-zinc-300 transition-all hover:border-zinc-700 hover:bg-zinc-800 hover:text-white cursor-pointer shadow-xl"
-    >
-      <HardDrive className="h-4 w-4 text-zinc-400" />
-      <span>Local Workspace (No login required)</span>
-    </button>
     </>
   );
 }
