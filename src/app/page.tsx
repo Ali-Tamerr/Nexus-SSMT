@@ -84,7 +84,7 @@ export default function HomePage() {
           <>
             <div className="absolute top-8 left-0 right-0 z-10 px-6 flex justify-between items-center gap-6">
               <RecentVisitsTab />
-              <div className="flex flex-col items-center gap-1">
+              <div className="relative items-center">
                 <button
                   onClick={handlers.guest.enter}
                   className="flex items-center justify-center gap-2.5 rounded-xl border border-zinc-800/80 bg-zinc-900/90 backdrop-blur-md px-5 py-3 text-sm font-medium text-zinc-300 transition-all hover:border-zinc-700 hover:bg-zinc-800 hover:text-white cursor-pointer shadow-xl"
@@ -92,7 +92,7 @@ export default function HomePage() {
                   <HardDrive className="h-4 w-4 text-zinc-400" />
                   <span>Local Workspace</span>
                 </button>
-                <span className="text-xs text-zinc-500">No login required</span>
+                <span className="absolute top-full mt-1 left-1/2 -translate-x-1/2 text-xs text-zinc-500">No login required</span>
               </div>
             </div>
             <WelcomeHero
