@@ -75,7 +75,7 @@ export function WelcomeHero({
 }) {
   return (
     <>
-      <div className="flex flex-col h-[calc(100vh-64px)] overflow-hidden py-6">
+      <div className="flex flex-col min-h-screen py-4">
       {/* Centered hero: logo, name, and auth buttons */}
       <div className="flex-1 flex flex-col items-center justify-center">
         <header className="flex flex-col items-center justify-center text-center max-w-3xl">
@@ -104,7 +104,7 @@ export function WelcomeHero({
       </div>
 
       {/* FAQ accordion - sits below the centered hero */}
-      <section aria-label="Nexus FAQ" className="mt-8 mx-auto max-w-3xl w-full">
+      <section aria-label="Nexus FAQ" className="mt-4 mx-auto max-w-3xl w-full">
         <AccordionItem title="What is Nexus SSMT?">
           <p className="text-center text-zinc-300 text-sm sm:text-base leading-relaxed bg-zinc-900/60 border border-zinc-800/80 p-4 rounded-xl backdrop-blur-sm">
             <strong>Nexus Social Study Mapping Tool</strong> is an open-source, interactive web platform designed to transform fragmented notes and study data into dynamic, interconnected knowledge graphs. Connect ideas with force-directed layouts, real-time collaboration, and drawing overlays for deep research, course curriculum planning, and study visualization.
@@ -124,7 +124,7 @@ export function WelcomeHero({
       <div className="mt-auto flex flex-col items-center">
         {/* NoScript block ensuring 100% crawler visibility without JS */}
         <noscript>
-          <div className="mt-6 p-4 rounded-lg bg-zinc-900 border border-zinc-800 text-xs text-zinc-300 max-w-4xl w-full">
+          <div className="mt-4 p-4 rounded-lg bg-zinc-900 border border-zinc-800 text-xs text-zinc-300 max-w-4xl w-full">
             <p className="font-semibold mb-2">JavaScript Disabled or Unavailable:</p>
             <p className="mb-2">Nexus is fully indexable without JavaScript. Access public documentation and legal resources directly:</p>
             <ul className="flex flex-wrap gap-4 underline text-blue-400">
@@ -138,7 +138,7 @@ export function WelcomeHero({
         </noscript>
 
         {/* Trust Anchor & Resource Footer */}
-        <footer className="mt-10 flex flex-wrap justify-center gap-6 text-xs text-zinc-500">
+        <footer className="mt-6 flex flex-wrap justify-center gap-6 text-xs text-zinc-500">
           <Link href="/about" className="hover:text-zinc-300 transition-colors">
             About
           </Link>
