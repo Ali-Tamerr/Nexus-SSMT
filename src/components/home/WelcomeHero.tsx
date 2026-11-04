@@ -75,7 +75,7 @@ export function WelcomeHero({
 }) {
   return (
     <>
-      <div className="flex flex-col min-h-[calc(100vh-64px)] py-6">
+      <div className="flex flex-col h-[calc(100vh-64px)] py-6">
       {/* Centered hero: logo, name, and auth buttons */}
       <div className="flex-1 flex flex-col items-center justify-center">
         <header className="flex flex-col items-center justify-center text-center max-w-3xl">
