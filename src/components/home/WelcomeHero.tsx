@@ -46,17 +46,17 @@ function AccordionItem({ title, children }: { title: string; children: React.Rea
     <div className="rounded-xl border border-zinc-800/80 bg-zinc-900/40 backdrop-blur-sm overflow-hidden">
       <button
         onClick={() => setIsOpen((prev) => !prev)}
-        className="flex w-full items-center justify-between py-4 px-6 text-left transition-all duration-500 [transition-timing-function:cubic-bezier(.36,0,0,.96)]"
+        className="flex w-full items-center justify-between py-4 px-6 text-left transition-transform duration-500 [transition-timing-function:cubic-bezier(.36,0,0,.96)]"
       >
         <h3 className="font-semibold text-sm text-zinc-200">{title}</h3>
         {isOpen ? (
-          <ChevronUp className="h-4 w-4 text-zinc-400 transition-transform duration-500 [transition-timing-function:cubic-bezier(.36,0,0,.96)]" />
+          <ChevronUp className="h-4 w-4 text-zinc-400" />
         ) : (
-          <ChevronDown className="h-4 w-4 text-zinc-400 transition-transform duration-500 [transition-timing-function:cubic-bezier(.36,0,0,.96)]" />
+          <ChevronDown className="h-4 w-4 text-zinc-400" />
         )}
       </button>
       <div
-        className={`grid border-t border-zinc-800/80 px-6 overflow-hidden transition-[grid-template-rows,opacity,padding-top,padding-bottom] duration-500 [transition-timing-function:cubic-bezier(.36,0,0,.96)] ${isOpen ? '[grid-template-rows:1fr] opacity-100 pt-4 pb-4' : '[grid-template-rows:0fr] opacity-0 pt-0 pb-0'}`}
+        className={`border-t border-zinc-800/80 overflow-hidden transition-[max-height,opacity,padding-top,padding-bottom] duration-500 [transition-timing-function:cubic-bezier(.36,0,0,.96)] ${isOpen ? 'max-h-[500px] opacity-100 pt-4 pb-4' : 'max-h-0 opacity-0 pt-0 pb-0'}`}
       >
         {children}
       </div>
