@@ -39,13 +39,11 @@ const FEATURES: FeatureProps[] = [
   },
 ];
 
-function AccordionItem({ title, children }: { title: string; children: React.ReactNode }) {
-  const [isOpen, setIsOpen] = useState(false);
-
+function AccordionItem({ title, isOpen, onToggle, children }: { title: string; isOpen: boolean; onToggle: () => void; children: React.ReactNode }) {
   return (
     <div className="rounded-xl border border-zinc-800/80 bg-zinc-900/40 backdrop-blur-sm overflow-hidden">
       <button
-        onClick={() => setIsOpen((prev) => !prev)}
+        onClick={onToggle}
         className="flex w-full items-center justify-between py-4 px-6 text-left transition-transform duration-500 [transition-timing-function:cubic-bezier(.36,0,0,.96)]"
       >
         <h3 className="font-semibold text-sm text-zinc-200">{title}</h3>
@@ -73,6 +71,8 @@ export function WelcomeHero({
   onLogin: () => void;
   onGuest: () => void;
 }) {
+  const [openFaq, setOpenFaq] = useState<number | null>(null);
+
   return (
     <>
       {/* pb reserves the collapsed FAQ+footer height so the hero stays put when an accordion opens.
@@ -107,13 +107,21 @@ export function WelcomeHero({
       <div className="absolute inset-x-0 bottom-6 px-4 sm:bottom-8 sm:px-6">
       <section aria-label="Nexus FAQ" className="mx-auto max-w-3xl w-full">
         <div className="space-y-3">
-          <AccordionItem title="What is Nexus SSMT?">
+          <AccordionItem
+            title="What is Nexus SSMT?"
+            isOpen={openFaq === 0}
+            onToggle={() => setOpenFaq(openFaq === 0 ? null : 0)}
+          >
           <p className="text-center text-zinc-300 text-sm sm:text-base leading-relaxed bg-zinc-900/60 border border-zinc-800/80 p-4 rounded-xl backdrop-blur-sm">
             <strong>Nexus Social Study Mapping Tool</strong> is an open-source, interactive web platform designed to transform fragmented notes and study data into dynamic, interconnected knowledge graphs. Connect ideas with force-directed layouts, real-time collaboration, and drawing overlays for deep research, course curriculum planning, and study visualization.
           </p>
         </AccordionItem>
 
-        <AccordionItem title="Core Features and Capabilities">
+        <AccordionItem
+          title="Core Features and Capabilities"
+          isOpen={openFaq === 1}
+          onToggle={() => setOpenFaq(openFaq === 1 ? null : 1)}
+        >
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             {FEATURES.map((feature) => (
               <FeatureCard key={feature.title} {...feature} />
