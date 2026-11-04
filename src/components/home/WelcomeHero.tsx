@@ -75,27 +75,27 @@ export function WelcomeHero({
 }) {
   return (
     <>
-      <div className="flex flex-col flex-1 px-4">
-      {/* Centered hero: logo, name, and auth buttons */}
-      <div className="flex flex-grow flex-shrink-0 min-h-0 flex-col items-center justify-center">
+      {/* pb reserves the collapsed FAQ+footer height so the hero stays put when an accordion opens.
+          shortcut: fixed reserve; update if the FAQ gains or loses rows. */}
+      <div className="flex flex-1 flex-col items-center justify-center px-0 pb-[178px] sm:px-4">
         <header className="flex flex-col items-center justify-center text-center max-w-3xl">
-          <div className="relative mb-4 h-24 w-24">
+          <div className="relative mb-3 h-16 w-16 sm:mb-4 sm:h-24 sm:w-24">
             <Image src={NexusLogo} alt="Nexus Logo" fill className="object-contain" priority />
           </div>
-          <h1 className="text-center text-3xl sm:text-4xl font-bold text-white tracking-tight">
+          <h1 className="text-center text-2xl leading-tight sm:text-4xl font-bold text-white tracking-tight">
             Nexus - <span className="font-ka1 text-white font-light">Social Study Mapping Tool</span>
           </h1>
 
-          <div className="mt-6 flex flex-wrap justify-center gap-4">
+          <div className="mt-5 flex w-full max-w-xs flex-col justify-center gap-3 sm:mt-6 sm:w-auto sm:max-w-none sm:flex-row sm:gap-4">
             <button
               onClick={onSignup}
-              className="rounded-lg bg-[#355ea1] px-5 py-2.5 text-sm font-semibold text-white transition-all hover:bg-[#265fbd] shadow-lg shadow-blue-900/30 cursor-pointer"
+              className="w-full rounded-lg bg-[#355ea1] px-5 py-3 text-sm font-semibold text-white transition-all hover:bg-[#265fbd] shadow-lg shadow-blue-900/30 cursor-pointer sm:w-auto sm:py-2.5"
             >
               Create free account
             </button>
             <button
               onClick={onLogin}
-              className="rounded-lg border border-zinc-700 px-5 py-2.5 text-sm font-medium text-zinc-300 transition-all hover:border-zinc-600 hover:bg-zinc-800 cursor-pointer"
+              className="w-full rounded-lg border border-zinc-700 px-5 py-3 text-sm font-medium text-zinc-300 transition-all hover:border-zinc-600 hover:bg-zinc-800 cursor-pointer sm:w-auto sm:py-2.5"
             >
               Sign in
             </button>
@@ -103,8 +103,9 @@ export function WelcomeHero({
         </header>
       </div>
 
-      {/* FAQ accordion - sits below the centered hero */}
-      <section aria-label="Nexus FAQ" className="mt-4 mx-auto max-w-3xl w-full">
+      {/* FAQ + footer stay pinned to the bottom; an open accordion grows upward, so the hero never moves */}
+      <div className="absolute inset-x-0 bottom-6 px-4 sm:bottom-8 sm:px-6">
+      <section aria-label="Nexus FAQ" className="mx-auto max-w-3xl w-full">
         <div className="space-y-3">
           <AccordionItem title="What is Nexus SSMT?">
           <p className="text-center text-zinc-300 text-sm sm:text-base leading-relaxed bg-zinc-900/60 border border-zinc-800/80 p-4 rounded-xl backdrop-blur-sm">
@@ -123,7 +124,7 @@ export function WelcomeHero({
       </section>
 
       {/* Footer - always at the bottom of the screen */}
-      <div className="mt-auto flex flex-col items-center">
+      <div className="flex flex-col items-center">
         {/* NoScript block ensuring 100% crawler visibility without JS */}
         <noscript>
           <div className="mt-4 p-4 rounded-lg bg-zinc-900 border border-zinc-800 text-xs text-zinc-300 max-w-4xl w-full">
@@ -140,7 +141,7 @@ export function WelcomeHero({
         </noscript>
 
         {/* Trust Anchor & Resource Footer */}
-        <footer className="mt-6 flex flex-wrap justify-center gap-6 text-xs text-zinc-500">
+        <footer className="mt-6 flex flex-wrap justify-center gap-x-5 gap-y-2 text-xs text-zinc-500 sm:gap-6">
           <Link href="/about" className="hover:text-zinc-300 transition-colors">
             About
           </Link>
@@ -155,7 +156,7 @@ export function WelcomeHero({
           </Link>
         </footer>
       </div>
-    </div>
+      </div>
     </>
   );
 }

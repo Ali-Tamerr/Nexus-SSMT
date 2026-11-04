@@ -42,11 +42,13 @@ export function RecentVisitsTab() {
     <div className="relative" ref={dropdownRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center justify-center gap-2.5 rounded-xl border border-zinc-800/80 bg-zinc-900/90 backdrop-blur-md px-5 py-3 text-sm font-medium text-zinc-300 transition-all hover:border-zinc-700 hover:bg-zinc-800 hover:text-white cursor-pointer shadow-xl"
+        className="flex items-center justify-center gap-2 whitespace-nowrap rounded-xl border border-zinc-800/80 bg-zinc-900/90 backdrop-blur-md px-4 py-3 text-sm font-medium text-zinc-300 transition-all hover:border-zinc-700 hover:bg-zinc-800 hover:text-white cursor-pointer shadow-xl sm:gap-2.5 sm:px-5 sm:py-3"
         title="Recently Visited"
       >
         <History className="h-4 w-4" />
-        <span>Recently Visited</span>
+        <span>
+          Recent<span className="hidden sm:inline">ly Visited</span>
+        </span>
       </button>
 
       {isOpen && (

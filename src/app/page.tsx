@@ -79,20 +79,22 @@ export default function HomePage() {
         </a>
       </Navbar>
 
-      <main className={`mx-auto max-w-6xl px-6 py-8 ${!isAuthenticated ? 'relative min-h-[calc(100vh-64px)] flex flex-col' : ''}`}>
+      <main className={`mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8 ${!isAuthenticated ? 'relative min-h-[calc(100vh-64px)] flex flex-col' : ''}`}>
         {!isAuthenticated ? (
           <>
-            <div className="absolute top-8 left-0 right-0 z-10 px-6 flex justify-between items-center gap-6">
+            <div className="relative z-10 mb-8 flex items-center justify-between gap-2 sm:absolute sm:top-8 sm:left-0 sm:right-0 sm:mb-0 sm:gap-6 sm:px-6">
               <RecentVisitsTab />
               <div className="relative items-center">
                 <button
                   onClick={handlers.guest.enter}
-                  className="flex items-center justify-center gap-2.5 rounded-xl border border-zinc-800/80 bg-zinc-900/90 backdrop-blur-md px-5 py-3 text-sm font-medium text-zinc-300 transition-all hover:border-zinc-700 hover:bg-zinc-800 hover:text-white cursor-pointer shadow-xl"
+                  className="flex items-center justify-center gap-2 whitespace-nowrap rounded-xl border border-zinc-800/80 bg-zinc-900/90 backdrop-blur-md px-4 py-3 text-sm font-medium text-zinc-300 transition-all hover:border-zinc-700 hover:bg-zinc-800 hover:text-white cursor-pointer shadow-xl sm:gap-2.5 sm:px-5 sm:py-3"
                 >
                   <HardDrive className="h-4 w-4 text-zinc-400" />
-                  <span>Local Workspace</span>
+                  <span>
+                    Local<span className="hidden sm:inline"> Workspace</span>
+                  </span>
                 </button>
-                <span className="absolute top-full mt-1 left-1/2 -translate-x-1/2 w-[140px] text-center text-xs text-zinc-500">No login required</span>
+                <span className="absolute top-full mt-1 right-0 w-[140px] text-right text-xs text-zinc-500 sm:left-1/2 sm:right-auto sm:-translate-x-1/2 sm:text-center">No login required</span>
               </div>
             </div>
             <WelcomeHero
