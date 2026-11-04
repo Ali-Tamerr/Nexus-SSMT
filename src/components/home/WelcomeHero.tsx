@@ -105,7 +105,8 @@ export function WelcomeHero({
 
       {/* FAQ accordion - sits below the centered hero */}
       <section aria-label="Nexus FAQ" className="mt-4 mx-auto max-w-3xl w-full">
-        <AccordionItem title="What is Nexus SSMT?">
+        <div className="space-y-3">
+          <AccordionItem title="What is Nexus SSMT?">
           <p className="text-center text-zinc-300 text-sm sm:text-base leading-relaxed bg-zinc-900/60 border border-zinc-800/80 p-4 rounded-xl backdrop-blur-sm">
             <strong>Nexus Social Study Mapping Tool</strong> is an open-source, interactive web platform designed to transform fragmented notes and study data into dynamic, interconnected knowledge graphs. Connect ideas with force-directed layouts, real-time collaboration, and drawing overlays for deep research, course curriculum planning, and study visualization.
           </p>
@@ -118,6 +119,7 @@ export function WelcomeHero({
             ))}
           </div>
         </AccordionItem>
+        </div>
       </section>
 
       {/* Footer - always at the bottom of the screen */}
