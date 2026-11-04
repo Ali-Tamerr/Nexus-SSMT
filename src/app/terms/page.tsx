@@ -66,10 +66,10 @@ export default function TermsPage() {
             ))}
           </div>
 
-          <footer className="border-t border-zinc-800 pt-8 mt-12 text-xs text-zinc-500 text-center">
-            <p>
-              Nexus Social Study Mapping Tool &bull; Free &amp; Open-Source Knowledge Visualization
-            </p>
+          <footer className="border-t border-zinc-800 pt-8 mt-12 text-xs text-zinc-500 text-center flex flex-wrap justify-center gap-6">
+            <Link href="/about" className="hover:text-zinc-300 transition-colors">About Nexus</Link>
+            <Link href="/contact" className="hover:text-zinc-300 transition-colors">Contact Support</Link>
+            <Link href="/privacy" className="hover:text-zinc-300 transition-colors">Privacy Policy</Link>
           </footer>
         </article>
       </main>

@@ -86,7 +86,6 @@ export default function AboutPage() {
             <Link href="/contact" className="hover:text-zinc-300 transition-colors">Contact Support</Link>
             <Link href="/privacy" className="hover:text-zinc-300 transition-colors">Privacy Policy</Link>
             <Link href="/terms" className="hover:text-zinc-300 transition-colors">Terms of Service</Link>
-            <Link href="/docs" className="hover:text-zinc-300 transition-colors">Developer Docs</Link>
           </footer>
         </article>
       </main>

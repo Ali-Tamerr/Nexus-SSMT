@@ -126,8 +126,6 @@ export function WelcomeHero({
             <li><Link href="/contact">Contact &amp; Support</Link></li>
             <li><Link href="/privacy">Privacy Policy</Link></li>
             <li><Link href="/terms">Terms &amp; Conditions</Link></li>
-            <li><Link href="/docs">Developer API Documentation</Link></li>
-            <li><Link href="/llms.txt">LLMs Context Guide</Link></li>
             <li><Link href="/sitemap.xml">XML Sitemap</Link></li>
           </ul>
         </div>
@@ -146,12 +144,6 @@ export function WelcomeHero({
         </Link>
         <Link href="/terms" className="hover:text-zinc-300 transition-colors">
           Terms &amp; Conditions
-        </Link>
-        <Link href="/docs" className="hover:text-zinc-300 transition-colors">
-          Developer Docs
-        </Link>
-        <Link href="/llms.txt" className="hover:text-zinc-300 transition-colors">
-          llms.txt
         </Link>
       </footer>
 

@@ -22,20 +22,12 @@ export default function NotFound() {
             <Home className="h-4 w-4" />
             <span>Return to Home</span>
           </Link>
-          <Link
-            href="/docs"
-            className="inline-flex items-center justify-center gap-2 rounded-lg border border-zinc-700 bg-zinc-900 px-5 py-2.5 text-sm font-medium text-zinc-300 transition-colors hover:bg-zinc-800 hover:text-white"
-          >
-            <FileText className="h-4 w-4" />
-            <span>API Docs</span>
-          </Link>
         </div>
         <div className="border-t border-zinc-800/80 pt-6 text-xs text-zinc-500 flex flex-wrap justify-center gap-4">
           <Link href="/about" className="hover:text-zinc-300 transition-colors">About</Link>
           <Link href="/contact" className="hover:text-zinc-300 transition-colors">Contact</Link>
           <Link href="/privacy" className="hover:text-zinc-300 transition-colors">Privacy</Link>
           <Link href="/terms" className="hover:text-zinc-300 transition-colors">Terms</Link>
-          <Link href="/llms.txt" className="hover:text-zinc-300 transition-colors">llms.txt</Link>
         </div>
       </div>
     </div>

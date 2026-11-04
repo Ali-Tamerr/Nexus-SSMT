@@ -94,7 +94,6 @@ export default function PrivacyPage() {
             <Link href="/about" className="hover:text-zinc-300 transition-colors">About Nexus</Link>
             <Link href="/contact" className="hover:text-zinc-300 transition-colors">Contact Support</Link>
             <Link href="/terms" className="hover:text-zinc-300 transition-colors">Terms of Service</Link>
-            <Link href="/docs" className="hover:text-zinc-300 transition-colors">Developer Docs</Link>
           </footer>
         </article>
       </main>

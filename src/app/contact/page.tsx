@@ -89,7 +89,6 @@ export default function ContactPage() {
             <Link href="/about" className="hover:text-zinc-300 transition-colors">About Nexus</Link>
             <Link href="/privacy" className="hover:text-zinc-300 transition-colors">Privacy Policy</Link>
             <Link href="/terms" className="hover:text-zinc-300 transition-colors">Terms of Service</Link>
-            <Link href="/docs" className="hover:text-zinc-300 transition-colors">Developer Docs</Link>
           </footer>
         </article>
       </main>
