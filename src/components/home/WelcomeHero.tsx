@@ -44,7 +44,7 @@ function AccordionItem({ title, isOpen, onToggle, children }: { title: string; i
     <div className="rounded-xl border border-zinc-800/80 bg-zinc-900/40 backdrop-blur-sm overflow-hidden">
       <button
         onClick={onToggle}
-        className={`flex w-full items-center justify-between py-4 px-6 text-left transition-transform duration-500 ${isOpen ? '[transition-timing-function:cubic-bezier(.36,0,0,.96)]' : '[transition-timing-function:ease-in-out]'}`}
+        className={`flex w-full items-center justify-between py-4 px-6 text-left transition-transform duration-500 ${isOpen ? '[transition-timing-function:cubic-bezier(.36,0,0,.96)]' : '[transition-timing-function:ease-out]'}`}
       >
         <h3 className="font-semibold text-sm text-zinc-200">{title}</h3>
         {isOpen ? (
@@ -54,7 +54,7 @@ function AccordionItem({ title, isOpen, onToggle, children }: { title: string; i
         )}
       </button>
       <div
-        className={`border-t border-zinc-800/80 px-6 overflow-hidden transition-[max-height,opacity,padding-top,padding-bottom] duration-500 ${isOpen ? '[transition-timing-function:cubic-bezier(.36,0,0,.96)]' : '[transition-timing-function:ease-in-out]'} ${isOpen ? 'max-h-[500px] opacity-100 pt-4 pb-4' : 'max-h-0 opacity-0 pt-0 pb-0'}`}
+        className={`border-t border-zinc-800/80 px-6 overflow-hidden transition-[max-height,opacity,padding-top,padding-bottom] duration-500 ${isOpen ? '[transition-timing-function:cubic-bezier(.36,0,0,.96)]' : '[transition-timing-function:ease-out]'} ${isOpen ? 'max-h-[500px] opacity-100 pt-4 pb-4' : 'max-h-0 opacity-0 pt-0 pb-0'}`}
       >
         {children}
       </div>
