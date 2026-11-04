@@ -77,7 +77,7 @@ export function WelcomeHero({
     <>
       <div className="flex flex-col flex-1 px-4">
       {/* Centered hero: logo, name, and auth buttons */}
-      <div className="flex flex-col items-center justify-center flex-shrink-0">
+      <div className="flex flex-grow flex-shrink-0 min-h-0 flex-col items-center justify-center">
         <header className="flex flex-col items-center justify-center text-center max-w-3xl">
           <div className="relative mb-4 h-24 w-24">
             <Image src={NexusLogo} alt="Nexus Logo" fill className="object-contain" priority />
