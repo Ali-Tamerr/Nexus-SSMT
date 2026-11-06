@@ -167,6 +167,19 @@ body {
   animation: float 3s ease-in-out infinite;
 }
 
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.animate-shimmer {
+  animation: shimmer 2s infinite;
+}
+
 .glass {
   background: rgba(24, 24, 27, 0.7);
   backdrop-filter: blur(12px);
