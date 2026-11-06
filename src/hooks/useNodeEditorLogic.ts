@@ -201,11 +201,12 @@ export function useNodeEditorLogic() {
           addLink(newLink);
         }
         for (const [id, link] of editedLinks) {
-          const updated = await api.links.update(id, {
-            id: id, sourceId: link.sourceId, targetId: link.targetId, color: link.color,
-            description: link.description || undefined, userId: link.userId || activeNode.userId || user?.id || ''
-          });
-          updateLink(id, updated);
+            await api.links.update(id, {
+                id: id, sourceId: link.sourceId, targetId: link.targetId, color: link.color,
+                description: link.description || undefined, userId: link.userId || activeNode.userId || user?.id || ''
+            });
+            // API returns 204 NoContent, so use the local link object instead of the response
+            updateLink(id, link);
         }
       }
 

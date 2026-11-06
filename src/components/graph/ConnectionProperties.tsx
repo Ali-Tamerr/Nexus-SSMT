@@ -18,7 +18,7 @@ interface ConnectionPropertiesProps {
 export function ConnectionProperties({ link, onClose }: ConnectionPropertiesProps) {
     const nodes = useGraphStore((s) => s.nodes);
     const deleteLink = useGraphStore((s) => s.deleteLink);
-    const addLink = useGraphStore((s) => s.addLink);
+    const updateLink = useGraphStore((s) => s.updateLink);
     const currentProject = useGraphStore((s) => s.currentProject);
     const user = useAuthStore((s) => s.user);
     const { showConfirmation } = useToast();
@@ -48,7 +48,7 @@ export function ConnectionProperties({ link, onClose }: ConnectionPropertiesProp
 
     const handleUpdate = async () => {
         try {
-            const updatedLink = await api.links.update(link.id, {
+            await api.links.update(link.id, {
                 id: link.id,
                 sourceId: link.sourceId,
                 targetId: link.targetId,
@@ -57,8 +57,8 @@ export function ConnectionProperties({ link, onClose }: ConnectionPropertiesProp
                 userId: link.userId,
             });
 
-            deleteLink(link.id);
-            addLink(updatedLink);
+            // updateLink with the local data (API returns 204 NoContent, no body)
+            updateLink(link.id, { color, description: description.trim() || undefined });
             if (currentProject?.id && user?.id) {
                 realtimeSync.notifyUpdate(currentProject.id, user.id);
             }
