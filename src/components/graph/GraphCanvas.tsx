@@ -667,7 +667,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
               nodeLabel={() => ''}
               linkColor={linkColor}
               linkWidth={linkWidth}
-              linkDirectionalArrowLength={4}
+              linkDirectionalArrowLength={6}
               linkDirectionalArrowRelPos={1}
               linkCurvature={0.1}
               onRenderFramePost={onRenderFramePost}
