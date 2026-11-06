@@ -260,10 +260,24 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
     // link add/delete and re-renders the canvas. Identity stays stable across
     // pure property edits so the D3 simulation is not reset.
     const nodeSetSig = [...filteredNodeIds].sort().join(',');
-    const linkSetSig = graphLinks.map(l => `${l.id}:${l.sourceId}:${l.targetId}`).sort().join(',');
+    const linkSetSig = graphLinks
+      .map((l) => {
+        const s = typeof l.source === 'object' && l.source ? l.source.id : l.source;
+        const t = typeof l.target === 'object' && l.target ? l.target.id : l.target;
+        return `${l.id}:${s}:${t}`;
+      })
+      .sort()
+      .join(',');
     if (nodeSetSig !== graphDataIdentityRef.current || linkSetSig !== graphDataLinkIdentityRef.current) {
       graphDataIdentityRef.current = nodeSetSig;
       graphDataLinkIdentityRef.current = linkSetSig;
+      // The library maps screen pixels to objects through a hidden color registry
+      // stored on each object as __indexColor. Reused cache objects would keep
+      // colors pointing at a previous registry, so clicks/hover/drag could resolve
+      // to the wrong node. Dropping the property makes the library reset the
+      // registry and re-register every object currently on the canvas.
+      graphNodes.forEach((n) => delete n.__indexColor);
+      graphLinks.forEach((l) => delete l.__indexColor);
       graphDataObjRef.current = { nodes: graphNodes, links: graphLinks };
       return graphDataObjRef.current;
     }
@@ -678,12 +692,30 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
               onRenderFramePost={onRenderFramePost}
               onNodeClick={(node: any, event: MouseEvent) => {
                 const state = useGraphStore.getState();
+                // Resolve the node from pointer coordinates rather than trusting
+                // the library's shadow-canvas color registry, which can report a
+                // stale node after the graph data updates. 15 matches the
+                // nodePointerAreaPaint radius, in graph units.
+                let clicked = node;
+                const rect = containerRef.current?.getBoundingClientRect();
+                if (rect && event.clientX !== undefined) {
+                  const p = screenToWorld(event.clientX - rect.left, event.clientY - rect.top);
+                  let nearest = 15;
+                  for (const n of graphDataObjRef.current.nodes) {
+                    if (typeof n.x !== 'number' || typeof n.y !== 'number') continue;
+                    const dist = Math.hypot(n.x - p.x, n.y - p.y);
+                    if (dist <= nearest) {
+                      nearest = dist;
+                      clicked = n;
+                    }
+                  }
+                }
                 if (state.isConnectionPickerActive) {
-                  state.setConnectionPickerResult(Number(node.id));
+                  state.setConnectionPickerResult(Number(clicked.id));
                   state.setConnectionPickerActive(false);
                   return;
                 }
-                handleNodeClick(node, event);
+                handleNodeClick(clicked, event);
               }}
               onNodeHover={handleNodeHover}
               onNodeDrag={handleNodeDrag}
