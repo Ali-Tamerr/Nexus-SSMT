@@ -171,12 +171,29 @@ export function useNodeCanvasRenderer({
 
       ctx.beginPath();
       ctx.arc(x, y, nodeRadius, 0, 2 * Math.PI);
-      ctx.fillStyle = baseColor;
+
+      // Radial gradient fill (matches preview mode look)
+      const gradient = ctx.createRadialGradient(
+        x - nodeRadius / 3,
+        y - nodeRadius / 3,
+        0,
+        x,
+        y,
+        nodeRadius
+      );
+      gradient.addColorStop(0, baseColor);
+      gradient.addColorStop(1, adjustBrightness(baseColor, -30));
+      ctx.fillStyle = gradient;
       ctx.fill();
 
-      ctx.strokeStyle = adjustBrightness(baseColor, -20);
-      ctx.lineWidth = 1.5 / globalScale;
-      ctx.stroke();
+      // Glow shadow (matches preview mode look)
+      ctx.shadowColor = baseColor;
+      ctx.shadowBlur = 10;
+      ctx.beginPath();
+      ctx.arc(x, y, nodeRadius, 0, 2 * Math.PI);
+      ctx.fillStyle = 'transparent';
+      ctx.fill();
+      ctx.shadowBlur = 0;
 
       ctx.save();
       ctx.textAlign = 'center';
