@@ -236,11 +236,9 @@ export function useNodeCanvasRenderer({
         ((typeof hoveredLink.source === 'string' ? hoveredLink.source === srcId : hoveredLink.source?.id === srcId) &&
           (typeof hoveredLink.target === 'string' ? hoveredLink.target === tgtId : hoveredLink.target?.id === tgtId));
 
-      const isActive = activeNode?.id === srcId || activeNode?.id === tgtId;
-
-      return isHovered ? 3 : (isActive ? 2 : 1);
+      return isHovered ? 3 : 1;
     },
-    [activeNode, hoveredLink]
+    [hoveredLink]
   );
 
   return {
