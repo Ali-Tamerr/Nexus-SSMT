@@ -221,6 +221,7 @@ export const api = {
         "y",
         "customColor",
         "visualSize",
+        "attachments",
       );
       return fetchApiWithBody<Node>("/api/nodes", "POST", payload);
     },
@@ -238,6 +239,7 @@ export const api = {
           "y",
           "customColor",
           "visualSize",
+          "attachments",
         ),
       );
       return fetchApiWithBody<Node[]>("/api/nodes/batch", "POST", payload);
