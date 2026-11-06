@@ -178,9 +178,12 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
   // Tracks the set of node IDs so graphData identity only changes when the node
   // SET changes (add/remove). This forces react-kapsule's graphData.onChange to
   // re-run, registering __indexColor for new nodes in the library's colorTracker
-  // so color-pick hit-testing (drag subject / onNodeClick) stays correct. Identity
-  // stays stable across position/property edits so the D3 simulation isn't reset.
+  // so color-pick hit-testing (drag subject / onNodeClick) stays correct.
   const graphDataIdentityRef = useRef<string | null>(null);
+  // Tracks the set of link IDs so graphData identity also changes when links are
+  // added or removed. Without this, react-force-graph-2d sees the same object
+  // reference and skips re-rendering links after delete/re-add.
+  const graphDataLinkIdentityRef = useRef<string | null>(null);
   const lastDataChangeFitTimeRef = useRef<number>(0);
 
   const graphData = useMemo(() => {
@@ -251,14 +254,16 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle>((props, ref) => {
         return cached;
       });
 
-    // Change graphData identity only when the node SET changes (add/remove).
-    // This forces react-kapsule's graphData.onChange to re-run so new nodes get
-    // __indexColor registered in the library's colorTracker (color-pick hit test
-    // for drag subject / onNodeClick). Identity stays stable across position and
-    // property edits so the D3 simulation is not reset.
+    // Change graphData identity when the node SET changes (add/remove) so new
+    // nodes get __indexColor registered in the library's colorTracker. Also
+    // change identity when the LINK SET changes so react-force-graph-2d detects
+    // link add/delete and re-renders the canvas. Identity stays stable across
+    // pure property edits so the D3 simulation is not reset.
     const nodeSetSig = [...filteredNodeIds].sort().join(',');
-    if (nodeSetSig !== graphDataIdentityRef.current) {
+    const linkSetSig = graphLinks.map(l => `${l.id}:${l.sourceId}:${l.targetId}`).sort().join(',');
+    if (nodeSetSig !== graphDataIdentityRef.current || linkSetSig !== graphDataLinkIdentityRef.current) {
       graphDataIdentityRef.current = nodeSetSig;
+      graphDataLinkIdentityRef.current = linkSetSig;
       graphDataObjRef.current = { nodes: graphNodes, links: graphLinks };
       return graphDataObjRef.current;
     }
